@@ -21,6 +21,7 @@
   withIntrospection ?
     lib.meta.availableOn stdenv.hostPlatform gobject-introspection
     && stdenv.hostPlatform.emulatorAvailable buildPackages,
+  withGtkDoc ? withIntrospection && stdenv.buildPlatform.canExecute stdenv.hostPlatform,
   withMan ? stdenv.buildPlatform.canExecute stdenv.hostPlatform,
 }:
 
@@ -51,8 +52,10 @@ stdenv.mkDerivation (finalAttrs: {
     help2man
   ]
   ++ lib.optionals withIntrospection [
-    gi-docgen
     gobject-introspection
+  ]
+  ++ lib.optionals withGtkDoc [
+    gi-docgen
     docbook-xsl-nons
     docbook_xml_dtd_43
   ]
@@ -77,7 +80,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   mesonFlags = [
     "-Dudevdir=${placeholder "out"}/lib/udev"
-    (lib.mesonBool "gtk_doc" withIntrospection)
+    (lib.mesonBool "gtk_doc" withGtkDoc)
     (lib.mesonBool "introspection" withIntrospection)
     (lib.mesonBool "man" withMan)
     (lib.mesonBool "qrtr" withIntrospection)
