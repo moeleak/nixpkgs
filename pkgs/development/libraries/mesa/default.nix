@@ -141,6 +141,9 @@ let
 
   needNativeCLC = !stdenv.buildPlatform.canExecute stdenv.hostPlatform;
 
+  bindgenNeedsRiscv64TargetFix =
+    ((stdenv.hostPlatform.rust or { }).rustcTarget or null) == "riscv64gc-unknown-linux-gnu";
+
   common = import ./common.nix { inherit lib fetchFromGitLab; };
 in
 stdenv.mkDerivation {
@@ -194,6 +197,51 @@ stdenv.mkDerivation {
   # Needed to discover llvm-config for cross
   preConfigure = ''
     PATH=${lib.getDev llvmPackages.libllvm}/bin:$PATH
+  ''
+  + lib.optionalString bindgenNeedsRiscv64TargetFix ''
+    real_bindgen="$(command -v bindgen)"
+    mkdir -p "$PWD/.nix-bindgen-wrapper"
+    cat > "$PWD/.nix-bindgen-wrapper/bindgen" <<'BINDGEN_WRAPPER'
+    #!${buildPackages.bash}/bin/bash
+
+    args=()
+    pending_target=0
+
+    for arg in "$@"; do
+      if [[ "$pending_target" -eq 1 ]]; then
+        if [[ "$arg" == "riscv64gc-unknown-linux-gnu" ]]; then
+          pending_target=0
+          continue
+        fi
+
+        args+=("--target" "$arg")
+        pending_target=0
+        continue
+      fi
+
+      case "$arg" in
+        --target=riscv64gc-unknown-linux-gnu)
+          ;;
+        --target)
+          pending_target=1
+          ;;
+        *)
+          args+=("$arg")
+          ;;
+      esac
+    done
+
+    if [[ "$pending_target" -eq 1 ]]; then
+      args+=("--target")
+    fi
+
+    exec @real_bindgen@ "''${args[@]}"
+    BINDGEN_WRAPPER
+    substituteInPlace "$PWD/.nix-bindgen-wrapper/bindgen" \
+      --replace-fail @real_bindgen@ "$real_bindgen"
+    chmod +x "$PWD/.nix-bindgen-wrapper/bindgen"
+    export PATH="$PWD/.nix-bindgen-wrapper:$PATH"
+    export NIX_CFLAGS_COMPILE="''${NIX_CFLAGS_COMPILE//--target=riscv64gc-unknown-linux-gnu/}"
   '';
 
   env.MESON_PACKAGE_CACHE_DIR = packageCache;
