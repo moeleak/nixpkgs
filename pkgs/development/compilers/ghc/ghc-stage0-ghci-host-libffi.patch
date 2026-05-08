@@ -1,0 +1,36 @@
+--- a/hadrian/src/Settings/Packages.hs
++++ b/hadrian/src/Settings/Packages.hs
+@@ -11,6 +11,7 @@
+ import GHC.Toolchain.Target
+ import GHC.Platform.ArchOS
+ import Data.Version.Extra
++import System.Environment (lookupEnv)
+ 
+ -- | Package-specific command-line arguments.
+ packageArgs :: Args
+@@ -34,6 +35,16 @@
+     cursesLibraryDir <- getSetting CursesLibDir
+     ffiIncludeDir  <- getSetting FfiIncludeDir
+     ffiLibraryDir  <- getSetting FfiLibDir
++    let ghciFfiDirs = do
++          stage <- getStage
++          case stage of
++            Stage0 {} -> do
++              stage0FfiIncludeDir <- exprIO $ lookupEnv "GHC_STAGE0_FFI_INCLUDE_DIR"
++              stage0FfiLibraryDir <- exprIO $ lookupEnv "GHC_STAGE0_FFI_LIBRARY_DIR"
++              case (stage0FfiIncludeDir, stage0FfiLibraryDir) of
++                (Just include, Just lib) -> cabalExtraDirs include lib
++                _ -> cabalExtraDirs ffiIncludeDir ffiLibraryDir
++            _ -> cabalExtraDirs ffiIncludeDir ffiLibraryDir
+     stageVersion <- readVersion <$> (expr $ ghcVersionStage stage)
+ 
+     mconcat
+@@ -150,7 +161,7 @@
+           -- the Stage1 libraries, as we already know that the bootstrap
+           -- compiler comes with the same versions as the one we are building.
+           --
+-            builder (Cabal Setup) ? cabalExtraDirs ffiIncludeDir ffiLibraryDir
++            builder (Cabal Setup) ? ghciFfiDirs
+           , builder (Cabal Flags) ? ifM stage0
+               (andM [cross, bootCross] `cabalFlag` "internal-interpreter")
+               (arg "internal-interpreter")

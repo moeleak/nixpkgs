@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  buildPackages,
   fetchFromGitHub,
   python3Packages,
   libunistring,
@@ -48,23 +49,91 @@
   fetchpatch,
 }:
 
+let
+  kittyVersion = "0.46.2";
+
+  canExecuteHost = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+  useCrossSource = stdenv.hostPlatform.isLinux && !canExecuteHost;
+
+  setupOptions = options: lib.concatStringsSep " \\\n        " (map lib.escapeShellArg options);
+
+  commonOptions = [
+    "--update-check-interval=0"
+    "--shell-integration=enabled no-rc"
+  ];
+
+  source = fetchFromGitHub {
+    owner = "kovidgoyal";
+    repo = "kitty";
+    tag = "v${kittyVersion}";
+    hash = "sha256-x+jBQrg3Iaj6PLMF1hIjS46odxv5GxPMcvC9JddYCHo=";
+  };
+
+  kittyPatches = [
+    # Needed on darwin
+
+    # Gets `test_ssh_shell_integration` to pass for `zsh` when `compinit` complains about
+    # permissions.
+    ./zsh-compinit.patch
+
+    # Skip `test_ssh_bootstrap_with_different_launchers` when launcher is `zsh` since it causes:
+    # OSError: master_fd is in error condition
+    ./disable-test_ssh_bootstrap_with_different_launchers.patch
+  ];
+
+  crossSource = buildPackages.kitty.overrideAttrs (oldAttrs: {
+    pname = "${oldAttrs.pname}-cross-source";
+    outputs = [ "out" ];
+
+    doCheck = false;
+    doInstallCheck = false;
+    dontWrapPythonPrograms = true;
+    pythonImportsCheck = [ ];
+
+    buildPhase = ''
+      runHook preBuild
+
+      mkdir -p ./fonts
+      cp "${buildPackages.nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols/SymbolsNerdFontMono-Regular.ttf" ./fonts/
+
+      export MPLCONFIGDIR="$TMPDIR/matplotlib"
+      export FONTCONFIG_FILE=${buildPackages.fontconfig.out}/etc/fonts/fonts.conf
+
+      python3 setup.py build \
+        ${setupOptions commonOptions}
+      make docs
+      python3 setup.py clean --clean-for-cross-compile
+
+      runHook postBuild
+    '';
+
+    installPhase = ''
+      runHook preInstall
+      mkdir -p "$out"
+      cp -a ./. "$out"/
+      runHook postInstall
+    '';
+
+    fixupPhase = ''
+      runHook preFixup
+      runHook postFixup
+    '';
+  });
+in
+
 with python3Packages;
 buildPythonApplication rec {
   pname = "kitty";
-  version = "0.46.2";
+  version = kittyVersion;
   pyproject = false;
 
-  src = fetchFromGitHub {
-    owner = "kovidgoyal";
-    repo = "kitty";
-    tag = "v${version}";
-    hash = "sha256-x+jBQrg3Iaj6PLMF1hIjS46odxv5GxPMcvC9JddYCHo=";
-  };
+  src = if useCrossSource then crossSource else source;
 
   goModules =
     (buildGo126Module {
       pname = "kitty-go-modules";
-      inherit src version;
+      inherit version;
+      src = source;
       vendorHash = "sha256-FaSWBeQJlvw9vXcHJ/OaFd48K8d7X86X8w7wpG84Ltw=";
     }).goModules;
 
@@ -74,9 +143,11 @@ buildPythonApplication rec {
     simde
     lcms2
     librsync
-    matplotlib
     openssl.dev
     xxhash
+  ]
+  ++ lib.optionals (!useCrossSource) [
+    matplotlib
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     libpng
@@ -105,14 +176,16 @@ buildPythonApplication rec {
     installShellFiles
     ncurses
     pkg-config
+    go_1_26
+    fontconfig
+    makeBinaryWrapper
+  ]
+  ++ lib.optionals (!useCrossSource) [
     sphinx
     furo
     sphinx-copybutton
     sphinxext-opengraph
     sphinx-inline-tabs
-    go_1_26
-    fontconfig
-    makeBinaryWrapper
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     imagemagick
@@ -132,18 +205,7 @@ buildPythonApplication rec {
     "kitten"
   ];
 
-  patches = [
-    # Needed on darwin
-
-    # Gets `test_ssh_shell_integration` to pass for `zsh` when `compinit` complains about
-    # permissions.
-    ./zsh-compinit.patch
-
-    # Skip `test_ssh_bootstrap_with_different_launchers` when launcher is `zsh` since it causes:
-    # OSError: master_fd is in error condition
-    ./disable-test_ssh_bootstrap_with_different_launchers.patch
-
-  ];
+  patches = lib.optionals (!useCrossSource) kittyPatches;
 
   hardeningDisable = [
     # causes redefinition of _FORTIFY_SOURCE
@@ -153,49 +215,61 @@ buildPythonApplication rec {
   env = {
     CGO_ENABLED = 0;
     GOFLAGS = "-trimpath";
+  }
+  // lib.optionalAttrs useCrossSource {
+    PKGCONFIG_EXE = "${stdenv.cc.targetPrefix}pkg-config";
+    GOOS = stdenv.hostPlatform.go.GOOS;
+    GOARCH = stdenv.hostPlatform.go.GOARCH;
   };
 
   configurePhase = ''
     export GOCACHE=$TMPDIR/go-cache
     export GOPATH="$TMPDIR/go"
     export GOPROXY=off
+    rm -rf vendor
     cp -r --reflink=auto $goModules vendor
+  '';
+
+  preBuild = lib.optionalString useCrossSource ''
+    rm -rf ./fonts
+    export PKG_CONFIG_PATH="${xxhash}/lib/pkgconfig:${buildPackages.wayland-scanner.dev}/lib/pkgconfig''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
   '';
 
   buildPhase =
     let
-      commonOptions = ''
-        --update-check-interval=0 \
-        --shell-integration=enabled\ no-rc
-      '';
-      darwinOptions = ''
-        --disable-link-time-optimization \
-        ${commonOptions}
-      '';
+      darwinOptions = [ "--disable-link-time-optimization" ] ++ commonOptions;
+      linuxOptions = [
+        "--egl-library=${lib.getLib libGL}/lib/libEGL.so.1"
+        "--startup-notification-library=${libstartup_notification}/lib/libstartup-notification-1.so"
+        "--canberra-library=${libcanberra}/lib/libcanberra.so"
+        "--fontconfig-library=${fontconfig.lib}/lib/libfontconfig.so"
+      ]
+      ++ commonOptions
+      ++ lib.optionals useCrossSource [ "--skip-code-generation" ];
     in
     ''
       runHook preBuild
 
       # Add the font by hand because fontconfig does not finds it in darwin
-      mkdir ./fonts/
+      mkdir -p ./fonts/
       cp "${nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols/SymbolsNerdFontMono-Regular.ttf" ./fonts/
 
       ${
         if stdenv.hostPlatform.isDarwin then
           ''
-            ${python.pythonOnBuildForHost.interpreter} setup.py build ${darwinOptions}
+            ${python.pythonOnBuildForHost.interpreter} setup.py build \
+              ${setupOptions darwinOptions}
             make docs
-            ${python.pythonOnBuildForHost.interpreter} setup.py kitty.app ${darwinOptions}
+            ${python.pythonOnBuildForHost.interpreter} setup.py kitty.app \
+              ${setupOptions darwinOptions}
           ''
         else
           ''
             ${python.pythonOnBuildForHost.interpreter} setup.py linux-package \
-            --egl-library='${lib.getLib libGL}/lib/libEGL.so.1' \
-            --startup-notification-library='${libstartup_notification}/lib/libstartup-notification-1.so' \
-            --canberra-library='${libcanberra}/lib/libcanberra.so' \
-            --fontconfig-library='${fontconfig.lib}/lib/libfontconfig.so' \
-            ${commonOptions}
-            ${python.pythonOnBuildForHost.interpreter} setup.py build-launcher
+              ${setupOptions linuxOptions}
+            ${lib.optionalString (!useCrossSource) ''
+              ${python.pythonOnBuildForHost.interpreter} setup.py build-launcher
+            ''}
           ''
       }
       runHook postBuild
@@ -283,10 +357,12 @@ buildPythonApplication rec {
       ]
     }"
 
-    installShellCompletion --cmd kitty \
-      --bash <("$out/bin/kitty" +complete setup bash) \
-      --fish <("$out/bin/kitty" +complete setup fish2) \
-      --zsh  <("$out/bin/kitty" +complete setup zsh)
+    ${lib.optionalString canExecuteHost ''
+      installShellCompletion --cmd kitty \
+        --bash <("$out/bin/kitty" +complete setup bash) \
+        --fish <("$out/bin/kitty" +complete setup fish2) \
+        --zsh  <("$out/bin/kitty" +complete setup zsh)
+    ''}
 
     terminfo_src=${
       if stdenv.hostPlatform.isDarwin then

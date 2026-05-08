@@ -319,6 +319,9 @@
         # https://gitlab.haskell.org/ghc/ghc/-/issues/26518 krank:ignore-line
         ./ghc-define-undefined-elf-st-visibility.patch
       ]
+      ++ lib.optionals (lib.versions.majorMinor version == "9.10") [
+        ./ghc-stage0-ghci-host-libffi.patch
+      ]
       ++
         lib.optionals
           (
@@ -591,6 +594,13 @@ stdenv.mkDerivation (
       export READELF="${toolPath "readelf" targetCC}"
       export STRIP="${toolPath "strip" targetCC}"
       export OBJDUMP="${toolPath "objdump" targetCC}"
+    ''
+    + lib.optionalString (libffi != null && hostPlatform != targetPlatform && !targetPlatform.isGhcjs) ''
+      # Stage0 ghci is built for tools that run on the build host. Keep its
+      # hsc2hs/libffi probing on the host libffi even while the final compiler
+      # targets another platform.
+      export GHC_STAGE0_FFI_INCLUDE_DIR="${lib.getDev libffi}/include"
+      export GHC_STAGE0_FFI_LIBRARY_DIR="${lib.getLib libffi}/lib"
     ''
     + lib.optionalString (stdenv.targetPlatform.linker == "cctools") ''
       export OTOOL="${toolPath "otool" targetCC}"

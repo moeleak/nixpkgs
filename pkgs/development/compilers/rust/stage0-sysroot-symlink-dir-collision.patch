@@ -1,0 +1,23 @@
+--- a/src/bootstrap/src/lib.rs
++++ b/src/bootstrap/src/lib.rs
+@@ -1813,6 +1813,20 @@
+                 src = t!(fs::canonicalize(src));
+                 metadata = t!(fs::metadata(&src), format!("target = {}", src.display()));
+             } else {
++                if fs::symlink_metadata(dst).is_ok_and(|metadata| metadata.is_dir())
++                    && fs::metadata(&src).is_ok_and(|metadata| metadata.is_dir())
++                {
++                    // When building a stage0 sysroot, a previous copy can leave a
++                    // real directory where the initial sysroot has a symlink to a
++                    // directory. Keep the writable destination directory and merge
++                    // the symlink target into it. Replacing it with a symlink can
++                    // make later stage artifacts write through to a read-only
++                    // bootstrap sysroot.
++                    src = t!(fs::canonicalize(src));
++                    t!(fs::create_dir_all(dst));
++                    self.cp_link_r(&src, dst);
++                    return;
++                }
+                 let link = t!(fs::read_link(src));
+                 t!(self.symlink_file(link, dst));
+                 return;

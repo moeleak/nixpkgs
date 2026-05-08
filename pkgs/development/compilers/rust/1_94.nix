@@ -52,7 +52,10 @@ import ./default.nix
   {
     rustcVersion = "1.94.1";
     rustcSha256 = "sha256-TBQqYl8S4833FsaK4Z9PYNmK0UgmJ7CFebFYOOla1RQ=";
-    rustcPatches = [ ./ignore-missing-docs.patch ];
+    rustcPatches = [
+      ./ignore-missing-docs.patch
+      ./stage0-sysroot-symlink-dir-collision.patch
+    ];
 
     llvmSharedForBuild = llvmSharedFor pkgsBuildBuild;
     llvmSharedForHost = llvmSharedFor pkgsBuildHost;
