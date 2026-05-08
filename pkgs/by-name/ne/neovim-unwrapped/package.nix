@@ -87,6 +87,13 @@ stdenv.mkDerivation (
     neovimLuaEnvOnBuild = lua.luaOnBuild.withPackages (
       if finalAttrs.finalPackage.doCheck then checkLuaPkgs else runtimeLuaPkgs
     );
+    codegenLuaEnv = lua.luaOnBuild.withPackages (
+      ps: with ps; [
+        lpeg
+        luabitop
+        mpack
+      ]
+    );
     codegenLua =
       if lua.luaOnBuild.pkgs.isLuaJIT then
         let
@@ -101,6 +108,43 @@ stdenv.mkDerivation (
         ])
       else
         lua.luaOnBuild;
+    nlua0Host = buildPackages.stdenv.mkDerivation {
+      pname = "neovim-nlua0-host";
+      inherit (finalAttrs) version src;
+
+      dontConfigure = true;
+
+      buildPhase = ''
+        runHook preBuild
+
+        mkdir -p build
+        cc -fPIC -shared \
+          -DNVIM_NLUA0 \
+          -I${lua.luaOnBuild}/include \
+          -I$src/src \
+          $src/src/nlua0.c \
+          $src/src/mpack/conv.c \
+          $src/src/mpack/lmpack.c \
+          $src/src/mpack/mpack_core.c \
+          $src/src/mpack/object.c \
+          $src/src/mpack/rpc.c \
+          $src/src/bit.c \
+          -Wl,--no-as-needed \
+          -Wl,-rpath,${lua.luaOnBuild.pkgs.lpeg}/lib/lua/5.1 \
+          ${lua.luaOnBuild.pkgs.lpeg}/lib/lua/5.1/lpeg.so \
+          -o build/nlua0.so
+
+        runHook postBuild
+      '';
+
+      installPhase = ''
+        runHook preInstall
+
+        install -Dm755 build/nlua0.so $out/lib/nlua0.so
+
+        runHook postInstall
+      '';
+    };
 
   in
   {
@@ -184,6 +228,7 @@ stdenv.mkDerivation (
       cmake
       gettext
       pkg-config
+      codegenLuaEnv
     ];
 
     # extra programs test via `make functionaltest`
@@ -204,8 +249,9 @@ stdenv.mkDerivation (
 
     # nvim --version output retains compilation flags and references to build tools
     postPatch = lib.optionalString (!stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
-      sed -i runtime/CMakeLists.txt \
-        -e "s|\".*/bin/nvim|\${stdenv.hostPlatform.emulator buildPackages} &|g"
+      substituteInPlace runtime/CMakeLists.txt \
+        --replace-fail 'set(NVIM_HOST_PRG $<TARGET_FILE:nvim_bin>)' \
+          'set(NVIM_HOST_PRG ${stdenv.hostPlatform.emulator buildPackages} $<TARGET_FILE:nvim_bin>)'
       sed -i src/nvim/po/CMakeLists.txt \
         -e "s|\$<TARGET_FILE:nvim|\${stdenv.hostPlatform.emulator buildPackages} &|g"
     '';
@@ -214,6 +260,8 @@ stdenv.mkDerivation (
       stdenv.cc
     ]
     ++ lib.optional (lua != codegenLua) codegenLua
+    ++ lib.optional (!stdenv.buildPlatform.canExecute stdenv.hostPlatform) nlua0Host
+    ++ lib.optional (codegenLuaEnv != neovimLuaEnvOnBuild) codegenLuaEnv
     # Ensure test-only lua modules (busted, ...) don't leak into the
     # runtime closure via LUA_PRG. When doCheck is off (and we're not
     # cross-compiling) the two envs are the same derivation, hence the
@@ -239,7 +287,13 @@ stdenv.mkDerivation (
       else
         [
           (lib.cmakeBool "PREFER_LUA" true)
+          (lib.cmakeFeature "LUA_PRG" (lib.getExe' codegenLuaEnv "lua"))
+          (lib.cmakeFeature "LUA_GEN_PRG" (lib.getExe' codegenLuaEnv "lua"))
+          (lib.cmakeFeature "LUAC_PRG" "${lib.getExe' lua.luaOnBuild "luac"} -s -o - %q")
         ]
+        ++ lib.optional (!stdenv.buildPlatform.canExecute stdenv.hostPlatform) (
+          lib.cmakeFeature "NLUA0_HOST_PRG" "${nlua0Host}/lib/nlua0.so"
+        )
     );
 
     preConfigure = ''

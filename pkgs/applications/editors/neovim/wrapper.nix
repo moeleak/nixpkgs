@@ -1,6 +1,7 @@
 {
   stdenv,
   lib,
+  buildPackages,
   wayland,
   makeWrapper,
   bundlerEnv,
@@ -351,6 +352,20 @@ let
           makeWrapper
           lndir
         ];
+
+        # The wrapper build may run a target Neovim to generate rplugin.vim.
+        # Prefix only that temporary wrapper; the installed wrapper must remain
+        # native to the target system.
+        preBuild = lib.optionalString (!stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
+          makeWrapper() {
+            makeShellWrapper "$@"
+
+            if [ "''${2-}" = "$out/bin/nvim-wrapper" ]; then
+              substituteInPlace "$2" \
+                --replace-fail 'exec "'"$1"'"' 'exec ${stdenv.hostPlatform.emulator buildPackages} "'"$1"'"'
+            fi
+          }
+        '';
 
         vimPackage = vimPackageInfo.vimPackage;
 
