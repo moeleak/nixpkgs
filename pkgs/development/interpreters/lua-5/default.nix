@@ -194,7 +194,12 @@ rec {
 
   luajit_2_1 = import ../luajit/2.1.nix {
     self = luajit_2_1;
-    inherit callPackage fetchFromGitHub passthruFun;
+    inherit
+      callPackage
+      fetchFromGitHub
+      passthruFun
+      stdenv
+      ;
   };
 
   luajit_openresty = import ../luajit/openresty.nix {
