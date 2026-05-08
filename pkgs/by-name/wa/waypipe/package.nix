@@ -1,5 +1,6 @@
 {
   lib,
+  buildPackages,
   rustPlatform,
   fetchFromGitLab,
   meson,
@@ -21,6 +22,11 @@
   rust-bindgen,
   nix-update-script,
 }:
+let
+  objcopy = buildPackages.writeShellScriptBin "objcopy" ''
+    exec ${buildPackages.binutils}/bin/objcopy "$@"
+  '';
+in
 llvmPackages.stdenv.mkDerivation (finalAttrs: {
   pname = "waypipe";
   version = "0.11.0";
@@ -39,6 +45,7 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
 
   strictDeps = true;
   env.LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
+  env.CARGO_BUILD_TARGET = llvmPackages.stdenv.hostPlatform.rust.rustcTargetSpec;
   depsBuildBuild = [ pkg-config ];
 
   nativeBuildInputs = [
@@ -53,6 +60,7 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
     rustPlatform.cargoSetupHook
     autoPatchelfHook
     rust-bindgen
+    objcopy
   ];
 
   buildInputs = [
@@ -69,6 +77,12 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
     ffmpeg.lib
     vulkan-loader
   ];
+
+  postPatch = ''
+    substituteInPlace compile_wrapper.sh \
+      --replace-fail 'cargo build --frozen -v' 'cargo build --frozen -v --target "$CARGO_BUILD_TARGET"' \
+      --replace-fail 'cp "$3/$1/waypipe" "$5"' 'cp "$3/$CARGO_BUILD_TARGET/$1/waypipe" "$5"'
+  '';
 
   passthru.updateScript = nix-update-script { };
 
