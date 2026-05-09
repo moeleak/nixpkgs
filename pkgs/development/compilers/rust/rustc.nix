@@ -50,6 +50,38 @@ let
     concatStringsSep
     ;
   useLLVM = stdenv.targetPlatform.useLLVM or false;
+  rustLlvmTools = [
+    "FileCheck"
+    "llvm-cov"
+    "llvm-nm"
+    "llvm-objcopy"
+    "llvm-objdump"
+    "llvm-profdata"
+    "llvm-readobj"
+    "llvm-size"
+    "llvm-strip"
+    "llvm-ar"
+    "llvm-as"
+    "llvm-dis"
+    "llvm-link"
+    "llc"
+    "opt"
+  ];
+  llvmForRustBootstrap =
+    llvm:
+    runCommandLocal "llvm-for-rust-bootstrap-${llvm.version}" { } ''
+      mkdir -p $out/bin
+
+      for tool in ${lib.escapeShellArgs rustLlvmTools}; do
+        ln -s ${llvm}/bin/$tool $out/bin/$tool
+      done
+
+      real_llvm_config=${llvm.dev}/bin/llvm-config
+      substitute ${./llvm-config-wrapper.sh} $out/bin/llvm-config \
+        --subst-var-by shell "${stdenv.shell}" \
+        --subst-var-by real_llvm_config "$real_llvm_config"
+      chmod +x $out/bin/llvm-config
+    '';
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "${targetPackages.stdenv.cc.targetPrefix}rustc";
@@ -225,9 +257,9 @@ stdenv.mkDerivation (finalAttrs: {
     ]
     ++ optionals (!withBundledLLVM) [
       "--enable-llvm-link-shared"
-      "${setBuild}.llvm-config=${llvmSharedForBuild.dev}/bin/llvm-config"
-      "${setHost}.llvm-config=${llvmSharedForHost.dev}/bin/llvm-config"
-      "${setTarget}.llvm-config=${llvmSharedForTarget.dev}/bin/llvm-config"
+      "${setBuild}.llvm-config=${llvmForRustBootstrap llvmSharedForBuild}/bin/llvm-config"
+      "${setHost}.llvm-config=${llvmForRustBootstrap llvmSharedForHost}/bin/llvm-config"
+      "${setTarget}.llvm-config=${llvmForRustBootstrap llvmSharedForTarget}/bin/llvm-config"
     ]
     ++ optionals fastCross [
       # Since fastCross only builds std, it doesn't make sense (and
