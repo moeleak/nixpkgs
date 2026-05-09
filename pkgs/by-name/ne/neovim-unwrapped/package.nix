@@ -166,6 +166,7 @@ stdenv.mkDerivation (
       # introduce a system-wide rplugin.vim in addition to the user one
       # necessary so that nix can handle `UpdateRemotePlugins` for the plugins
       # it installs. See https://github.com/neovim/neovim/issues/9413.
+      ./fix-nlua0-dependency.patch
       ./system_rplugin_manifest.patch
     ];
 
@@ -291,9 +292,9 @@ stdenv.mkDerivation (
           (lib.cmakeFeature "LUA_GEN_PRG" (lib.getExe' codegenLuaEnv "lua"))
           (lib.cmakeFeature "LUAC_PRG" "${lib.getExe' lua.luaOnBuild "luac"} -s -o - %q")
         ]
-        ++ lib.optional (!stdenv.buildPlatform.canExecute stdenv.hostPlatform) (
-          lib.cmakeFeature "NLUA0_HOST_PRG" "${nlua0Host}/lib/nlua0.so"
-        )
+    )
+    ++ lib.optional (!stdenv.buildPlatform.canExecute stdenv.hostPlatform) (
+      lib.cmakeFeature "NLUA0_HOST_PRG" "${nlua0Host}/lib/nlua0.so"
     );
 
     preConfigure = ''
