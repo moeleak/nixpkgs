@@ -1,0 +1,12 @@
+--- a/src/bootstrap/src/core/build_steps/compile.rs
++++ b/src/bootstrap/src/core/build_steps/compile.rs
+@@ -830 +830,8 @@ impl Step for StdLink {
+-            builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot.join("lib"));
++            let sysroot_lib = sysroot.join("lib");
++            // A previous `x.py` invocation can leave freshly built stage0
++            // artifacts in the sysroot. Start from the bootstrap sysroot
++            // again so later RustcLink steps do not see both bootstrap and
++            // freshly built rustc_private crates.
++            let _ = fs::remove_dir_all(&sysroot_lib);
++            t!(fs::create_dir_all(&sysroot_lib));
++            builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot_lib);

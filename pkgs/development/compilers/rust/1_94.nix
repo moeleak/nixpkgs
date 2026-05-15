@@ -55,6 +55,12 @@ import ./default.nix
     rustcPatches = [
       ./ignore-missing-docs.patch
       ./stage0-sysroot-symlink-dir-collision.patch
+    ]
+    ++ lib.optionals (stdenv.buildPlatform != stdenv.hostPlatform) [
+      ./copy-symlinked-stage0-dirs-writable.patch
+      ./clean-stage0-sysroot-before-copying-bootstrap.patch
+      ./replace-stage0-rustc-private-artifacts.patch
+      ./run-error-index-generator-on-build-host.patch
     ];
 
     llvmSharedForBuild = llvmSharedFor pkgsBuildBuild;

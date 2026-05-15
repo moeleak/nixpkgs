@@ -1,0 +1,88 @@
+--- a/src/bootstrap/src/core/build_steps/compile.rs
++++ b/src/bootstrap/src/core/build_steps/compile.rs
+@@ -1586,0 +1587,14 @@ impl Step for RustcLink {
++        let sysroot_dst = builder.sysroot_target_libdir(sysroot_compiler, target);
++        let sysroot_host_dst =
++            builder.sysroot_target_libdir(sysroot_compiler, sysroot_compiler.host);
++        let stamp = build_stamp::librustc_stamp(builder, build_compiler, target);
++
++        if sysroot_compiler.stage == 0 {
++            remove_old_stage0_rustc_private_artifacts(
++                builder,
++                &sysroot_dst,
++                &sysroot_host_dst,
++                &stamp,
++            );
++        }
++
+@@ -1589,3 +1603,3 @@ impl Step for RustcLink {
+-            &builder.sysroot_target_libdir(sysroot_compiler, target),
+-            &builder.sysroot_target_libdir(sysroot_compiler, sysroot_compiler.host),
+-            &build_stamp::librustc_stamp(builder, build_compiler, target),
++            &sysroot_dst,
++            &sysroot_host_dst,
++            &stamp,
+@@ -1595,0 +1610,63 @@ impl Step for RustcLink {
++fn remove_old_stage0_rustc_private_artifacts(
++    builder: &Builder<'_>,
++    sysroot_dst: &Path,
++    sysroot_host_dst: &Path,
++    stamp: &BuildStamp,
++) {
++    let mut target_prefixes = HashSet::new();
++    let mut host_prefixes = HashSet::new();
++
++    for (path, dependency_type) in builder.read_stamp_file(stamp) {
++        let filename = path.file_name().unwrap().to_str().unwrap();
++        let Some(prefix) = rustc_private_artifact_prefix(filename) else {
++            continue;
++        };
++
++        match dependency_type {
++            DependencyType::Host => {
++                host_prefixes.insert(prefix);
++            }
++            DependencyType::Target => {
++                target_prefixes.insert(prefix);
++            }
++            DependencyType::TargetSelfContained => {}
++        }
++    }
++
++    if sysroot_dst == sysroot_host_dst {
++        target_prefixes.extend(host_prefixes);
++        remove_matching_artifacts(sysroot_dst, &target_prefixes);
++    } else {
++        remove_matching_artifacts(sysroot_dst, &target_prefixes);
++        remove_matching_artifacts(sysroot_host_dst, &host_prefixes);
++    }
++}
++
++fn rustc_private_artifact_prefix(filename: &str) -> Option<String> {
++    let (stem, _) = filename.rsplit_once('.')?;
++    let (prefix, _) = stem.rsplit_once('-')?;
++    let crate_name = prefix.strip_prefix("lib").unwrap_or(prefix);
++    if matches!(crate_name, "rustc_demangle" | "rustc_hash" | "rustc_literal_escaper")
++        || crate_name.starts_with("rustc_std_workspace_")
++    {
++        return None;
++    }
++    (prefix.starts_with("librustc_") || prefix.starts_with("rustc_"))
++        .then(|| format!("{prefix}-"))
++}
++
++fn remove_matching_artifacts(dir: &Path, prefixes: &HashSet<String>) {
++    if prefixes.is_empty() || !dir.exists() {
++        return;
++    }
++
++    for entry in t!(fs::read_dir(dir), dir) {
++        let entry = t!(entry);
++        let filename = entry.file_name();
++        let filename = filename.to_string_lossy();
++        if prefixes.iter().any(|prefix| filename.starts_with(prefix)) {
++            t!(fs::remove_file(entry.path()));
++        }
++    }
++}
++

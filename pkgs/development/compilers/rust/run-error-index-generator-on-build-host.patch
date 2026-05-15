@@ -1,0 +1,22 @@
+--- a/src/bootstrap/src/core/build_steps/tool.rs
++++ b/src/bootstrap/src/core/build_steps/tool.rs
+@@ -567,0 +568,19 @@ impl ErrorIndex {
++        let compilers = if compilers.target() == builder.config.host_target {
++            compilers
++        } else {
++            // The generated error-index HTML is not target-specific, but the
++            // generator must run on the build host. When documenting a cross
++            // target, build a host executable that links against host
++            // rustc_private artifacts from the same stage.
++            let host_compilers = RustcPrivateCompilers::from_build_compiler(
++                builder,
++                compilers.build_compiler(),
++                builder.config.host_target,
++            );
++            builder.ensure(compile::Rustc::new(
++                host_compilers.build_compiler(),
++                host_compilers.target(),
++            ));
++            host_compilers
++        };
++
