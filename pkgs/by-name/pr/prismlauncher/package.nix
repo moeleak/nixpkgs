@@ -37,8 +37,18 @@
     jdk25
     jdk21
     jdk17
-    jdk8
-  ],
+  ]
+  ++ lib.optionals (
+    stdenv.hostPlatform.isDarwin
+    || (
+      stdenv.hostPlatform.isLinux
+      && (
+        stdenv.hostPlatform.isi686
+        || stdenv.hostPlatform.isx86_64
+        || stdenv.hostPlatform.isAarch64
+      )
+    )
+  ) [ jdk8 ],
   msaClientID ? null,
   textToSpeechSupport ? stdenv.hostPlatform.isLinux,
 }:

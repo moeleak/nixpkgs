@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  buildPackages,
   fetchFromGitHub,
   cmake,
   pkg-config,
@@ -46,7 +47,7 @@ stdenv.mkDerivation (finalAttrs: {
     cmake
     pkg-config
     ninja
-    kdePackages.extra-cmake-modules
+    buildPackages.kdePackages.extra-cmake-modules
     jdk17
     stripJavaArchivesHook
   ];
@@ -64,6 +65,7 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optional stdenv.hostPlatform.isLinux gamemode;
 
   cmakeFlags = [
+    (lib.cmakeFeature "ECM_DIR" "${buildPackages.kdePackages.extra-cmake-modules}/share/ECM/cmake")
     # downstream branding
     (lib.cmakeFeature "Launcher_BUILD_PLATFORM" "nixpkgs")
   ]
