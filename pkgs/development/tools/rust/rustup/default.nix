@@ -105,8 +105,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     done
     popd
 
-    wrapProgram $out/bin/rustup --prefix "LD_LIBRARY_PATH" : "${libPath}"
-
     # tries to create .rustup
     mkdir -p "$out/share/"{bash-completion/completions,fish/vendor_completions.d,zsh/site-functions}
 
@@ -128,6 +126,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
           --zsh <(${emulator} $out/bin/rustup completions zsh cargo)
       ''
     )}
+
+    wrapProgram $out/bin/rustup --prefix "LD_LIBRARY_PATH" : "${libPath}"
 
     # add a wrapper script for ld.lld
     mkdir -p $out/nix-support
