@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  buildPackages,
   fetchurl,
   meson,
   ninja,
@@ -87,6 +88,10 @@ stdenv.mkDerivation rec {
     pkg-config
     check
     wayland-scanner
+  ]
+  ++ lib.optionals (stdenv.buildPlatform != stdenv.hostPlatform) [
+    # EFL uses its own code generators from the build platform when cross compiling.
+    buildPackages.enlightenment.efl
   ];
 
   buildInputs = [
