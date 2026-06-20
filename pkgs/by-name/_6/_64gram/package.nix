@@ -25,11 +25,14 @@ telegram-desktop.override {
     # Remove after next release
     env.NIX_LDFLAGS = lib.optionalString stdenv.hostPlatform.isDarwin "-L/usr/lib/swift";
 
-    # Newer 64gram releases include this file. Qt 6.11 dropped the edit
-    # menu roles, and keeps those actions working through TextHeuristicRole.
+    # Some 64gram releases include edit menu roles that Qt 6.11 dropped,
+    # and keep those actions working through TextHeuristicRole. Newer
+    # releases already avoid the removed roles.
     postPatch = (old.postPatch or "") + ''
-      if [ -f Telegram/SourceFiles/platform/mac/global_menu_mac.mm ]; then
-        substituteInPlace Telegram/SourceFiles/platform/mac/global_menu_mac.mm \
+      globalMenu=Telegram/SourceFiles/platform/mac/global_menu_mac.mm
+      if [ -f "$globalMenu" ] \
+        && grep -Fq '#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)' "$globalMenu"; then
+        substituteInPlace "$globalMenu" \
           --replace-fail '#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)' \
                          '#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0) && QT_VERSION < QT_VERSION_CHECK(6, 11, 0)'
       fi
