@@ -153,8 +153,9 @@ stdenv.mkDerivation (finalAttrs: {
 
   checkPhase = ''
     runHook preCheck
+    export HOME=$(mktemp -d)
+    mkdir -p "$HOME/.cache"
     GTK_A11Y=none \
-    HOME=$(mktemp -d) \
     xvfb-run -s '-screen 0 800x600x24' \
       meson test --timeout-multiplier 10 --print-errorlogs
     runHook postCheck
