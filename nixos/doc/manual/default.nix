@@ -151,7 +151,16 @@ let
   };
 
   systemdServiceOptions = buildPackages.nixosOptionsDoc {
-    inherit (evalModules { modules = [ ../../modules/system/service/systemd/service.nix ]; }) options;
+    inherit
+      (evalModules {
+        modules = [
+          (pkgs.lib.modules.importApply ../../modules/system/service/systemd/service.nix {
+            pkgs = throw "nixos docs / systemdServiceOptions: Do not reference pkgs in docs";
+          })
+        ];
+      })
+      options
+      ;
     # TODO: filter out options that are not systemd-specific, maybe also change option prefix to just `service-opt-`?
     inherit revision warningsAreErrors;
     transformOptions =
