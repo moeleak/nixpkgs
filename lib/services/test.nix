@@ -48,6 +48,10 @@ let
             (dummyPkg "cowsay.sh")
             "world"
           ];
+          environment = {
+            FOO = "bar";
+            DROPPED = null;
+          };
         };
       };
       service3 = {
@@ -170,6 +174,7 @@ let
                 "/usr/bin/echo"
                 "hello"
               ];
+              environment = { };
             };
             services = { };
             assertions = [
@@ -188,6 +193,10 @@ let
                 "${dummyPkg "cowsay.sh"}"
                 "world"
               ];
+              environment = {
+                FOO = "bar";
+                DROPPED = null;
+              };
             };
             services = { };
             assertions = [ ];
@@ -196,6 +205,7 @@ let
           service3 = {
             process = {
               argv = [ "/bin/false" ];
+              environment = { };
             };
             services.exclacow = {
               process = {
@@ -203,6 +213,7 @@ let
                   "${dummyPkg "cowsay-ng"}/bin/cowsay"
                   "!"
                 ];
+                environment = { };
               };
               services = { };
               assertions = [
