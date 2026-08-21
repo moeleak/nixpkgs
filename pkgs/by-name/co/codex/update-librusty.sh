@@ -14,6 +14,8 @@ CARGO_LOCK=$(curl ${GITHUB_TOKEN:+-u ":$GITHUB_TOKEN"} --silent --fail --locatio
 PACKAGE_DIR=$(dirname "$(readlink --canonicalize-existing "${BASH_SOURCE[0]}")")
 OUTPUT_FILE="$PACKAGE_DIR/librusty_v8.nix"
 NEW_VERSION=$(echo "$CARGO_LOCK" | grep --after-context 5 'name = "v8"' | grep 'version =' | sed -E 's/version = "//;s/"//')
+PROFILE="ptrcomp_sandbox_release"
+BASE_URL="https://github.com/openai/codex/releases/download/rusty-v8-v$NEW_VERSION"
 
 CURRENT_VERSION=""
 if [ -f "$OUTPUT_FILE" ]; then
@@ -33,9 +35,9 @@ cat >"$TEMP_FILE" <<EOF
 fetchLibrustyV8 {
   version = "$NEW_VERSION";
   shas = {
-    x86_64-linux = "$(nix-prefetch-url --type sha256 https://github.com/denoland/rusty_v8/releases/download/v"$NEW_VERSION"/librusty_v8_release_x86_64-unknown-linux-gnu.a.gz)";
-    aarch64-linux = "$(nix-prefetch-url --type sha256 https://github.com/denoland/rusty_v8/releases/download/v"$NEW_VERSION"/librusty_v8_release_aarch64-unknown-linux-gnu.a.gz)";
-    aarch64-darwin = "$(nix-prefetch-url --type sha256 https://github.com/denoland/rusty_v8/releases/download/v"$NEW_VERSION"/librusty_v8_release_aarch64-apple-darwin.a.gz)";
+    x86_64-linux = "$(nix-prefetch-url --type sha256 "$BASE_URL/librusty_v8_${PROFILE}_x86_64-unknown-linux-gnu.a.gz")";
+    aarch64-linux = "$(nix-prefetch-url --type sha256 "$BASE_URL/librusty_v8_${PROFILE}_aarch64-unknown-linux-gnu.a.gz")";
+    aarch64-darwin = "$(nix-prefetch-url --type sha256 "$BASE_URL/librusty_v8_${PROFILE}_aarch64-apple-darwin.a.gz")";
   };
 }
 EOF
@@ -51,9 +53,9 @@ cat >"$TEMP_FILE" <<EOF
 fetchLibrustyV8SrcBinding {
   version = "$NEW_VERSION";
   shas = {
-    x86_64-linux = "$(nix-prefetch-url --type sha256 https://github.com/denoland/rusty_v8/releases/download/v"$NEW_VERSION"/src_binding_release_x86_64-unknown-linux-gnu.rs)";
-    aarch64-linux = "$(nix-prefetch-url --type sha256 https://github.com/denoland/rusty_v8/releases/download/v"$NEW_VERSION"/src_binding_release_aarch64-unknown-linux-gnu.rs)";
-    aarch64-darwin = "$(nix-prefetch-url --type sha256 https://github.com/denoland/rusty_v8/releases/download/v"$NEW_VERSION"/src_binding_release_aarch64-apple-darwin.rs)";
+    x86_64-linux = "$(nix-prefetch-url --type sha256 "$BASE_URL/src_binding_${PROFILE}_x86_64-unknown-linux-gnu.rs")";
+    aarch64-linux = "$(nix-prefetch-url --type sha256 "$BASE_URL/src_binding_${PROFILE}_aarch64-unknown-linux-gnu.rs")";
+    aarch64-darwin = "$(nix-prefetch-url --type sha256 "$BASE_URL/src_binding_${PROFILE}_aarch64-apple-darwin.rs")";
   };
 }
 EOF
