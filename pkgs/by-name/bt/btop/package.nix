@@ -4,6 +4,7 @@
   stdenv,
   fetchFromGitHub,
   cmake,
+  gtest,
   removeReferencesTo,
   autoAddDriverRunpath,
   apple-sdk_15,
@@ -25,6 +26,10 @@ stdenv.mkDerivation (finalAttrs: {
     hash = "sha256-3gECGBSWcGTYQkUlD4X2zrxZVvH2x2xfh5zdZ2jJbDQ=";
   };
 
+  # GPU metrics can be supported before their first sample is available.
+  # https://github.com/aristocratos/btop/issues/1716
+  patches = [ ./fix-gpu-missing-samples.patch ];
+
   nativeBuildInputs = [
     cmake
   ]
@@ -36,10 +41,14 @@ stdenv.mkDerivation (finalAttrs: {
     apple-sdk_15
   ];
 
+  checkInputs = [ gtest ];
+  doCheck = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
+
   installFlags = [ "PREFIX=$(out)" ];
 
   # fix build on darwin (see https://github.com/NixOS/nixpkgs/pull/422218#issuecomment-3039181870 and https://github.com/aristocratos/btop/pull/1173)
   cmakeFlags = [
+    (lib.cmakeBool "BUILD_TESTING" finalAttrs.doCheck)
     (lib.cmakeBool "BTOP_LTO" (!stdenv.hostPlatform.isDarwin))
     (lib.cmakeBool "BTOP_STATIC" (stdenv.hostPlatform.isStatic))
     (lib.cmakeBool "BTOP_FORTIFY" (!stdenv.hostPlatform.isStatic))
