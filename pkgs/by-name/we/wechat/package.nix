@@ -3,6 +3,7 @@
   stdenv,
   stdenvNoCC,
   fetchurl,
+  writeText,
 
   # native
   _7zz,
@@ -40,6 +41,7 @@
   libxcb-keysyms,
   libxkbcommon,
   mesa,
+  noto-fonts-cjk-sans-static,
   nspr,
   nss,
   pango,
