@@ -18,9 +18,9 @@
     inherit (callPackage ./fetchers.nix { }) fetchLibrustyV8SrcBinding;
   },
   lld,
-  makeBinaryWrapper,
   nix-update-script,
   pkg-config,
+  procps,
   openssl,
   ripgrep,
   versionCheckHook,
@@ -77,7 +77,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     cmake
     gitMinimal
     installShellFiles
-    makeBinaryWrapper
     pkg-config
   ];
 
@@ -120,21 +119,39 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # the future once this software stabilizes.
   doCheck = false;
 
-  postInstall = lib.optionalString installShellCompletions ''
+  postInstall = ''
+    # The daemon stages a complete package and checks that bin/codex matches
+    # the running executable. Keep codex unwrapped and copy helpers because
+    # package staging rejects symlinks that point outside the package.
+    mkdir -p "$out/codex-path" "$out/codex-resources"
+    install -m755 ${lib.getExe ripgrep} "$out/codex-path/rg"
+    cat > "$out/codex-package.json" <<'EOF'
+    ${builtins.toJSON {
+      layoutVersion = 1;
+      version = finalAttrs.version;
+      target = stdenv.hostPlatform.rust.rustcTarget;
+      variant = "codex";
+      entrypoint = "bin/codex";
+      resourcesDir = "codex-resources";
+      pathDir = "codex-path";
+    }}
+    EOF
+  ''
+  + lib.optionalString stdenv.hostPlatform.isLinux ''
+    install -m755 ${lib.getExe bubblewrap} "$out/codex-resources/bwrap"
+    install -m755 ${lib.getExe' procps "ps"} "$out/codex-path/ps"
+  ''
+  + lib.optionalString installShellCompletions ''
     installShellCompletion --cmd codex \
       --bash <($out/bin/codex completion bash) \
       --fish <($out/bin/codex completion fish) \
       --zsh <($out/bin/codex completion zsh)
   '';
 
-  postFixup = ''
-    wrapProgram $out/bin/codex --prefix PATH : ${
-      lib.makeBinPath ([ ripgrep ] ++ lib.optionals stdenv.hostPlatform.isLinux [ bubblewrap ])
-    }
-  '';
-
   doInstallCheck = true;
   nativeInstallCheckInputs = [ versionCheckHook ];
+
+  passthru.tests.daemon = callPackage ./test-daemon.nix { codex = finalAttrs.finalPackage; };
 
   passthru.updateScript = _experimental-update-script-combinators.sequence [
     (nix-update-script {
