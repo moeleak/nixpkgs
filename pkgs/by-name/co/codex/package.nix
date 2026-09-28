@@ -281,6 +281,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   passthru.tests = {
     app-server-daemon = callPackage ./test-app-server-daemon.nix { codex = finalAttrs.finalPackage; };
+    daemon = callPackage ./test-daemon.nix { codex = finalAttrs.finalPackage; };
   }
   // lib.optionalAttrs supportsVoice {
     voice-runtime = callPackage ./test-voice-runtime.nix { codex = finalAttrs.finalPackage; };
