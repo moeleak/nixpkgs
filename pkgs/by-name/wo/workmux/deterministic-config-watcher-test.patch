@@ -1,0 +1,220 @@
+From ccbd1768b3e8bf29fb81cf3a82b1c21509009b68 Mon Sep 17 00:00:00 2001
+From: MoeLeak <i@leak.moe>
+Date: Mon, 12 Oct 2026 21:17:39 +0800
+Subject: [PATCH] test(sidebar): make config watcher test independent of OS
+ event latency
+
+project_config_watcher_recovers_registration_and_directory_replacement
+drove the real notify backend and expected each event within 5s, using
+700ms sleeps to wait for watch registration. On macOS the backend is
+FSEvents, whose events go through the system-wide fseventsd. When the
+rest of the test suite (or anything else on the machine) churns files,
+fseventsd falls behind: delivery lags 14s during a full local test run
+and 50s+ under heavier load. The test then times out, which breaks
+`nix build` of the package on macOS.
+
+Make spawn_config_watcher generic over the notify::Watcher backend
+(production still uses RecommendedWatcher). Drive the test with an
+in-process fake watcher that binds each watch to the directory's
+identity, like inotify/kqueue, and wait on registration state instead
+of sleeping. The test still fails if a missing directory is never
+retried, if a replaced directory is not re-watched, or if dropping a
+project unwatches the shared global config directory. Event-kind
+handling, including atomic renames, stays covered by the
+config_event_triggers_reload unit tests.
+---
+ src/command/sidebar/daemon.rs | 133 +++++++++++++++++++++++++++++-----
+ 1 file changed, 113 insertions(+), 20 deletions(-)
+
+diff --git a/src/command/sidebar/daemon.rs b/src/command/sidebar/daemon.rs
+index b2b0318..4ab0962 100644
+--- a/src/command/sidebar/daemon.rs
++++ b/src/command/sidebar/daemon.rs
+@@ -1730,7 +1730,10 @@ fn reload_daemon_config(config: &Mutex<Config>) {
+ ///
+ /// Returns a channel for the daemon main loop to send the current set of
+ /// project config directories (parents of `.workmux.yaml`) to watch.
+-fn spawn_config_watcher(
++///
++/// Generic over the notify backend so tests can drive registration and events
++/// deterministically instead of depending on OS event delivery latency.
++fn spawn_config_watcher<W: notify::Watcher + 'static>(
+     term: Arc<AtomicBool>,
+     config: Arc<Mutex<Config>>,
+     config_version: Arc<AtomicU64>,
+@@ -1743,7 +1746,7 @@ fn spawn_config_watcher(
+         let (fs_tx, fs_rx) = mpsc::sync_channel::<notify::Result<notify::Event>>(64);
+         let overflow = Arc::new(AtomicBool::new(false));
+         let overflow_clone = overflow.clone();
+-        let mut watcher: notify::RecommendedWatcher = match notify::RecommendedWatcher::new(
++        let mut watcher: W = match W::new(
+             move |event: notify::Result<notify::Event>| {
+                 if event
+                     .as_ref()
+@@ -2222,7 +2225,7 @@ pub fn run() -> Result<()> {
+     let _ = std::fs::remove_file(&sock_path);
+     let server = SocketServer::bind(&sock_path)?;
+ 
+-    let config_paths_tx = spawn_config_watcher(
++    let config_paths_tx = spawn_config_watcher::<notify::RecommendedWatcher>(
+         term.clone(),
+         config.clone(),
+         config_version.clone(),
+@@ -2743,6 +2746,91 @@ mod tests {
+         run_git(path, &["init", "-q"]);
+     }
+ 
++    /// In-process stand-in for the OS watcher backend. Real backends deliver
++    /// events through shared OS machinery (FSEvents can lag by tens of seconds
++    /// under concurrent filesystem load), so the config watcher test drives
++    /// this instead. Like inotify and kqueue, a watch is bound to the
++    /// directory's identity: a replaced directory stops reporting until it is
++    /// watched again.
++    struct FakeWatcher;
++
++    #[derive(Default)]
++    struct FakeWatchState {
++        handler: Option<Box<dyn notify::EventHandler>>,
++        watches: HashMap<PathBuf, (u64, u64)>,
++        failed: Vec<PathBuf>,
++    }
++
++    static FAKE_WATCH: std::sync::LazyLock<Mutex<FakeWatchState>> =
++        std::sync::LazyLock::new(Mutex::default);
++
++    fn dir_identity(path: &Path) -> Option<(u64, u64)> {
++        use std::os::unix::fs::MetadataExt;
++        let metadata = std::fs::metadata(path).ok()?;
++        Some((metadata.dev(), metadata.ino()))
++    }
++
++    impl notify::Watcher for FakeWatcher {
++        fn new<F: notify::EventHandler>(
++            event_handler: F,
++            _config: notify::Config,
++        ) -> notify::Result<Self> {
++            FAKE_WATCH.lock().unwrap().handler = Some(Box::new(event_handler));
++            Ok(Self)
++        }
++
++        fn watch(&mut self, path: &Path, _recursive_mode: RecursiveMode) -> notify::Result<()> {
++            let mut state = FAKE_WATCH.lock().unwrap();
++            match dir_identity(path) {
++                Some(identity) => {
++                    state.watches.insert(path.to_path_buf(), identity);
++                    Ok(())
++                }
++                None => {
++                    state.failed.push(path.to_path_buf());
++                    Err(notify::Error::path_not_found().add_path(path.to_path_buf()))
++                }
++            }
++        }
++
++        fn unwatch(&mut self, path: &Path) -> notify::Result<()> {
++            FAKE_WATCH
++                .lock()
++                .unwrap()
++                .watches
++                .remove(path)
++                .map(|_| ())
++                .ok_or_else(notify::Error::watch_not_found)
++        }
++
++        fn kind() -> notify::WatcherKind {
++            notify::WatcherKind::NullWatcher
++        }
++    }
++
++    /// Writes `path` and reports it if its directory is watched under the
++    /// directory's current identity.
++    fn fake_watch_write(path: &Path, contents: &str) {
++        std::fs::write(path, contents).unwrap();
++        let dir = path.parent().unwrap();
++        let mut state = FAKE_WATCH.lock().unwrap();
++        if dir_identity(dir).is_some_and(|identity| state.watches.get(dir) == Some(&identity)) {
++            let event = notify::Event::new(notify::EventKind::Modify(
++                notify::event::ModifyKind::Data(notify::event::DataChange::Content),
++            ))
++            .add_path(path.to_path_buf());
++            state.handler.as_mut().unwrap().handle_event(Ok(event));
++        }
++    }
++
++    fn wait_for_fake_watch(what: &str, done: impl Fn(&FakeWatchState) -> bool) {
++        let deadline = Instant::now() + Duration::from_secs(10);
++        while !done(&FAKE_WATCH.lock().unwrap()) {
++            assert!(Instant::now() < deadline, "timed out waiting for {what}");
++            thread::sleep(Duration::from_millis(10));
++        }
++    }
++
+     #[test]
+     fn project_config_watcher_recovers_registration_and_directory_replacement() {
+         const TEST: &str = "command::sidebar::daemon::tests::project_config_watcher_recovers_registration_and_directory_replacement";
+@@ -2763,7 +2851,7 @@ mod tests {
+         let term = Arc::new(AtomicBool::new(false));
+         let version = Arc::new(AtomicU64::new(0));
+         let (wake_tx, wake_rx) = mpsc::sync_channel(1);
+-        let paths_tx = spawn_config_watcher(
++        let paths_tx = spawn_config_watcher::<FakeWatcher>(
+             term.clone(),
+             Arc::new(Mutex::new(Config::default())),
+             version.clone(),
+@@ -2772,35 +2860,40 @@ mod tests {
+         );
+         let desired = HashSet::from([dir.clone(), global_dir]);
+         paths_tx.send(desired.clone()).unwrap();
+-        // Allow the missing-directory registration attempt to fail.
+-        thread::sleep(Duration::from_millis(700));
++        wait_for_fake_watch("missing directory registration to fail", |state| {
++            state.failed.contains(&dir)
++        });
+         std::fs::create_dir(&dir).unwrap();
+         paths_tx.send(desired.clone()).unwrap();
+-        thread::sleep(Duration::from_millis(700));
++        wait_for_fake_watch("project directory watch", |state| {
++            state.watches.contains_key(&dir)
++        });
+         let config_path = dir.join(".workmux.yaml");
+-        std::fs::write(&config_path, "agent: first").unwrap();
++        fake_watch_write(&config_path, "agent: first");
+         wake_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+         assert!(version.load(Ordering::Relaxed) > 0);
+-        std::fs::write(dir.join("temporary"), "agent: atomic").unwrap();
+-        std::fs::rename(dir.join("temporary"), &config_path).unwrap();
+-        wake_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+-        std::fs::write(&config_path, "agent: after-atomic").unwrap();
+-        wake_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+         std::fs::rename(&dir, temp.path().join("old-project")).unwrap();
+         std::fs::create_dir(&dir).unwrap();
+         paths_tx.send(desired).unwrap();
+-        thread::sleep(Duration::from_millis(700));
+-        while wake_rx.try_recv().is_ok() {}
++        wait_for_fake_watch("replaced directory watch", |state| {
++            state.watches.get(&dir).copied() == dir_identity(&dir)
++        });
+         let before = version.load(Ordering::Relaxed);
+-        std::fs::write(&config_path, "agent: after-directory-replacement").unwrap();
++        fake_watch_write(&config_path, "agent: after-directory-replacement");
+         wake_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+         assert!(version.load(Ordering::Relaxed) > before);
+         // Removing project membership must not remove the shared global watch.
+-        paths_tx.send(HashSet::from([dir])).unwrap();
+-        thread::sleep(Duration::from_millis(700));
+-        while wake_rx.try_recv().is_ok() {}
++        // Paths are reconciled in order, so the removal has been applied once
++        // the follow-up watch of `other` exists.
++        let other = temp.path().join("other");
++        std::fs::create_dir(&other).unwrap();
++        paths_tx.send(HashSet::from([dir.clone()])).unwrap();
++        paths_tx.send(HashSet::from([dir, other.clone()])).unwrap();
++        wait_for_fake_watch("follow-up watch", |state| {
++            state.watches.contains_key(&other)
++        });
+         let before = version.load(Ordering::Relaxed);
+-        std::fs::write(global, "agent: global-reload").unwrap();
++        fake_watch_write(&global, "agent: global-reload");
+         wake_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+         assert!(version.load(Ordering::Relaxed) > before);
+         term.store(true, Ordering::Relaxed);
