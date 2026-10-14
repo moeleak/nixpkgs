@@ -8,7 +8,7 @@
   qtwayland,
 }:
 let
-  # moeleak/powerdevil branch v6.7.5-moeleak, which is upstream v6.7.5 plus:
+  # moeleak/powerdevil master, which is upstream v6.7.5 plus:
   # - backport fix for spurious low battery notifications (upstream 54f8a4a8, in 6.7.6)
   # - hide the "nan%" keyboard backlight slider when UPower reports a max brightness of 0
   version = "6.7.5";
