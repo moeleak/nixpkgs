@@ -149,11 +149,17 @@ rec {
     '';
   };
 
-  unstable = fetchurl rec {
+  unstable = fetchFromGitHub rec {
     # NOTE: Don't forget to change the hash for staging as well.
+    # Wine 11.18 from the quartz-video branch of the fork: GDI scaling ("System (Enhanced)"),
+    # host hint style, variable font named instances, DPI and letterboxing of emulated
+    # fullscreen modes, and quartz file reading that works with hooked file functions.
+    # The staging patches are not checked against it, use unstable(Full) rather than staging.
     version = "11.18";
-    url = "https://dl.winehq.org/wine/source/11.x/wine-${version}.tar.xz";
-    hash = "sha256-xigvbU2uzxHzq5+aK2xZj2e+fijDY7osroo8RLYR56Q=";
+    owner = "moeleak";
+    repo = "wine";
+    rev = "bb57ae7de5c807516f473eeeabfce615267e8c97";
+    hash = "sha256-Q7Avlu9r7TBqzBMMTqe4rouYDepvRDYe/uFkAT4tCq0=";
 
     patches = [
       # Also look for root certificates at $NIX_SSL_CERT_FILE
