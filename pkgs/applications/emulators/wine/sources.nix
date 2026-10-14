@@ -149,11 +149,17 @@ rec {
     '';
   };
 
-  unstable = fetchurl rec {
+  unstable = fetchFromGitHub rec {
     # NOTE: Don't forget to change the hash for staging as well.
-    version = "11.19";
-    url = "https://dl.winehq.org/wine/source/11.x/wine-${version}.tar.xz";
-    hash = "sha256-SCAGbtpo5VPTMCOf/GKBZKNI0cYj5J0FjgEcWnzalfE=";
+    # Wine 11.18 from the quartz-video branch of the fork: GDI scaling ("System (Enhanced)"),
+    # host hint style, variable font named instances, DPI and letterboxing of emulated
+    # fullscreen modes, and quartz file reading that works with hooked file functions.
+    # The staging patches are not checked against it, use unstable(Full) rather than staging.
+    version = "11.18";
+    owner = "moeleak";
+    repo = "wine";
+    rev = "bb57ae7de5c807516f473eeeabfce615267e8c97";
+    hash = "sha256-Q7Avlu9r7TBqzBMMTqe4rouYDepvRDYe/uFkAT4tCq0=";
 
     patches = [
       # Also look for root certificates at $NIX_SSL_CERT_FILE
@@ -163,7 +169,8 @@ rec {
     # see https://gitlab.winehq.org/wine/wine-staging
     staging = fetchFromGitLab {
       inherit version;
-      hash = "sha256-Dnb/CjzxWDdMDXfJB/hiWHhQLjU49F6OyM6qqC0g/v0=";
+      # the fork is based on Wine 11.18, so staging has to stay on it as well
+      hash = "sha256-KZCkra0y3XFNrbD2lZ+YUCLyq1POC30Sd4sGCJZuwgQ=";
       domain = "gitlab.winehq.org";
       owner = "wine";
       repo = "wine-staging";
