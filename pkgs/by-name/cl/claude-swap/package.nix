@@ -2,19 +2,20 @@
   lib,
   python3Packages,
   fetchFromGitHub,
+  ps,
   versionCheckHook,
 }:
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "claude-swap";
-  version = "0.26.0";
+  version = "0.27.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "realiti4";
     repo = "claude-swap";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-ypE/fxgMr+SSF/8blI2YVqcr9coW3YcGzC/NiogyadQ=";
+    hash = "sha256-IeQG5C6kRowNcPoxu5qQ7ycY+j49vNLLmZtiEHKFcN4=";
   };
 
   # Updates are handled by Nix, don't nag about newer PyPI releases
@@ -30,11 +31,22 @@ python3Packages.buildPythonApplication (finalAttrs: {
     truststore
   ];
 
-  nativeCheckInputs = with python3Packages; [
+  # Process detection shells out to a bare `ps`
+  makeWrapperArgs = [
+    "--prefix"
+    "PATH"
+    ":"
+    (lib.makeBinPath [ ps ])
+  ];
+
+  nativeCheckInputs = [
+    ps
+  ]
+  ++ (with python3Packages; [
     pytest-asyncio
     pytest-xdist
     pytestCheckHook
-  ];
+  ]);
 
   # The test suite refuses to write directly under the account's home
   # directory, which is the build directory inside the sandbox
