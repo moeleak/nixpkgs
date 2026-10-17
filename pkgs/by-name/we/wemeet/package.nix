@@ -261,14 +261,28 @@ stdenv.mkDerivation {
   };
 
   # set LP_NUM_THREADS limit the number of cores used by rendering
-  # set XDG_SESSION_TYPE; unset WAYLAND_DISPLAY getting border shadows to work
   # set QT_STYLE_OVERRIDE solve the color of the font is not visible when using the included Qt
   # set IBUS_USE_PORTAL fix ibus
-  # set WEMEET_XWAYLAND on wayland to enable native screen sharing via xdg-desktop-portal, like the bundled wemeetapp.sh does;
+  # on wayland, run through xwayland like the bundled wemeetapp.sh does: wemeet moves its frameless windows and draws
+  # their shadows with X11 calls, which don't work on native wayland windows; fall back to native wayland with the
+  # X11 and camera fixes only when xwayland is unavailable
+  # set WEMEET_XWAYLAND on wayland to enable native screen sharing via xdg-desktop-portal;
   # wemeet dlopen()s libpipewire-0.3.so.0 for it
   preFixup =
     let
-      baseWrapperArgs = [
+      selectPlatform = ''
+        if [[ -n $WAYLAND_DISPLAY || $XDG_SESSION_TYPE == wayland ]]; then
+          export WEMEET_XWAYLAND=1
+          if [[ -n $DISPLAY ]]; then
+            export XDG_SESSION_TYPE=x11 QT_QPA_PLATFORM=xcb
+            unset WAYLAND_DISPLAY
+          else
+            export QT_QPA_PLATFORM=wayland
+            export LD_PRELOAD=${wemeet-x11-fix}/lib/libwemeet-x11-fix.so:${wemeet-camera-fix}/lib/libwemeet-camera-fix.so''${LD_PRELOAD:+:$LD_PRELOAD}
+          fi
+        fi
+      '';
+      wrapperArgs = [
         "--set LP_NUM_THREADS 2"
         "--set QT_STYLE_OVERRIDE fusion"
         "--set IBUS_USE_PORTAL 1"
@@ -276,23 +290,13 @@ stdenv.mkDerivation {
         "--prefix LD_LIBRARY_PATH : $out/app/wemeet/lib:$out/translations:${libxext}/lib:${libxdamage}/lib:${libxrandr}/lib:${lib.getLib pipewire}/lib"
         "--prefix PATH : $out/app/wemeet/bin"
         "--prefix QT_PLUGIN_PATH : $out/app/wemeet/plugins"
-        "--run 'if [[ $XDG_SESSION_TYPE == \"wayland\" ]]; then export WEMEET_XWAYLAND=1; fi'"
-      ];
-      commonWrapperArgs = baseWrapperArgs ++ [
-        "--prefix LD_PRELOAD : ${libwemeetwrap}/lib/libwemeetwrap.so:${wemeet-x11-fix}/lib/libwemeet-x11-fix.so:${wemeet-camera-fix}/lib/libwemeet-camera-fix.so"
-      ];
-      xwaylandWrapperArgs = baseWrapperArgs ++ [
-        "--set XDG_SESSION_TYPE x11"
-        "--set QT_QPA_PLATFORM xcb"
-        "--unset WAYLAND_DISPLAY"
+        "--run ${lib.escapeShellArg selectPlatform}"
         "--prefix LD_PRELOAD : ${libwemeetwrap}/lib/libwemeetwrap.so"
       ];
     in
     ''
       makeWrapper $out/app/wemeet/bin/wemeetapp $out/bin/wemeet \
-        ${lib.concatStringsSep " " commonWrapperArgs}
-      makeWrapper $out/app/wemeet/bin/wemeetapp $out/bin/wemeet-xwayland \
-        ${lib.concatStringsSep " " xwaylandWrapperArgs}
+        ${lib.concatStringsSep " " wrapperArgs}
     '';
 
   meta = {
