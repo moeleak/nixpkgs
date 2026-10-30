@@ -5,6 +5,7 @@
   meta,
   passthru ? { },
   appimageTools,
+  lib,
   noto-fonts-cjk-sans-static,
   writeText,
 }:
@@ -17,9 +18,9 @@ let
     '';
   };
 
-  # WeChat's statically linked Qt renders the variable Noto CJK fonts at their
-  # default Thin weight (e.g. in the message input box). Hide them from WeChat
-  # and provide the static fonts instead.
+  # WeChat's bundled Qt 5.15 renders variable Noto fonts at their default Thin
+  # weight (e.g. in the message input box). Use static fonts for Latin as well
+  # as CJK text, and redirect its default sans-serif families to them.
   fontsConf = writeText "wechat-fonts.conf" ''
     <?xml version="1.0"?>
     <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
@@ -31,8 +32,23 @@ let
           <glob>*/NotoSansCJK-VF.otf.ttc</glob>
           <glob>*/NotoSansMonoCJK-VF.otf.ttc</glob>
           <glob>*/NotoSerifCJK-VF.otf.ttc</glob>
+          <glob>*/NotoSans.ttf</glob>
+          <glob>*/NotoSans-Italic.ttf</glob>
         </rejectfont>
       </selectfont>
+      ${lib.concatMapStringsSep "\n"
+        (family: ''
+          <alias binding="strong">
+            <family>${family}</family>
+            <prefer><family>Noto Sans CJK SC</family></prefer>
+          </alias>
+        '')
+        [
+          "sans-serif"
+          "Noto Sans"
+          "Noto Sans SC"
+        ]
+      }
     </fontconfig>
   '';
 in
