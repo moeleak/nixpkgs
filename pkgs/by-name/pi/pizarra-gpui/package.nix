@@ -33,11 +33,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
   src = fetchFromGitHub {
     owner = "moeleak";
     repo = "pizarra-gpui";
-    rev = "4d6510c1631bc3f8dd1b35045c545ee9200851b4";
-    hash = "sha256-Rcsb5P8QeB3dCNdHBqU8Pegv6AEUc9j3A3fOY4rSGYU=";
+    rev = "96370441175a753ffada741c6bd5cb8ed39a218a";
+    hash = "sha256-Ha5wXnk8cpmz73h1mZP9uffKZhsKYVkye5H7b50305c=";
   };
 
-  cargoHash = "sha256-3nhUSkf8CmM6hg8O5ou1XN8ihP7oB2+ut+MTs0mNNAI=";
+  cargoHash = "sha256-iYM/lQMHXMPLLtC+QvouB7M6YU/xBAt+IH8iHn5a8rY=";
 
   nativeBuildInputs = [
     pkg-config
