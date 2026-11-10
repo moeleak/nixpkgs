@@ -28,16 +28,16 @@ let
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "pizarra-gpui";
-  version = "0.1.0-unstable-2026-11-03";
+  version = "0.1.0-unstable-2026-11-10";
 
   src = fetchFromGitHub {
     owner = "moeleak";
     repo = "pizarra-gpui";
-    rev = "96370441175a753ffada741c6bd5cb8ed39a218a";
-    hash = "sha256-Ha5wXnk8cpmz73h1mZP9uffKZhsKYVkye5H7b50305c=";
+    rev = "a5948f6e1426796dc427693c9facefb8f095dea2";
+    hash = "sha256-l0t69ksJTkwh1LvFdJ5S61vrgNZnoFZCxd8J1sh1HEY=";
   };
 
-  cargoHash = "sha256-iYM/lQMHXMPLLtC+QvouB7M6YU/xBAt+IH8iHn5a8rY=";
+  cargoHash = "sha256-V7/WTHwQOeUiXYH9j1uywp3BqsAcd7Vs3RBgCF8dW1o=";
 
   nativeBuildInputs = [
     pkg-config
@@ -67,7 +67,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     longDescription = ''
       A GPUI frontend for the pizarra drawing engine, ported from pizarra-gtk.
       Pen pressure modulates the stroke width and the eraser end of a stylus
-      selects the eraser, on X11 and on Wayland.
+      selects the eraser, on X11, Wayland and macOS.
     '';
     homepage = "https://github.com/moeleak/pizarra-gpui";
     license = lib.licenses.gpl3Plus;
