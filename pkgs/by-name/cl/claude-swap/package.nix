@@ -49,10 +49,14 @@ python3Packages.buildPythonApplication (finalAttrs: {
   ]);
 
   # The test suite refuses to write directly under the account's home
-  # directory, which is the build directory inside the sandbox
+  # directory, which is the build directory inside the sandbox. Keep the
+  # temporary directory nested inside the scratch home: a top-level
+  # $TMPDIR would be a direct child of the sandbox account home and be
+  # mistaken for the real account store.
   preCheck = ''
     export HOME=$(mktemp -d)
-    export TMPDIR=$(mktemp -d)
+    export TMPDIR="$HOME/.tmp/scratch"
+    mkdir -p "$TMPDIR"
   '';
 
   # The cache provider would write into the source directory, which the
