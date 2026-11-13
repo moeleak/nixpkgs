@@ -111,6 +111,16 @@ stdenv.mkDerivation (finalAttrs: {
 
   dontWrapQtApps = true;
 
+  # swift-stdlib-tool only searches lib/swift-*/<platform> for the libraries to
+  # embed. That is where Xcode keeps its back-deployment copies, but the Nixpkgs
+  # toolchain has no such directories, so the tool aborts. Point it at the
+  # toolchain's runtime directory instead.
+  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    substituteInPlace Telegram/cmake/telegram_apple_swift_runtime.cmake \
+      --replace-fail '--platform macosx' \
+                     '--platform macosx --source-libraries ''${swift_bin_dir}/../lib/swift/macosx'
+  '';
+
   cmakeFlags = [
     # We're allowed to used the API ID of the Snap package:
     (lib.cmakeFeature "TDESKTOP_API_ID" "611335")
