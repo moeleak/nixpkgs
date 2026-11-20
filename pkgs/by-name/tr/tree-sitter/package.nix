@@ -174,11 +174,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "lib"
   ];
 
-  # The default qjs-rt feature builds rquickjs-sys as a build-machine
-  # helper while the derivation is cross-compiling, which mixes native
-  # cc-rs probes with RISC-V compiler settings.
-  buildNoDefaultFeatures = true;
-
   buildInputs = [
     installShellFiles
   ]
