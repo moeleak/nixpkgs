@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  gcc15Stdenv,
   fetchFromGitHub,
   cmake,
   libffi,
@@ -14,7 +15,11 @@
   openssl,
 }:
 
-stdenv.mkDerivation (finalAttrs: {
+let
+  # GCC 16 breaks the build; Darwin needs clang for upstream's -fobjc-arc flag.
+  stdenv' = if stdenv.hostPlatform.isDarwin then stdenv else gcc15Stdenv;
+in
+stdenv'.mkDerivation (finalAttrs: {
   pname = "clipboard-jh";
   version = "0.10.0";
 
@@ -63,7 +68,7 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Cut, copy, and paste anything, anywhere, all from the terminal";
     homepage = "https://github.com/Slackadays/clipboard";
     license = lib.licenses.gpl3Only;
-    maintainers = with lib.maintainers; [ dit7ya ];
+    maintainers = [ ];
     platforms = lib.platforms.all;
     mainProgram = "cb";
   };

@@ -21,16 +21,22 @@ in
     "aarch64-linux"
   ],
   variant ? "cuda",
+  # The empty list uses default CUDA capabilities
+  cudaCapabilities ? [ ],
   # Attributes passed to nixpkgs.
   nixpkgsArgs ? {
     config = {
       allowUnfreePredicate = cudaLib.allowUnfreeCudaPredicate;
+      # [CVE-2026-24188](https://github.com/NixOS/nixpkgs/issues/522570):
+      # OOB write
+      allowInsecurePredicate = p: lib.getName p == "tensorrt";
       "${variant}Support" = true;
       inHydra = true;
 
       # Don't evaluate duplicate and/or deprecated attributes
       allowAliases = false;
-    };
+    }
+    // lib.optionalAttrs (cudaCapabilities != [ ]) { inherit cudaCapabilities; };
 
     __allowFileset = false;
   },
@@ -129,7 +135,7 @@ let
         cupy = linux;
         faiss = linux;
         faster-whisper = linux;
-        flashinfer = linux;
+        flashinfer-python = linux;
         flax = linux;
         gpt-2-simple = linux;
         grad-cam = linux;

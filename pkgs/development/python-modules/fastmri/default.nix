@@ -22,6 +22,7 @@
 
   # tests
   pytestCheckHook,
+  requests,
 }:
 
 buildPythonPackage (finalAttrs: {
@@ -65,7 +66,10 @@ buildPythonPackage (finalAttrs: {
     pandas
   ];
 
-  nativeCheckInputs = [ pytestCheckHook ];
+  nativeCheckInputs = [
+    pytestCheckHook
+    requests
+  ];
 
   disabledTests = lib.optionals (pythonAtLeast "3.14") [
     # AttributeError: '...' object has no attribute '__annotations__'.

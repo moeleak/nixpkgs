@@ -1,5 +1,6 @@
 {
   lib,
+  stdenv,
   buildPythonPackage,
   fetchFromGitHub,
 
@@ -17,14 +18,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "gliner";
-  version = "0.2.26";
+  version = "0.2.30";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "urchade";
     repo = "GLiNER";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-tiQrb04SfloVJySyKu5XhOaE8Y3RcwBbW2l13UtZL0w=";
+    hash = "sha256-x/1FNJ9r+NhGoR5+CPgQuSCO0W1TkkyZXI+Uj/Jf5Co=";
   };
 
   build-system = [
@@ -43,7 +44,15 @@ buildPythonPackage (finalAttrs: {
     transformers
   ];
 
-  pythonImportsCheck = [ "gliner" ];
+  # aarch64-linux fails cpuinfo test, because /sys/devices/system/cpu/ does not exist in the sandbox:
+  # terminate called after throwing an instance of 'onnxruntime::OnnxRuntimeException'
+  #
+  # -> Skip the import check
+  pythonImportsCheck =
+    lib.optionals (!(stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isAarch64))
+      [
+        "gliner"
+      ];
 
   # All tests require internet
   doCheck = false;
@@ -57,7 +66,7 @@ buildPythonPackage (finalAttrs: {
     badPlatforms = [
       # terminate called after throwing an instance of 'onnxruntime::OnnxRuntimeException'
       # Attempt to use DefaultLogger but none has been registered.
-      "aarch64-linux"
+      # "aarch64-linux"
     ];
   };
 })

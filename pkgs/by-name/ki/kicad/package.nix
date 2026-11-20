@@ -12,7 +12,7 @@
   adwaita-icon-theme,
   dconf,
   gtk3,
-  wxwidgets_3_2,
+  wxwidgets_3_3,
   librsvg,
   cups,
   gsettings-desktop-schemas,
@@ -134,9 +134,9 @@ let
     else
       versionsImport.${baseName}.libVersion.version;
 
-  wxGTK = wxwidgets_3_2;
+  wxGTK = wxwidgets_3_3;
   python = python3;
-  wxPython = python.pkgs.wxpython;
+  wxPython = python.pkgs.wxpython_4_3;
   addonPath = "addon.zip";
   addonsDrvs = map (pkg: pkg.override { inherit addonPath python3; }) addons;
 
@@ -220,6 +220,36 @@ stdenv.mkDerivation rec {
       "${symbols}/share/kicad/template"
     ];
   };
+
+  # KiCad looks up its stock library tables relative to GetStockDataPath(),
+  # which our runtime_stock_data_path.patch lets us override via
+  # NIX_KICAD10_STOCK_DATA_PATH. We synthesise a directory that mirrors
+  # ${base}/share/kicad but replaces the upstream-installed (incomplete)
+  # template/ with the merged template_dir from the library packages.
+  # Doing this in the wrapper instead of in base.nix keeps the heavy
+  # kicad-base compile independent of the (cheap) library packages, so
+  # toggling overrides like compressStep doesn't force a base rebuild.
+  baseWithTemplate = runCommand "kicad-stock-data" { } ''
+    mkdir -p $out
+    for d in ${base}/share/kicad/*; do
+      name=$(basename "$d")
+      [ "$name" = template ] || ln -s "$d" "$out/$name"
+    done
+    ln -s ${template_dir} $out/template
+  '';
+
+  stockDataPath =
+    if addons == [ ] then
+      baseWithTemplate
+    else
+      symlinkJoin {
+        name = "kicad_stock_data_path";
+        paths = [
+          baseWithTemplate
+          "${addonsJoined}/share/kicad"
+        ];
+      };
+
   # We are emulating wrapGAppsHook3, along with other variables to the wrapper
   makeWrapperArgs =
     with passthru.libraries;
@@ -237,19 +267,8 @@ stdenv.mkDerivation rec {
       "--set-default KICAD10_FOOTPRINT_DIR ${footprints}/share/kicad/footprints"
       "--set-default KICAD10_SYMBOL_DIR ${symbols}/share/kicad/symbols"
       "--set-default KICAD10_TEMPLATE_DIR ${template_dir}"
+      "--set-default NIX_KICAD10_STOCK_DATA_PATH ${stockDataPath}"
     ]
-    ++ optionals (addons != [ ]) (
-      let
-        stockDataPath = symlinkJoin {
-          name = "kicad_stock_data_path";
-          paths = [
-            "${base}/share/kicad"
-            "${addonsJoined}/share/kicad"
-          ];
-        };
-      in
-      [ "--set-default NIX_KICAD10_STOCK_DATA_PATH ${stockDataPath}" ]
-    )
     ++ optionals with3d [
       "--set-default KICAD10_3DMODEL_DIR ${packages3d}/share/kicad/3dmodels"
     ]
@@ -270,10 +289,11 @@ stdenv.mkDerivation rec {
         "gerbview"
         "pcb_calculator"
         "pl_editor"
-        "bitmap2component"
         "kicad-cli"
-      ];
-      utils = [
+      ]
+      # removed upstream after 10.0
+      ++ optionals stable [ "bitmap2component" ];
+      utils = optionals stable [
         "dxf2idf"
         "idf2vrml"
         "idfcyl"

@@ -12,7 +12,7 @@ let
     mkdir $out
 
     ${
-      if config.boot.initrd.enable && config.boot.initrd.systemd.enable then
+      if config.boot.initrd.enable then
         ''
           # This must not be a symlink or the abs_path of the grub builder for the tests
           # will resolve the symlink and we end up with a path that doesn't point to a
@@ -42,9 +42,9 @@ let
 
     ${config.system.systemBuilderCommands}
 
-    cp "$extraDependenciesPath" "$out/extra-dependencies"
+    printf "%s " "''${extraDependencies[@]}" > "$out/extra-dependencies"
 
-    ${optionalString (!config.boot.isContainer && config.boot.bootspec.enable) ''
+    ${optionalString (!config.boot.isContainer) ''
       ${config.boot.bootspec.writer}
       ${optionalString config.boot.bootspec.enableValidation ''${config.boot.bootspec.validator} "$out/${config.boot.bootspec.filename}"''}
     ''}
@@ -60,8 +60,8 @@ let
       name = "nixos-system-${config.system.name}-${config.system.nixos.label}";
       preferLocalBuild = true;
       allowSubstitutes = false;
-      passAsFile = [ "extraDependencies" ];
-      buildCommand = systemBuilder;
+      # We handle assertions here so that merely evaluating the name attribute (e.g. in `nix flake show`) doesn't trigger heavy instantiations.
+      buildCommand = lib.asserts.checkAssertWarn config.assertions config.warnings systemBuilder;
 
       systemd = config.systemd.package;
 
@@ -70,10 +70,10 @@ let
       inherit (config.system) extraDependencies;
     }
     // config.system.systemBuilderArgs
+    // {
+      __structuredAttrs = true;
+    }
   );
-
-  # Handle assertions and warnings
-  baseSystemAssertWarn = lib.asserts.checkAssertWarn config.assertions config.warnings baseSystem;
 
   # Replace runtime dependencies
   system =
@@ -82,7 +82,7 @@ let
     in
     if replacements == [ ] then
       # Avoid IFD if possible, by sidestepping replaceDependencies if no replacements are specified.
-      baseSystemAssertWarn
+      baseSystem
     else
       (pkgs.replaceDependencies.override {
         replaceDirectDependencies = pkgs.replaceDirectDependencies.override {
@@ -90,7 +90,7 @@ let
         };
       })
         {
-          drv = baseSystemAssertWarn;
+          drv = baseSystem;
           inherit replacements cutoffPackages;
         };
 
@@ -137,8 +137,8 @@ in
 
     system.boot.loader.kernelFile = mkOption {
       internal = true;
-      default = pkgs.stdenv.hostPlatform.linux-kernel.target;
-      defaultText = literalExpression "pkgs.stdenv.hostPlatform.linux-kernel.target";
+      default = config.boot.kernelPackages.kernel.target;
+      defaultText = literalExpression "config.boot.kernelPackages.kernel.target";
       type = types.str;
       description = ''
         Name of the kernel file to be passed to the bootloader.
@@ -156,7 +156,24 @@ in
 
     system.build = {
       toplevel = mkOption {
-        type = types.package;
+        type = lib.mkOptionType {
+          name = "nixosToplevel";
+          description = "package";
+          descriptionClass = "noun";
+          # Only check for the existence of `drvPath` and `outPath` so that `nix flake show` is fast
+          check = x: x ? drvPath && x ? outPath;
+          merge =
+            loc: defs:
+            let
+              toplevel = lib.mergeOneOption loc defs;
+            in
+            toplevel
+            // {
+              # Check assertions when something asks about the type (e.g. `nix flake check`),
+              # leaving `name` cheap so that `nix flake show` is fast.
+              type = lib.asserts.checkAssertWarn config.assertions [ ] toplevel.type;
+            };
+        };
         readOnly = true;
         description = ''
           This option contains the store path that typically represents a NixOS system.
@@ -189,7 +206,13 @@ in
     };
 
     system.systemBuilderArgs = mkOption {
-      type = types.attrsOf types.unspecified;
+      # The laziness of this type is required to keep the WHNF of
+      # `system.build.toplevel` (e.g. its `name` attribute) from forcing
+      # the attribute values, which typically reference store paths.
+      # Attributes whose definitions are disabled by `mkIf` evaluate to
+      # `null` (via the `emptyValue` of `nullOr`) instead of being
+      # removed from the attribute set as `attrsOf` would do.
+      type = types.lazyAttrsOf (types.nullOr types.unspecified);
       internal = true;
       default = { };
       description = ''
@@ -351,14 +374,7 @@ in
       # Legacy environment variables. These were used by the activation script,
       # but some other script might still depend on them, although unlikely.
       installBootLoader = config.system.build.installBootLoader;
-      localeArchive = "${config.i18n.glibcLocales}/lib/locale/locale-archive";
       distroId = config.system.nixos.distroId;
-      perl = pkgs.perl.withPackages (
-        p: with p; [
-          ConfigIniFiles
-          FileSlurp
-        ]
-      );
       # End if legacy environment variables
 
       preSwitchCheck = lib.mkIf (
@@ -373,6 +389,9 @@ in
       # to the system closure, which defeats the purpose of the `system.checks`
       # option, as opposed to `system.extraDependencies`.
       passedChecks = concatStringsSep " " config.system.checks;
+    }
+    // lib.optionalAttrs (config.i18n.glibcLocales != null) {
+      localeArchive = "${config.i18n.glibcLocales}/lib/locale/locale-archive";
     }
     // lib.optionalAttrs (config.system.forbiddenDependenciesRegexes != [ ]) {
       closureInfo = pkgs.closureInfo {

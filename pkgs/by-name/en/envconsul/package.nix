@@ -8,16 +8,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "envconsul";
-  version = "0.13.4";
+  version = "0.14.1";
 
   src = fetchFromGitHub {
     owner = "hashicorp";
     repo = "envconsul";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-7F+Zsvh13r38FTxgwKbHSaH9cdnnOl8A+nXSbW4XyXA=";
+    hash = "sha256-YJnvDNOMRlE7REDYU6NWf8/ol46ch4Tkn8AoTZPWspM=";
   };
 
-  vendorHash = "sha256-7AXWQ/+rWBGvjkSSWIIGLFY32t3v05GXE7IJwFFsJt4=";
+  vendorHash = "sha256-njM8ENkXNfXApHnzWXPZZp8OFP/Fm6DDMZxoAN1zpBc=";
 
   ldflags = [
     "-s"

@@ -2,56 +2,68 @@
   lib,
   stdenv,
   fetchFromGitHub,
-  gradle,
+  gradle_9,
   nix-update-script,
   libGL,
-  jdk21,
+  jetbrains,
   git,
   cargo,
   rustc,
   rustPlatform,
+  pkg-config,
+  aws-lc,
+  sqlite,
+  zstd,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "schildi-revenge";
-  version = "26.05.05";
+  version = "26.10.26";
 
   src = fetchFromGitHub {
     owner = "SchildiChat";
     repo = "schildi-revenge";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-B12OcryErrrFyKFweCFQWnbt/L8HvceAhBI51TlT3pg=";
+    hash = "sha256-fpfLgmLXmM7SGSp6qZtEQc3WK+fd8++Toi0Jad37ZYE=";
     fetchSubmodules = true;
   };
 
   cargoRoot = "matrix-rust-sdk";
   cargoDeps = rustPlatform.fetchCargoVendor {
     inherit (finalAttrs) src cargoRoot;
-    hash = "sha256-8HI7UtuO2eg3/Zb2PhX0jvTDaIOpCCY0EHkrsdzSEkc=";
+    hash = "sha256-OhASitog//ojP4zy/u05x9nN4+KhQKgYDEjItCgAwJo=";
   };
 
   nativeBuildInputs = [
-    jdk21
-    gradle
+    jetbrains.jdk-no-jcef
+    gradle_9
     git
     cargo
     rustc
     rustPlatform.cargoSetupHook
+    pkg-config
   ];
+
+  buildInputs = [
+    aws-lc
+    sqlite
+    zstd
+  ];
+
+  # Workaround for a Vergen related build failure
+  env = {
+    VERGEN_GIT_SHA = "0000000000000000000000000000000000000000";
+  };
 
   gradleBuildTask = "createReleaseDistributable";
 
   gradleUpdateScript = ''
     runHook preBuild
 
-    gradle composeApp:dependencies composeApp:checkRuntime --write-verification-metadata sha256
-    ##### Fallback
-    ## If the update script starts missing dependencies after an update this should still work.
-    ## Unfortunately it also unnecessarily builds the entire rust crate
-    #gradle createReleaseDistributable --write-verification-metadata sha256
+    gradle createReleaseDistributable composeApp:kspCommonMainKotlinMetadata --write-verification-metadata sha256
   '';
 
-  mitmCache = gradle.fetchDeps {
+  mitmCache = gradle_9.fetchDeps {
     pkg = finalAttrs.finalPackage;
     data = ./deps.json;
   };
@@ -59,20 +71,20 @@ stdenv.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    BUILD_DIR="composeApp/build/compose/binaries/main-release/app/SchildiChatRevenge"
+    BUILD_DIR="composeApp/build/compose/binaries/main-release/app/schildichat-revenge"
 
     mkdir -p $out/share/{applications,icons/scalable}
     cp -r $BUILD_DIR/bin $out/bin
     cp -r $BUILD_DIR/lib $out/lib
 
     cp -r graphics/ic_launcher_foreground.svg $out/share/icons/scalable/ic_launcher.svg
-    cp -r launcher/SchildiChatRevenge.desktop $out/share/applications
+    cp -r launcher/schildichat-revenge.desktop $out/share/applications
 
     runHook postInstall
   '';
 
   postFixup = ''
-    patchelf $out/lib/app/libskiko-linux-x64.so \
+    patchelf $out/lib/app/libskiko-linux-*.so \
     --add-rpath ${lib.makeLibraryPath [ libGL ]}
   '';
 
@@ -80,7 +92,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   meta = {
     description = "Matrix client for desktop written in Kotlin and using the Matrix Rust SDK";
-    mainProgram = "SchildiChatRevenge";
+    mainProgram = "schildichat-revenge";
     platforms = lib.platforms.linux;
     license = lib.licenses.gpl3Only;
     homepage = "https://schildi.chat/revenge";

@@ -32,14 +32,14 @@
 # It exists so the langgraph team can iterate on it without having to rebuild langgraph.
 buildPythonPackage (finalAttrs: {
   pname = "langgraph-prebuilt";
-  version = "1.0.12";
+  version = "1.1.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "langchain-ai";
     repo = "langgraph";
     tag = "prebuilt==${finalAttrs.version}";
-    hash = "sha256-J899GIBdXHjZVMwZlnn5GH52/TNjzLukc4Xp/qc8NOM=";
+    hash = "sha256-go7dX2cnBCaFIHG8qDLhXWflxCP/3WVhVKbnw0v5AXY=";
   };
 
   sourceRoot = "${finalAttrs.src.name}/libs/prebuilt";
@@ -96,6 +96,7 @@ buildPythonPackage (finalAttrs: {
     skipBulkUpdate = true;
     updateScript = gitUpdater {
       rev-prefix = "prebuilt==";
+      ignoredVersions = "a|b|dev|rc";
     };
   };
 

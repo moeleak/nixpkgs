@@ -15,7 +15,7 @@ buildPythonPackage (finalAttrs: {
 
   src = fetchPypi {
     inherit (finalAttrs) pname version;
-    sha256 = "953134e97215ae31f6879fbd7368c18d43f709dc2fab5b7777db2bb2bac3a924";
+    hash = "sha256-lTE06XIVrjH2h5+9c2jBjUP3Cdwvq1t3d9srsrrDqSQ=";
   };
 
   buildInputs = [ pytest ];
@@ -32,7 +32,7 @@ buildPythonPackage (finalAttrs: {
 
   meta = {
     license = lib.licenses.mit;
-    homepage = "https://pypi.python.org/pypi/pytest-flakes";
+    homepage = "https://pypi.org/project/pytest-flakes/";
     description = "Pytest plugin to check source code with pyflakes";
   };
 })

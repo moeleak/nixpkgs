@@ -1,25 +1,26 @@
 {
   lib,
-  buildGoModule,
+  buildGo126Module,
   fetchFromGitHub,
   nix-update-script,
   versionCheckHook,
 }:
-buildGoModule (finalAttrs: {
+# https://github.com/crazy-max/diun/blob/9ea9ffdfe144834c7ac88d9873cfcfc06970b0df/Dockerfile#L3
+buildGo126Module (finalAttrs: {
   pname = "diun";
-  version = "4.31.0";
+  version = "4.33.1";
 
   src = fetchFromGitHub {
     owner = "crazy-max";
     repo = "diun";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-H05yZSH2rUrwM+ZR/PDCxXmrDkZ/Gd4RrpywGk5eW2A=";
+    hash = "sha256-jEA5zPrnDwkY3QWt/0BTmMExFsACXgaRBiSjLyZBf9M=";
   };
   vendorHash = null;
 
   # upstream disable CGO in release build
   # https://github.com/crazy-max/diun/blob/76c0fe99212adc58d6a3433bbcde1ffa9fb879c4/Dockerfile#L11
-  env.CGO_ENABLED = false;
+  env.CGO_ENABLED = 0;
 
   ldflags = [
     "-s"
@@ -27,6 +28,8 @@ buildGoModule (finalAttrs: {
     "-X"
     "main.version=${finalAttrs.version}"
   ];
+
+  __darwinAllowLocalNetworking = true;
 
   checkFlags =
     let

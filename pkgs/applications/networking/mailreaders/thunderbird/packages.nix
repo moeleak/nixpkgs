@@ -15,6 +15,7 @@ let
       sha512,
       updateScript,
       applicationName ? "Thunderbird",
+      broken ? stdenv.buildPlatform.is32bit,
     }:
     (buildMozillaMach rec {
       pname = "thunderbird";
@@ -28,19 +29,32 @@ let
       extraPatches = [
         # The file to be patched is different from firefox's `no-buildconfig-ffx90.patch`.
         (if lib.versionOlder version "140" then ./no-buildconfig.patch else ./no-buildconfig-tb140.patch)
-      ];
+      ]
+      ++
+        lib.optional (lib.versionAtLeast version "154" && lib.versionOlder version "154.0.1")
+          (fetchpatch2 {
+            # Fix Success macros colliding: https://bugzilla.mozilla.org/show_bug.cgi?id=2065007
+            url = "https://github.com/mozilla-firefox/firefox/commit/f0b76eba072821d62e74ebdbd8da9243a2ce3b84.patch";
+            hash = "sha256-PCTmv1ZO7ce4q5fp+WPmy5Wga5OMY4hNzqIZ7iYCcp4=";
+          });
       # FIXME: let's hope that upstream will fix this soon and we can drop this hack again.
-      # https://bugzilla.mozilla.org/show_bug.cgi?id=2006630
+      # https://bugzilla.mozilla.org/show_bug.cgi?id=2040877
       extraPostPatch =
-        lib.optionalString (lib.versionAtLeast version "147" && lib.versionOlder version "149")
-          ''
-            find . -name .cargo-checksum.json | xargs sed 's/"[^"]*\.gitmodules":"[a-z0-9]*",//g' -i
-          '';
+        lib.optionalString (lib.versionAtLeast version "151" && lib.versionOlder version "152") ''
+          echo https://hg.mozilla.org/releases/comm-release/rev/becfb8fb2c70f1603882a2787e2170d5d8013949 >> sourcestamp.txt
+          echo https://hg.mozilla.org/releases/mozilla-release/rev/fc12dc911f904307729760a817deb829cbf8feb4 >> sourcestamp.txt
+        ''
+        # https://bugzilla.mozilla.org/show_bug.cgi?id=2006630
+        + lib.optionalString (lib.versionAtLeast version "140.8" && lib.versionOlder version "151") ''
+          find . -name .cargo-checksum.json | xargs sed 's/"[^"]*\.gitmodules":"[a-z0-9]*",//g' -i
+        '';
 
       meta = {
+        inherit broken;
         changelog = "https://www.thunderbird.net/en-US/thunderbird/${version}/releasenotes/";
         description = "Full-featured e-mail client";
-        homepage = "https://thunderbird.net/";
+        homepage = "https://www.thunderbird.net/";
+        donationPage = "https://www.thunderbird.net/donate/";
         mainProgram = "thunderbird";
         maintainers = with lib.maintainers; [
           booxter # darwin
@@ -49,7 +63,6 @@ let
           vcunat
         ];
         platforms = lib.platforms.unix;
-        broken = stdenv.buildPlatform.is32bit;
         # since Firefox 60, build on 32-bit platforms fails with "out of memory".
         # not in `badPlatforms` because cross-compilation on 64-bit machine might work.
         license = lib.licenses.mpl20;
@@ -57,14 +70,14 @@ let
     }).override
       (
         {
-          geolocationSupport = false;
-          webrtcSupport = false;
+          enableLocation = false;
+          enableWebRTC = false;
 
-          pgoSupport = false; # console.warn: feeds: "downloadFeed: network connection unavailable"
+          enablePGO = false; # console.warn: feeds: "downloadFeed: network connection unavailable"
         }
         // lib.optionalAttrs (lib.versionAtLeast version "149") {
           # https://bugzilla.mozilla.org/show_bug.cgi?id=2025767
-          crashreporterSupport = false;
+          enableCrashReporter = false;
         }
       );
 
@@ -73,8 +86,8 @@ rec {
   thunderbird = thunderbird-latest;
 
   thunderbird-latest = common {
-    version = "150.0.2";
-    sha512 = "3e52220ff34aa6cd1bf46a910dba1f30d0abf7d19ed7f501ffeeb8f5901b8d97fdc0adb0cceb434ef8e83c7f7b83f28024b872280237af72ff2da9d89fafe065";
+    version = "160.0";
+    sha512 = "994992c3f3a82ae07a15142cc1dbdc410b71261df02b9b3d5db41dab7100225bed257f0211f0f87cf29c63bacee3d4bb861eab32dde80483c574a131fa3cbad0";
 
     updateScript = callPackage ./update.nix {
       attrPath = "thunderbirdPackages.thunderbird-latest";
@@ -82,17 +95,17 @@ rec {
   };
 
   # Eventually, switch to an updateScript without versionPrefix hardcoded...
-  thunderbird-esr = thunderbird-140;
+  thunderbird-esr = thunderbird-153;
 
-  thunderbird-140 = common {
+  thunderbird-153 = common {
     applicationName = "Thunderbird ESR";
 
-    version = "140.7.2esr";
-    sha512 = "513bcaa496f987d0f3906aeb6fe3ea651331470646b0c58479c91bb2c8eb52e389bc8aa646437a03b611ab78bda1df7252545960ffe38086d1fc462e65421819";
+    version = "153.7.0esr";
+    sha512 = "fb963b005cfb255c607acab81762d385a0768dff2c09ce3f373f6d7f6fd04c3448bfe526aef1f772775f2a779e5d85457ec9989316fd6d82e7a620621429bef3";
 
     updateScript = callPackage ./update.nix {
-      attrPath = "thunderbirdPackages.thunderbird-140";
-      versionPrefix = "140";
+      attrPath = "thunderbirdPackages.thunderbird-153";
+      versionPrefix = "153";
       versionSuffix = "esr";
     };
   };
@@ -101,4 +114,5 @@ rec {
   thunderbird-102 = throw "Thunderbird 102 support ended in September 2023";
   thunderbird-115 = throw "Thunderbird 115 support ended in October 2024";
   thunderbird-128 = throw "Thunderbird 128 support ended in August 2025";
+  thunderbird-140 = throw "Thunderbird 140 has been removed. Use thunderbird-esr instead.";
 }

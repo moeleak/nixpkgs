@@ -3,17 +3,18 @@
   buildDotnetModule,
   dotnetCorePackages,
   fetchFromGitHub,
+  nix-update-script,
 }:
 
 buildDotnetModule rec {
   pname = "lubelogger";
-  version = "1.6.4";
+  version = "1.7.4";
 
   src = fetchFromGitHub {
     owner = "hargata";
     repo = "lubelog";
     rev = "v${version}";
-    hash = "sha256-w1UxnmuMBPi5Ov+3h7R0I0EIiZShsZm+TgXmfKdc1BU=";
+    hash = "sha256-Rk5Ivrl3M2qUbNaNGJhZpDH4CS6pIpIpqwFlD6g8Nzw=";
   };
 
   projectFile = "CarCareTracker.sln";
@@ -23,20 +24,27 @@ buildDotnetModule rec {
   dotnet-runtime = dotnetCorePackages.aspnetcore_10_0;
 
   makeWrapperArgs = [
-    "--set DOTNET_WEBROOT ${placeholder "out"}/lib/lubelogger/wwwroot"
+    "--set"
+    "DOTNET_WEBROOT"
+    "${placeholder "out"}/lib/lubelogger/wwwroot"
   ];
 
   executables = [ "CarCareTracker" ]; # This wraps "$out/lib/$pname/foo" to `$out/bin/foo`.
 
+  passthru.updateScript = nix-update-script { };
+
   meta = {
-    description = "Vehicle service records and maintainence tracker";
+    description = "Vehicle service records and maintenance tracker";
     longDescription = ''
       A self-hosted, open-source, unconventionally-named vehicle maintenance records and fuel mileage tracker.
     '';
     homepage = "https://lubelogger.com";
     changelog = "https://github.com/hargata/lubelog/releases/tag/v${version}";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ lyndeno ];
+    maintainers = with lib.maintainers; [
+      esch
+      lyndeno
+    ];
     mainProgram = "CarCareTracker";
     platforms = lib.platforms.all;
   };

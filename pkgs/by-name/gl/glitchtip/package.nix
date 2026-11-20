@@ -6,6 +6,7 @@
   stdenv,
   makeWrapper,
   nixosTests,
+  zstd,
 }:
 
 let
@@ -13,6 +14,8 @@ let
     self = python;
     packageOverrides = final: prev: {
       django = final.django_6;
+      django-allauth-async = final.callPackage ./django-allauth-async.nix { };
+      glitchtip-rust = final.callPackage ./glitchtip-rust.nix { inherit zstd; };
     };
   };
 
@@ -25,10 +28,10 @@ let
       arro3-io
       boto3
       brotli
-      cxxfilt
       django
-      django-allauth
+      django-allauth-async
       django-anymail
+      django-async-backend
       django-cors-headers
       django-environ
       django-extensions
@@ -45,21 +48,21 @@ let
       duckdb
       google-cloud-logging
       granian
+      glitchtip-rust
       mcp
       minidump
+      opentelemetry-proto
       orjson
       psycopg
       pydantic
+      pyyaml
       sentry-sdk
-      symbolic
+      servestatic
       user-agents
       uuid6
-      uwsgi-chunked
-      whitenoise
     ]
-    ++ django-allauth.optional-dependencies.headless-spec
-    ++ django-allauth.optional-dependencies.mfa
-    ++ django-allauth.optional-dependencies.socialaccount
+    ++ django-allauth-async.optional-dependencies.mfa
+    ++ django-allauth-async.optional-dependencies.socialaccount
     ++ django-storages.optional-dependencies.boto3
     ++ django-storages.optional-dependencies.azure
     ++ django-storages.optional-dependencies.google
@@ -67,8 +70,6 @@ let
     ++ granian.optional-dependencies.reload
     ++ granian.optional-dependencies.uvloop
     ++ mcp.optional-dependencies.cli
-    ++ psycopg.optional-dependencies.c
-    ++ psycopg.optional-dependencies.pool
     ++ pydantic.optional-dependencies.email;
 
   frontend = callPackage ./frontend.nix { };
@@ -76,14 +77,14 @@ in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "glitchtip";
-  version = "6.1.6";
+  version = "7.0.0";
   pyproject = true;
 
   src = fetchFromGitLab {
     owner = "glitchtip";
     repo = "glitchtip-backend";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-BUWLN3+ob934MgIoDLirY0O8fn6G3zmGA5wuVGPPp7w=";
+    hash = "sha256-oqTRlBt7HEaBKvvAX/jZ+kRaeFqe5wy6cq7SyIgZNPY=";
   };
 
   postPatch = ''
@@ -127,6 +128,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   passthru = {
     inherit frontend python;
+    inherit (python.pkgs) django-allauth-async glitchtip-rust;
     tests = { inherit (nixosTests) glitchtip; };
     updateScript = ./update.sh;
   };
@@ -137,7 +139,6 @@ stdenv.mkDerivation (finalAttrs: {
     changelog = "https://gitlab.com/glitchtip/glitchtip-backend/-/blob/v${finalAttrs.version}/CHANGELOG";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [
-      defelo
       felbinger
     ];
     mainProgram = "glitchtip-manage";

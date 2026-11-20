@@ -1,24 +1,31 @@
 {
   fetchFromGitHub,
+  fetchpatch,
   fetchYarnDeps,
   lib,
   nodejs,
   python3,
   python3Packages,
   gettext,
+  gitMinimal,
   stdenv,
   yarnBuildHook,
   yarnConfigHook,
   yarnInstallHook,
+  nixosTests,
 }:
 let
 
-  version = "1.2.6";
+  version = "1.7.2";
   src = fetchFromGitHub {
     owner = "inventree";
     repo = "inventree";
     tag = "${version}";
-    hash = "sha256-JJtjW0PAsGiDnM8vwqrSdDtO6QuzdVoyY4MeEyaSH4w=";
+    hash = "sha256-M84zGNyR39ya+fbBxonJaAfzQIyAT4pf3J4NvOc8CBQ=";
+    postCheckout = ''
+      git -C $out rev-parse HEAD > $out/commit_hash.txt
+      git -C $out show -s --format=%cd --date=short HEAD > $out/commit_date.txt
+    '';
   };
 
   frontend =
@@ -34,7 +41,7 @@ let
 
       yarnOfflineCache = fetchYarnDeps {
         yarnLock = finalAttrs.src + "/yarn.lock";
-        hash = "sha256-tZHrl6NC4MGpmH7+Ge2V/y9FRNd9NdbQ/NreHE10b10=";
+        hash = "sha256-4jNo6YxHXJhSNhsgTMbYNhMgnHFc0n7Pd7bXvTVpvEY=";
       };
 
       nativeBuildInputs = [
@@ -71,6 +78,20 @@ python3Packages.buildPythonApplication rec {
   pyproject = true;
   inherit version src;
 
+  patches = [
+    # Compatibility with django-allauth >= 65.21
+    # https://github.com/inventree/InvenTree/pull/13236
+    (fetchpatch {
+      name = "bump-allauth.patch";
+      url = "https://github.com/inventree/InvenTree/commit/6387ae95e13913fda595276974687b6d90cb728a.patch";
+      includes = [
+        "src/backend/InvenTree/InvenTree/middleware.py"
+        "src/backend/InvenTree/users/*"
+      ];
+      hash = "sha256-Qfxp1vfA9xBD4Cb6/Viroi+zwBOoxQh9xr+mtylOwOk=";
+    })
+  ];
+
   dependencies =
     with python3Packages;
     [
@@ -85,6 +106,7 @@ python3Packages.buildPythonApplication rec {
       django-filter
       django-flags
       django-formtools
+      django-fsm-2
       django-ical
       django-import-export
       django-maintenance-mode
@@ -93,6 +115,7 @@ python3Packages.buildPythonApplication rec {
       django-mptt
       django-mailbox
       django-anymail
+      django-auditlog
       django-q2
       django-redis
       django-sesame
@@ -112,13 +135,13 @@ python3Packages.buildPythonApplication rec {
       djangorestframework
       drf-spectacular
 
-      bleach
       cryptography
       distutils
       dulwich
       feedparser
       gunicorn
       jinja2
+      nh3
       pdf2image
       pillow
       pint
@@ -128,10 +151,13 @@ python3Packages.buildPythonApplication rec {
       pytz
       pyyaml
       rapidfuzz
+      scim2-models
       sentry-sdk
       structlog
       tablib
+      tqdm
       tinycss2
+      typing-extensions
       weasyprint
       whitenoise
       pypdf
@@ -161,7 +187,10 @@ python3Packages.buildPythonApplication rec {
     ++ django-allauth.optional-dependencies.mfa;
 
   build-system = [ python3Packages.setuptools ];
-  nativeBuildInputs = [ gettext ];
+  nativeBuildInputs = [
+    gettext
+    gitMinimal
+  ];
 
   prePatch =
     let
@@ -178,6 +207,7 @@ python3Packages.buildPythonApplication rec {
         "test_rates"
         "test_refresh_endpoint"
         # Tries to use pip
+        "test_initial_install"
         "test_full_process"
         "test_package_loading"
         "test_plugin_install"
@@ -187,8 +217,14 @@ python3Packages.buildPythonApplication rec {
         "test_commit_info"
         # TODO figure out why this fails
         "test_setting_object"
+        # Extracts text from generated PDFs; result depends on fonts available in the sandbox
+        "test_print_custom_template"
+        # Unbounded recursion in pint overflows the C stack and segfaults the test worker
+        "test_api_circular_unit"
+        # SCIM conformance checks added in scim2-tester 0.6 fail (upstream pins 0.5.2)
+        "test_suite"
       ];
-      skippedFuncScripts = builtins.map (funcName: ''
+      skippedFuncScripts = map (funcName: ''
         grep -rlZ ${funcName} . | while IFS= read -r -d "" file; do
           substituteInPlace "$file" --replace-fail "${funcName}" "skip_${funcName}"
         done
@@ -196,6 +232,10 @@ python3Packages.buildPythonApplication rec {
     in
     ''
       ${lib.concatStringsSep "\n" skippedFuncScripts}
+
+      # Wall-clock query-time assertions are not deterministic on build machines
+      substituteInPlace src/backend/InvenTree/InvenTree/unit_test.py \
+        --replace-fail "self.assertLessEqual(dt, max_query_time)" "pass"
     '';
 
   installPhase =
@@ -208,24 +248,27 @@ python3Packages.buildPythonApplication rec {
       # Don't need to bother with a non-maintained library from ages ago
       substituteInPlace src/backend/InvenTree/InvenTree/settings.py --replace-fail "django_slowtests.testrunner.DiscoverSlowestTestsRunner" "django.test.runner.DiscoverRunner"
 
-      mkdir -p $out/lib/${pname}/src/backend/InvenTree/web/
-      cp -r src $out/lib/${pname}
-      ln -s ${frontend}/static $out/lib/${pname}/src/backend/InvenTree/web
+      mkdir -p $out/lib/inventree/src/backend/InvenTree/web/
+      cp -r src $out/lib/inventree
+      ln -s ${frontend}/static $out/lib/inventree/src/backend/InvenTree/web
 
-      chmod +x $out/lib/${pname}/src/backend/InvenTree/manage.py
+      chmod +x $out/lib/inventree/src/backend/InvenTree/manage.py
 
-      makeWrapper $out/lib/${pname}/src/backend/InvenTree/manage.py $out/bin/${pname} \
-        --prefix PYTHONPATH : "${pythonPath}:$out/lib/${pname}/src/backend/InvenTree" \
-        --set INVENTREE_COMMIT_HASH abcdef \
-        --set INVENTREE_COMMIT_DATE 1970-01-01
+      INVENTREE_COMMIT_HASH=$(cat $src/commit_hash.txt)
+      INVENTREE_COMMIT_DATE=$(cat $src/commit_date.txt)
+
+      makeWrapper $out/lib/inventree/src/backend/InvenTree/manage.py $out/bin/inventree \
+        --prefix PYTHONPATH : "${pythonPath}:$out/lib/inventree/src/backend/InvenTree" \
+        --set INVENTREE_COMMIT_HASH $INVENTREE_COMMIT_HASH \
+        --set INVENTREE_COMMIT_DATE $INVENTREE_COMMIT_DATE
 
       makeWrapper ${lib.getExe python3Packages.gunicorn} $out/bin/gunicorn \
-        --prefix PYTHONPATH : "${pythonPath}:$out/${python3.sitePackages}":"${pythonPath}:$out/lib/${pname}/src/backend/InvenTree" \
-        --set INVENTREE_COMMIT_HASH abcdef \
-        --set INVENTREE_COMMIT_DATE 1970-01-01
+        --prefix PYTHONPATH : "${pythonPath}:$out/${python3.sitePackages}":"${pythonPath}:$out/lib/inventree/src/backend/InvenTree" \
+        --set INVENTREE_COMMIT_HASH $INVENTREE_COMMIT_HASH \
+        --set INVENTREE_COMMIT_DATE $INVENTREE_COMMIT_DATE
 
       # Generate static assets
-      pushd $out/lib/${pname}/src/backend/InvenTree &>/dev/null
+      pushd $out/lib/inventree/src/backend/InvenTree &>/dev/null
       export INVENTREE_STATIC_ROOT=$out/lib/inventree/static
       export INVENTREE_MEDIA_ROOT=$(mktemp -d)
       export INVENTREE_BACKUP_DIR=$(mktemp -d)
@@ -272,7 +315,10 @@ python3Packages.buildPythonApplication rec {
     ${python3.interpreter} ./manage.py migrate
     ${python3.interpreter} ./manage.py compilemessages
 
-    ${python3.interpreter} ./manage.py test --parallel --failfast
+    # Upstream excludes performance_test unconditionally, and only runs migration_test
+    # against PostgreSQL (under sqlite3, stock.0121 writes aware datetimes with USE_TZ=False)
+    ${python3.interpreter} ./manage.py test --parallel --failfast \
+      --exclude-tag migration_test --exclude-tag performance_test
     popd &>/dev/null
 
     runHook postCheck
@@ -287,6 +333,7 @@ python3Packages.buildPythonApplication rec {
     pdfminer-six
     tblib
     pytest
+    scim2-tester
   ];
   passthru =
     let
@@ -294,6 +341,7 @@ python3Packages.buildPythonApplication rec {
     in
     {
       inherit frontend pythonPath;
+      tests.nixos = nixosTests.inventree;
     };
 
   meta = {

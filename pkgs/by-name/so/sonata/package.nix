@@ -17,20 +17,20 @@ let
     buildPythonApplication
     dbus-python
     pygobject3
-    mpd2
+    python-mpd2
     setuptools
     ;
 in
 buildPythonApplication (finalAttrs: {
   pname = "sonata";
-  version = "1.7.3";
+  version = "1.7.4";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "multani";
     repo = "sonata";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-eyB+DHcAg1nYjE415VjpPnqZC9embYRhnwXhN2ZVN0o=";
+    hash = "sha256-x+67VCXQOQhyXP88r1WVQmvGNhw1bLFLjip/ZyLY2RQ=";
   };
 
   nativeBuildInputs = [
@@ -53,7 +53,7 @@ buildPythonApplication (finalAttrs: {
   # included because it's difficult to build.
   pythonPath = [
     dbus-python
-    mpd2
+    python-mpd2
     pygobject3
     setuptools # pkg_resources is imported during runtime
   ];

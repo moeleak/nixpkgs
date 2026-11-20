@@ -2,35 +2,39 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  cacert,
   pkg-config,
   cmake,
-  makeWrapper,
+  makeBinaryWrapper,
   ninja,
   perl,
   perlPackages,
-  brotli,
   openssl,
   libcap,
   libuv,
   wslay,
   zlib,
+  withBrotli ? true,
+  brotli,
   withMruby ? true,
   bison,
   ruby,
   withUring ? stdenv.hostPlatform.isLinux,
   liburing,
+  withZstandard ? true,
+  zstd,
   nixosTests,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "h2o";
-  version = "2.3.0-rolling-2026-04-30";
+  version = "2.3.0-rolling-2026-11-13";
 
   src = fetchFromGitHub {
     owner = "h2o";
     repo = "h2o";
-    rev = "8cb324bd2d5efb1926d0b8408b1d367687e50cfa";
-    hash = "sha256-4GS2hQzBJXA0C9ClWGppocBdjO4BHDK2Balm0O8Ps/I=";
+    rev = "00ce04d63b5008d0ab8dc352a8cd201e65d27f07";
+    hash = "sha256-G0AHNjQW14AIsD3FE0vwpnup+YMMbrkZbpRuqIOQ2J4=";
   };
 
   outputs = [
@@ -43,15 +47,17 @@ stdenv.mkDerivation (finalAttrs: {
   nativeBuildInputs = [
     pkg-config
     cmake
-    makeWrapper
+    makeBinaryWrapper
     ninja
     perlPackages.JSON
   ]
+  ++ lib.optional withBrotli brotli
   ++ lib.optionals withMruby [
     bison
     ruby
   ]
-  ++ lib.optional withUring liburing;
+  ++ lib.optional withUring liburing
+  ++ lib.optional withZstandard zstd;
 
   buildInputs = [
     brotli
@@ -61,10 +67,14 @@ stdenv.mkDerivation (finalAttrs: {
     perl
     zlib
     wslay
-  ];
+  ]
+  ++ lib.optional withBrotli brotli
+  ++ lib.optional withZstandard zstd;
 
   cmakeFlags = [
-    "-DWITH_MRUBY=${if withMruby then "ON" else "OFF"}"
+    (lib.cmakeBool "WITH_BROTLI" withBrotli)
+    (lib.cmakeBool "WITH_MRUBY" withMruby)
+    (lib.cmakeBool "WITH_ZSTD" withZstandard)
   ];
 
   postInstall = ''
@@ -77,6 +87,10 @@ stdenv.mkDerivation (finalAttrs: {
 
     wrapProgram "$out/bin/h2olog" \
         --set "PERL5LIB" "$PERL5LIB"
+
+    # Always use provided CA certs & not the one bundled with H2O
+    rm $out/share/h2o/ca-bundle.crt
+    ln -s ${cacert}/etc/ssl/certs/ca-bundle.crt $out/share/h2o/ca-bundle.crt
   '';
 
   passthru = {

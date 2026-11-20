@@ -14,13 +14,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "honggfuzz";
-  version = "2.6-unstable-2026-04-13";
+  version = "2.6-unstable-2026-09-25";
 
   src = fetchFromGitHub {
     owner = "google";
     repo = "honggfuzz";
-    rev = "48790f7b18f30ba4a95272ea290b720662ed56c9";
-    hash = "sha256-RHNOZF5ttqdh3daGGVRHkvL9g2aZFDGDmmW056ohI6w=";
+    rev = "940b958dfeb6f9131fd846cae31fcc0fe996ae98";
+    hash = "sha256-cfCG1rGfiAs7Oq+dJ904kaW6NmvOPG3cfmSgQFW42FU=";
   };
 
   postPatch = ''

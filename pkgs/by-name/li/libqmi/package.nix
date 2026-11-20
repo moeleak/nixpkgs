@@ -15,6 +15,7 @@
   mesonEmulatorHook,
   libgudev,
   bash-completion,
+  bashNonInteractive,
   libmbim,
   libqrtr-glib,
   buildPackages,
@@ -32,6 +33,7 @@ stdenv.mkDerivation (finalAttrs: {
   outputs = [
     "out"
     "dev"
+    "doc"
   ];
 
   src = fetchFromGitLab {
@@ -41,6 +43,10 @@ stdenv.mkDerivation (finalAttrs: {
     rev = finalAttrs.version;
     hash = "sha256-bJbNfnKVJuhy/6EJgu5b7t6vxNTex/5heTzMzTzVREw=";
   };
+
+  depsBuildBuild = [
+    pkg-config
+  ];
 
   nativeBuildInputs = [
     meson
@@ -65,6 +71,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildInputs = [
     bash-completion
+    bashNonInteractive # otherwise $out/bin/qmi-network has impure #!/bin/sh shebang.
     libmbim
   ]
   ++ lib.optionals withIntrospection [
@@ -77,6 +84,8 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals withIntrospection [
     libqrtr-glib
   ];
+
+  strictDeps = true;
 
   mesonFlags = [
     "-Dudevdir=${placeholder "out"}/lib/udev"

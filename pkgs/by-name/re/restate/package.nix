@@ -7,12 +7,14 @@
 
   # nativeBuildInputs
   cmake,
+  darwin,
   openssl,
   perl,
   pkg-config,
 
   # buildInputs
   rdkafka,
+  rust-jemalloc-sys-unprefixed,
 
   # tests
   cacert,
@@ -25,16 +27,16 @@
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "restate";
-  version = "1.6.2";
+  version = "1.8.1";
 
   src = fetchFromGitHub {
     owner = "restatedev";
     repo = "restate";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-i9P6Lh0Qw4ylUVwAE51UTE5rSDluZafpEmxuAtv0SYQ=";
+    hash = "sha256-YcBj96am1K4S7xvlMMMMy6FRXRjHqtD/F3TPLeiBqK4=";
   };
 
-  cargoHash = "sha256-LfLqScEqBJK9s+xRg2Ah1OnBEDQjXQ9LgJGusmxEDfk=";
+  cargoHash = "sha256-vE91IfxBA5PtoGAijzslpYrg5+MHR+mK4rm+e/3Grkw=";
 
   env = {
     PROTOC = lib.getExe protobuf;
@@ -77,9 +79,17 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # Have to be set to dynamically link librdkafka
     CARGO_FEATURE_DYNAMIC_LINKING = 1;
 
-    # krb5-src contains K&R-style C code incompatible with GCC 14's default C23 standard;
-    # tikv-jemalloc-sys has a strerror_r return type mismatch (-Wint-conversion)
-    NIX_CFLAGS_COMPILE = "-std=gnu17 -Wno-error=int-conversion";
+    NIX_CFLAGS_COMPILE = toString (
+      # tikv-jemalloc-sys has a strerror_r return type mismatch (-Wint-conversion)
+      [ "-Wno-error=int-conversion" ]
+      # krb5-src contains K&R-style C code incompatible with GCC's default C23 standard,
+      # and glibc's const-preserving strchr trips its -Werror=discarded-qualifiers.
+      # Clang already defaults to gnu17 and rejects -std=gnu17 for C++ sources.
+      ++ lib.optionals stdenv.cc.isGNU [
+        "-std=gnu17"
+        "-Wno-error=discarded-qualifiers"
+      ]
+    );
   };
 
   nativeBuildInputs = [
@@ -88,10 +98,16 @@ rustPlatform.buildRustPackage (finalAttrs: {
     perl
     pkg-config
     rustPlatform.bindgenHook
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # krb5-src needs mig to generate its KCM RPC stubs
+    darwin.bootstrap_cmds
   ];
 
   buildInputs = [
     rdkafka
+    # tikv-jemalloc-sys's vendored jemalloc configure breaks under gcc 15.
+    rust-jemalloc-sys-unprefixed
   ];
 
   nativeCheckInputs = [

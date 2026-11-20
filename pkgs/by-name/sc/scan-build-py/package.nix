@@ -12,7 +12,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
 
   pyproject = false;
 
-  src = clang-unwrapped + "/bin";
+  src = clang-unwrapped.python + "/bin";
 
   dontUnpack = true;
 
@@ -32,6 +32,9 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     (lib.makeBinPath [ clang-unwrapped ])
   ];
 
+  # The src and version come from clang-unwrapped
+  passthru.updateScript = null;
+
   meta = {
     description = "intercepts the build process to generate a compilation database";
     homepage = "https://github.com/llvm/llvm-project/tree/llvmorg-${finalAttrs.version}/clang/tools/scan-build-py/";
@@ -40,7 +43,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
       asl20
       llvm-exception
     ];
-    maintainers = with lib.maintainers; [ RossSmyth ];
+    maintainers = [ ];
     platforms = lib.intersectLists python3.meta.platforms clang-unwrapped.meta.platforms;
   };
 })

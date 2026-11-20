@@ -13,7 +13,6 @@
   pam,
   pango,
   pixman,
-  pkgs,
   pkg-config,
   poco,
   python3,
@@ -40,6 +39,8 @@ stdenv.mkDerivation (finalAttrs: {
   patches = [
     # permissions fix for templates
     ./0001-template-copy-permissions-fix.patch
+    # fix linking coda-qt (undefined references to http::Response::readData and StreamSocket::send)
+    ./0002-fix-coda-qt-link.patch
   ];
 
   postPatch = ''
@@ -47,6 +48,10 @@ stdenv.mkDerivation (finalAttrs: {
 
     patchShebangs browser/util/*.py coolwsd-systemplate-setup scripts/*
     substituteInPlace configure.ac --replace-fail '/usr/bin/env python3' python3
+
+    # workaround for QtWebEngine crash when loading 'cell' cursor
+    substituteInPlace browser/css/spreadsheet.css \
+      --replace-warn "cursor: cell" "cursor: crosshair"
   '';
 
   nativeBuildInputs = [

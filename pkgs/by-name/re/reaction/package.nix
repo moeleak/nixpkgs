@@ -13,17 +13,17 @@
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "reaction";
-  version = "2.3.1";
+  version = "2.7.0";
 
   src = fetchFromGitLab {
     domain = "framagit.org";
     owner = "ppom";
     repo = "reaction";
-    rev = "c0868d6fe1d155de183a89729b5f3f0ede7be4a2"; # TODO: return to tagged release
-    hash = "sha256-QlSXZ2Wk1OXzAY2x6YjtW+xNchY+Ghb/6AsJgjfgoFE=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-W03ehUuzVFBWmUz5HqWwLjSFV8yMU25ZWP5zdCu9hDo=";
   };
 
-  cargoHash = "sha256-FYd7I93MAAzD6y0VMd9kMU7DAgS6v5CKt2KjrskaKeo=";
+  cargoHash = "sha256-xMeypqecqYSugmFxSuaC+ZI55XD90ouwG4IYFhS4RpQ=";
 
   nativeBuildInputs = [ installShellFiles ];
 
@@ -42,6 +42,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--skip=ip_pattern_matches"
     # flaky and fails in hydra
     "--skip=concepts::config::tests::merge_config_distinct_concurrency"
+    # Action environment reset clears PATH, causing bare `env` command lookup to fail in sandbox
+    "--skip=concepts::action::tests::action_env"
   ];
 
   cargoTestFlags = [
@@ -66,7 +68,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
   passthru = {
     inherit (callPackage ./plugins { }) mkReactionPlugin plugins;
     updateScript = nix-update-script { };
-    tests = nixosTests.reaction;
+    tests = {
+      inherit (nixosTests) reaction;
+    }
+    // finalAttrs.passthru.plugins;
   };
 
   meta = {

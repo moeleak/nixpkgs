@@ -7,13 +7,14 @@
 
 buildLakePackage {
   pname = "lean4-aesop";
-  version = "4.29.0";
+  # nixpkgs-update: no auto update
+  version = "4.35.0-unstable-2026-10-12";
 
   src = fetchFromGitHub {
     owner = "leanprover-community";
     repo = "aesop";
-    tag = "v4.29.0";
-    hash = "sha256-CNwxNig8OWjtfQRYyRnM/HGBn2oaNX5qP9CVT2eWNlg=";
+    rev = "4a174c490d8707121c4a9290800489f105d85e07";
+    hash = "sha256-ZKoq/n59JAt7TJgb4yVFsiMdIvqTlGuuz/TnU95NMdA=";
   };
 
   leanPackageName = "aesop";

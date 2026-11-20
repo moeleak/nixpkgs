@@ -1,6 +1,6 @@
 {
   lib,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
   installShellFiles,
   git,
@@ -9,20 +9,28 @@
   nix-update-script,
 }:
 
-buildGoModule (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "entire";
-  version = "0.6.1";
+  version = "0.13.3";
 
   src = fetchFromGitHub {
     owner = "entireio";
     repo = "cli";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-VfuzYSFgH6cW80SYtkhaNeiNYFAOHbcFX9jdr/rDqSw=";
+    hash = "sha256-qksbXW6//oIsQ5/79BkLv79CGrcfbR/T3gZWbt1uGYk=";
   };
 
-  vendorHash = "sha256-GhFH/y781RIRZ7+r79Wsw8x0/ZmTnv0g9GHtESn5zSA=";
+  vendorHash = "sha256-/0dek0VPV2GOC8uGrFXJPFSm+T5eWNr91WaVZOQHl+U=";
 
-  subPackages = [ "cmd/entire" ];
+  postPatch = ''
+    # Remove when Go in Nixpkgs is updated to 1.27.4.
+    substituteInPlace go.mod --replace-fail 'go 1.27.4' 'go 1.27.3'
+  '';
+
+  subPackages = [
+    "cmd/entire"
+    "cmd/git-remote-entire"
+  ];
 
   ldflags = [
     "-s"
@@ -36,6 +44,9 @@ buildGoModule (finalAttrs: {
     git
     writableTmpDirAsHomeHook
   ];
+
+  # git-remote-entire tests bind localhost via httptest
+  __darwinAllowLocalNetworking = true;
 
   postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd entire \
@@ -60,6 +71,7 @@ buildGoModule (finalAttrs: {
       iamanaws
       sheeeng
       squishykid
+      toothbrush
     ];
     mainProgram = "entire";
   };

@@ -5,29 +5,30 @@
   pkg-config,
   openssl,
   protobuf,
-  stdenv,
+  rust-jemalloc-sys,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "svix-server";
-  version = "1.92.2";
+  version = "1.96.1";
 
   src = fetchFromGitHub {
     owner = "svix";
     repo = "svix-webhooks";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-6PFD/b2Jc9VQIO+9LTkNldc+eq/6eG/2ZyixkSUh11U=";
+    hash = "sha256-NRzumAmgpqCfoLC0s6cAUcQYCFMFD6MElhDFpW79CQs=";
   };
 
   sourceRoot = "${finalAttrs.src.name}/server";
 
-  cargoHash = "sha256-n+VY0C8ekJu3JRhUCMiiBS/PeMJoqM054CkrD+LEq2o=";
+  cargoHash = "sha256-IZ3YPEU4QpTia3ekvr1AQDZCrg4xUmEj82ZU0y/dDzM=";
 
   nativeBuildInputs = [ pkg-config ];
 
   buildInputs = [
     openssl
     protobuf
+    rust-jemalloc-sys
   ];
 
   env = {
@@ -48,6 +49,5 @@ rustPlatform.buildRustPackage (finalAttrs: {
     changelog = "https://github.com/svix/svix-webhooks/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ techknowlogick ];
-    broken = stdenv.hostPlatform.isx86_64 && stdenv.hostPlatform.isDarwin; # aws-lc-sys currently broken on darwin x86_64
   };
 })

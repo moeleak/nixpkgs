@@ -8,6 +8,7 @@
   pkg-config,
   withPCRE2 ? true,
   pcre2,
+  rust-jemalloc-sys,
   writableTmpDirAsHomeHook,
 }:
 
@@ -17,23 +18,26 @@ let
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "ripgrep";
-  version = "15.1.0";
+  version = "15.2.0";
+
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "BurntSushi";
     repo = "ripgrep";
-    rev = finalAttrs.version;
-    hash = "sha256-0gjwYMUlXYnmIWQS1SVzF1yQw1lpveRLw5qp049lc3I=";
+    tag = finalAttrs.version;
+    hash = "sha256-BsSIbZwB6s8i3dDTRYJ1EdVbJmiO0oxcLu6qiYlPkOI=";
   };
 
-  cargoHash = "sha256-ry3pLuYNwX776Dpj9IE2+uc7eEa5+sQvdNNeG1eJecs=";
+  cargoHash = "sha256-AqizStE9ICd6mNDZWdeXg6dHuTiY+B0TNauQQYWUa84=";
 
   nativeBuildInputs = [
     installShellFiles
     writableTmpDirAsHomeHook # required for wine when cross-compiling to Windows
   ]
   ++ lib.optional withPCRE2 pkg-config;
-  buildInputs = lib.optional withPCRE2 pcre2;
+  buildInputs =
+    lib.optional withPCRE2 pcre2 ++ lib.optional stdenv.hostPlatform.isStatic rust-jemalloc-sys;
 
   buildFeatures = lib.optional withPCRE2 "pcre2";
 
@@ -48,24 +52,28 @@ rustPlatform.buildRustPackage (finalAttrs: {
   '';
 
   doInstallCheck = true;
-  installCheckPhase = ''
-    file="$(mktemp)"
-    echo "abc\nbcd\ncde" > "$file"
-    ${rg} -N 'bcd' "$file"
-    ${rg} -N 'cd' "$file"
-  ''
-  + lib.optionalString withPCRE2 ''
-    echo '(a(aa)aa)' | ${rg} -P '\((a*|(?R))*\)'
-  '';
+  installCheckPhase = lib.optionalString canRunRg (
+    ''
+      file="$(mktemp)"
+      echo "abc\nbcd\ncde" > "$file"
+      ${rg} -N 'bcd' "$file"
+      ${rg} -N 'cd' "$file"
+    ''
+    + lib.optionalString withPCRE2 ''
+      echo '(a(aa)aa)' | ${rg} -P '\((a*|(?R))*\)'
+    ''
+  );
 
   meta = {
     description = "Utility that combines the usability of The Silver Searcher with the raw speed of grep";
     homepage = "https://github.com/BurntSushi/ripgrep";
     changelog = "https://github.com/BurntSushi/ripgrep/releases/tag/${finalAttrs.version}";
-    license = with lib.licenses; [
-      unlicense # or
-      mit
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        unlicense
+        mit
+      ];
     maintainers = with lib.maintainers; [
       globin
       ma27

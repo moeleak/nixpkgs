@@ -1,19 +1,21 @@
 {
   lib,
   buildPythonPackage,
+  cacert,
   cryptography,
   fetchPypi,
   jmespath,
+  python,
   setuptools,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "aliyun-python-sdk-core";
   version = "2.16.0";
   pyproject = true;
 
   src = fetchPypi {
-    inherit pname version;
+    inherit (finalAttrs) pname version;
     hash = "sha256-ZRyq1ZfrOdT61s+FEz3/6Sg31TvfYtudjzfatlCLuPk=";
   };
 
@@ -29,6 +31,11 @@ buildPythonPackage rec {
   # All components are stored in a mono repo
   doCheck = false;
 
+  postFixup = ''
+    rm $out/${python.sitePackages}/aliyunsdkcore/vendored/requests/packages/certifi/cacert.pem
+    ln -s ${cacert}/etc/ssl/certs/ca-bundle.crt $out/${python.sitePackages}/aliyunsdkcore/vendored/requests/packages/certifi/cacert.pem
+  '';
+
   pythonImportsCheck = [ "aliyunsdkcore" ];
 
   meta = {
@@ -38,4 +45,4 @@ buildPythonPackage rec {
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ fab ];
   };
-}
+})

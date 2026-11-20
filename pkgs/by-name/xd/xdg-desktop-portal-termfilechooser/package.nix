@@ -7,19 +7,19 @@
   meson,
   pkg-config,
   inih,
-  systemd,
+  systemdLibs,
   scdoc,
   nix-update-script,
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "xdg-desktop-portal-termfilechooser";
-  version = "1.4.0";
+  version = "1.5.0";
 
   src = fetchFromGitHub {
     owner = "hunkyburrito";
     repo = "xdg-desktop-portal-termfilechooser";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-GZi05OsyhLsiY/bTFLGd5KeJaD5CQNJInN0wCkXaOoU=";
+    hash = "sha256-U3Fv6Q8HYQEi8rZfGUJCEMVxZwxtpQNIAwctKWDyjZw=";
   };
 
   nativeBuildInputs = [
@@ -32,7 +32,7 @@ stdenv.mkDerivation (finalAttrs: {
   buildInputs = [
     xdg-desktop-portal
     inih
-    systemd
+    systemdLibs
   ];
 
   mesonFlags = [ "-Dsd-bus-provider=libsystemd" ];

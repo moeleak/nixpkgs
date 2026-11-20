@@ -1,39 +1,43 @@
 {
   lib,
-  rustPlatform,
   fetchFromGitHub,
+  rustPlatform,
+  versionCheckHook,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "chainsaw";
-  version = "2.16.0";
+  version = "2.18.0";
 
   src = fetchFromGitHub {
-    owner = "WithSecureLabs";
+    owner = "WithSecureOpenSource";
     repo = "chainsaw";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-ywHPDVHpw0TrzeWPzZ3cvQSxCr2Di2YjS0Not1B9vlg=";
+    hash = "sha256-JHKpA4KssnU2MDGDmQ+r4vIFzMAxKRyYbSr81MWI1YE=";
   };
 
-  cargoHash = "sha256-AA8JQiGukh4SRZyciuE2u4OUo7HNeb6+SWej9vlw5z8=";
+  cargoHash = "sha256-qZPdTEySJJvQ5/VOHeS3PjxLdqYWClerUXXq4lNI/Gc=";
 
-  ldflags = [
-    "-w"
-    "-s"
-  ];
+  ldflags = [ "-s" ];
+
+  nativeBuildInputs = [ rustPlatform.bindgenHook ];
+
+  nativeInstallCheckInputs = [ versionCheckHook ];
 
   checkFlags = [
-    # failed
+    # Tests are failing
     "--skip=analyse_srum_database_json"
     "--skip=search_jq_simple_string"
     "--skip=search_q_jsonl_simple_string"
     "--skip=search_q_simple_string"
   ];
 
+  doInstallCheck = true;
+
   meta = {
     description = "Rapidly Search and Hunt through Windows Forensic Artefacts";
-    homepage = "https://github.com/WithSecureLabs/chainsaw";
-    changelog = "https://github.com/WithSecureLabs/chainsaw/releases/tag/v${finalAttrs.version}";
+    homepage = "https://github.com/WithSecureOpenSource/chainsaw";
+    changelog = "https://github.com/WithSecureOpenSource/chainsaw/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.gpl3Only;
     maintainers = with lib.maintainers; [ fab ];
     mainProgram = "chainsaw";

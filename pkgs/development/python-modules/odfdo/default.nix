@@ -5,23 +5,27 @@
   pytestCheckHook,
   lxml,
   pillow,
+  typing-extensions,
   uv-build,
 }:
 buildPythonPackage (finalAttrs: {
   pname = "odfdo";
-  version = "3.22.3";
+  version = "3.27.3";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jdum";
     repo = "odfdo";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-1cOi7aAJ8jWjLuQbhd7aK5s2rJ5IvkTLIl9atKmXKMU=";
+    hash = "sha256-iqxDbsmuIhM1cwhM36irCPWAPCc4rf0CDFg0A6JlCwQ=";
   };
 
   build-system = [ uv-build ];
 
-  dependencies = [ lxml ];
+  dependencies = [
+    lxml
+    typing-extensions
+  ];
 
   nativeCheckInputs = [
     pytestCheckHook
@@ -29,6 +33,7 @@ buildPythonPackage (finalAttrs: {
   ];
 
   meta = {
+    changelog = "https://github.com/jdum/odfdo/blob/${finalAttrs.src.tag}/CHANGES.md";
     description = "OpenDocument Format (ODF, ISO/IEC 26300) library for Python";
     homepage = "https://github.com/jdum/odfdo";
     license = lib.licenses.asl20;

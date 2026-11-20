@@ -2,19 +2,22 @@
   lib,
   rustPlatform,
   fetchCrate,
+  sqlite,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "starlark-rust";
-  version = "0.13.0";
+  version = "0.14.2";
 
   src = fetchCrate {
     pname = "starlark_bin";
     inherit (finalAttrs) version;
-    hash = "sha256-1M3p5QHMOBgmdEyr31Bhv7X8UdUmoeL0o1hWaw2tahQ=";
+    hash = "sha256-2Fqy/ZyL45NasK5iMuJVG+2J7HUQ7UlXNfdKuuCKnJk=";
   };
 
-  cargoHash = "sha256-BSXbFKR4AOKhssj+m5PIfgaoeRVDK+KRkApi8FUa8jg=";
+  cargoHash = "sha256-FYzDYs/c/7T4RHnSqOImOIoS1uxXZpfOcUrrP3tMJFY=";
+
+  buildInputs = [ sqlite ];
 
   meta = {
     description = "Rust implementation of the Starlark language";

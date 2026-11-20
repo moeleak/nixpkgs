@@ -3,25 +3,38 @@
   fetchFromGitHub,
   rustPlatform,
   installShellFiles,
-  perl,
+  openssl,
+  pkg-config,
+  sqlcipher,
+  zstd,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "tabiew";
-  version = "0.13.1";
+  version = "0.16.0";
 
   src = fetchFromGitHub {
     owner = "shshemi";
     repo = "tabiew";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-bJ2XxGXnN4++9P7Tb5Vky5DGOHq+/VpFsrbLOboLpZs=";
+    hash = "sha256-SUOOU/0zBrmQGcCqUqt1lqTQ00I+PbRNrb7UuOY62MI=";
   };
 
-  cargoHash = "sha256-cOxFyY59BOIK8ln6o0pkHpfB16ZlvkY4eX9nwbjB52w=";
+  cargoHash = "sha256-TWvLsvozAFVJuncjY7+wPPSa7cT716rjwyHxk7r4OI8=";
 
   nativeBuildInputs = [
     installShellFiles
-    perl
+    pkg-config
   ];
+
+  buildInputs = [
+    openssl
+    sqlcipher
+    zstd
+  ];
+
+  env = {
+    OPENSSL_NO_VENDOR = true;
+  };
 
   outputs = [
     "out"

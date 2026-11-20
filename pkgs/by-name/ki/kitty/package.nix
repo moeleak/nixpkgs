@@ -3,6 +3,7 @@
   stdenv,
   buildPackages,
   fetchFromGitHub,
+  replaceVars,
   python3Packages,
   libunistring,
   harfbuzz,
@@ -46,11 +47,11 @@
   makeBinaryWrapper,
   darwin,
   cairo,
-  fetchpatch,
+  shader-slang,
 }:
 
 let
-  kittyVersion = "0.46.2";
+  kittyVersion = "0.51.0";
 
   canExecuteHost = stdenv.buildPlatform.canExecute stdenv.hostPlatform;
   useCrossSource = stdenv.hostPlatform.isLinux && !canExecuteHost;
@@ -66,7 +67,7 @@ let
     owner = "kovidgoyal";
     repo = "kitty";
     tag = "v${kittyVersion}";
-    hash = "sha256-x+jBQrg3Iaj6PLMF1hIjS46odxv5GxPMcvC9JddYCHo=";
+    hash = "sha256-JtjxZN7bm7mtvMb2mgb5Q3x3JqSmjKslRawmVhNZoWw=";
   };
 
   kittyPatches = [
@@ -81,6 +82,14 @@ let
     ./disable-test_ssh_bootstrap_with_different_launchers.patch
   ];
 
+  # Patches that embed store paths of host libraries, so they must not be
+  # applied to the build-platform cross source.
+  hostLibraryPatches = [
+    (replaceVars ./libxkbcommon-runtime-path.patch {
+      libxkbcommon = "${lib.getLib libxkbcommon}/lib/libxkbcommon.so.0";
+    })
+  ];
+
   crossSource = buildPackages.kitty.overrideAttrs (oldAttrs: {
     pname = "${oldAttrs.pname}-cross-source";
     outputs = [ "out" ];
@@ -89,6 +98,9 @@ let
     doInstallCheck = false;
     dontWrapPythonPrograms = true;
     pythonImportsCheck = [ ];
+
+    patches = kittyPatches;
+    postPatch = "";
 
     buildPhase = ''
       runHook preBuild
@@ -134,7 +146,7 @@ buildPythonApplication rec {
       pname = "kitty-go-modules";
       inherit version;
       src = source;
-      vendorHash = "sha256-FaSWBeQJlvw9vXcHJ/OaFd48K8d7X86X8w7wpG84Ltw=";
+      vendorHash = "sha256-nK+3w5iJwz7INdWm3q3dWcbRrKpyf7CmC0BRXdI0lFA=";
     }).goModules;
 
   buildInputs = [
@@ -179,11 +191,13 @@ buildPythonApplication rec {
     go_1_26
     fontconfig
     makeBinaryWrapper
+    shader-slang
   ]
   ++ lib.optionals (!useCrossSource) [
     sphinx
     furo
     sphinx-copybutton
+    sphinx-design
     sphinxext-opengraph
     sphinx-inline-tabs
   ]
@@ -205,7 +219,16 @@ buildPythonApplication rec {
     "kitten"
   ];
 
-  patches = lib.optionals (!useCrossSource) kittyPatches;
+  patches = lib.optionals (!useCrossSource) kittyPatches ++ hostLibraryPatches;
+
+  postPatch = lib.optionalString stdenv.hostPlatform.isLinux ''
+    substituteInPlace glfw/x11_init.c \
+      --replace-fail 'libXi.so.6'       '${lib.getLib libxi}/lib/libXi.so.6' \
+      --replace-fail 'libXrandr.so.2'   '${lib.getLib libxrandr}/lib/libXrandr.so.2' \
+      --replace-fail 'libXcursor.so.1'  '${lib.getLib libxcursor}/lib/libXcursor.so.1' \
+      --replace-fail 'libXinerama.so.1' '${lib.getLib libxinerama}/lib/libXinerama.so.1' \
+      --replace-fail 'libXext.so.6'     '${lib.getLib libxext}/lib/libXext.so.6'
+  '';
 
   hardeningDisable = [
     # causes redefinition of _FORTIFY_SOURCE
@@ -215,6 +238,7 @@ buildPythonApplication rec {
   env = {
     CGO_ENABLED = 0;
     GOFLAGS = "-trimpath";
+    GOTOOLCHAIN = "local";
   }
   // lib.optionalAttrs useCrossSource {
     PKGCONFIG_EXE = "${stdenv.cc.targetPrefix}pkg-config";
@@ -289,29 +313,39 @@ buildPythonApplication rec {
   ];
 
   # skip failing tests due to darwin sandbox
-  preCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
+  preCheck =
+    lib.optionalString stdenv.hostPlatform.isDarwin ''
+      substituteInPlace kitty_tests/check_build.py \
+        --replace test_macos_dictation_forwarding no_test_macos_dictation_forwarding
 
-    substituteInPlace kitty_tests/file_transmission.py \
-      --replace test_transfer_send dont_test_transfer_send
+      substituteInPlace kitty_tests/file_transmission.py \
+        --replace test_transfer_send dont_test_transfer_send
 
-    substituteInPlace kitty_tests/ssh.py \
-      --replace test_ssh_connection_data no_test_ssh_connection_data \
-      --replace test_ssh_shell_integration no_test_ssh_shell_integration \
-      --replace test_ssh_copy no_test_ssh_copy \
-      --replace test_ssh_env_vars no_test_ssh_env_vars
+      substituteInPlace kitty_tests/ssh.py \
+        --replace test_ssh_connection_data no_test_ssh_connection_data \
+        --replace test_ssh_shell_integration no_test_ssh_shell_integration \
+        --replace test_ssh_copy no_test_ssh_copy \
+        --replace test_ssh_env_vars no_test_ssh_env_vars
 
-    substituteInPlace kitty_tests/shell_integration.py \
-      --replace test_fish_integration no_test_fish_integration \
-      --replace test_zsh_integration no_test_zsh_integration
+      substituteInPlace kitty_tests/shell_integration.py \
+        --replace test_fish_integration no_test_fish_integration \
+        --replace test_zsh_integration no_test_zsh_integration
 
-    substituteInPlace kitty_tests/fonts.py \
-      --replace test_fallback_font_not_last_resort no_test_fallback_font_not_last_resort
+      substituteInPlace kitty_tests/fonts.py \
+        --replace test_fallback_font_not_last_resort no_test_fallback_font_not_last_resort
 
-    # theme collection test starts an http server
-    rm tools/themes/collection_test.go
-    # passwd_test tries to exec /usr/bin/dscl
-    rm tools/utils/passwd_test.go
-  '';
+      # theme collection test starts an http server
+      rm tools/themes/collection_test.go
+      # passwd_test tries to exec /usr/bin/dscl
+      rm tools/utils/passwd_test.go
+    ''
+    + ''
+      # These depend on files that are not available in the sandbox
+      rm tools/utils/machine_id/api_test.go
+
+      # These depend on cgroups and other resources that don't work as the tests expect in the sandbox
+      rm kitty_tests/child.py
+    '';
 
   checkPhase = ''
     runHook preCheck
@@ -354,6 +388,7 @@ buildPythonApplication rec {
       lib.makeBinPath [
         imagemagick
         ncurses.dev
+        shader-slang
       ]
     }"
 

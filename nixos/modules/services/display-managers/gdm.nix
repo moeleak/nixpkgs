@@ -44,6 +44,20 @@ let
   defaultSessionName = config.services.displayManager.defaultSession;
 
   setSessionScript = pkgs.callPackage ../x11/display-managers/account-service-util.nix { };
+
+  greeterUsers = lib.genAttrs' [ null 1 2 3 4 ] (
+    i:
+    let
+      # adding 1 to create `gdm-greeter{-2,-3,-4,-5}`
+      suffix = lib.optionalString (i != null) "-${toString (i + 1)}";
+    in
+    lib.nameValuePair "gdm-greeter${suffix}" {
+      isSystemUser = true;
+      uid = 60578 + (if i == null then 0 else i);
+      group = "gdm";
+      home = "/run/gdm/home/gdm-greeter${suffix}";
+    }
+  );
 in
 
 {
@@ -103,6 +117,12 @@ in
       [ "services" "xserver" "displayManager" "gdm" "autoLogin" "delay" ]
       [ "services" "displayManager" "gdm" "autoLogin" "delay" ]
     )
+    (lib.mkRemovedOptionModule [
+      "services"
+      "displayManager"
+      "gdm"
+      "wayland"
+    ] "Disabling this option is no longer supported with GNOME 50.")
   ];
 
   meta = {
@@ -125,14 +145,6 @@ in
         default = 0;
         description = ''
           Seconds of inactivity after which the autologin will be performed.
-        '';
-      };
-
-      wayland = lib.mkOption {
-        type = lib.types.bool;
-        default = true;
-        description = ''
-          Allow GDM to run on Wayland instead of Xserver.
         '';
       };
 
@@ -198,24 +210,8 @@ in
           group = "gdm";
           description = "GDM user";
         };
-
-        gdm-greeter = {
-          isSystemUser = true;
-          uid = 60578;
-          group = "gdm";
-          home = "/run/gdm";
-        };
       }
-
-      (lib.genAttrs' [ 1 2 3 4 ] (
-        i:
-        lib.nameValuePair "gdm-greeter-${toString i}" {
-          isSystemUser = true;
-          uid = 60578 + i;
-          group = "gdm";
-          home = "/run/gdm-${toString i}";
-        }
-      ))
+      greeterUsers
     ];
 
     users.groups.gdm.gid = config.ids.gids.gdm;
@@ -257,17 +253,20 @@ in
       };
     };
 
-    systemd.tmpfiles.rules = [
-      "d /run/gdm/.config 0711 gdm gdm"
-    ]
-    ++ lib.optionals config.services.pulseaudio.enable [
-      "d /run/gdm/.config/pulse 0711 gdm gdm"
-      "L+ /run/gdm/.config/pulse/${pulseConfig.name} - - - - ${pulseConfig}"
-    ]
-    ++ lib.optionals config.services.gnome.gnome-initial-setup.enable [
-      # Create stamp file for gnome-initial-setup to prevent it starting in GDM.
-      "f /run/gdm/.config/gnome-initial-setup-done 0711 gdm gdm - yes"
-    ];
+    systemd.tmpfiles.rules =
+      lib.optionals config.services.pulseaudio.enable (
+        lib.concatLists (
+          lib.mapAttrsToList (name: user: [
+            "d ${user.home}/.config 0711 ${name} gdm"
+            "d ${user.home}/.config/pulse 0711 ${name} gdm"
+            "L+ ${user.home}/.config/pulse/${pulseConfig.name} - - - - ${pulseConfig}"
+          ]) greeterUsers
+        )
+      )
+      ++ lib.optionals config.services.gnome.gnome-initial-setup.enable [
+        # Create stamp file for gnome-initial-setup to prevent it starting in GDM.
+        "f /run/gdm/gdm.ran-initial-setup 0711 gdm gdm - yes"
+      ];
 
     # Otherwise GDM will not be able to start correctly and display Wayland sessions
     systemd.packages = [
@@ -354,14 +353,31 @@ in
           };
         }
       ]
+      ++ lib.optionals (!config.security.pam.p11.enable) [
+        {
+          settings."org/gnome/login-screen" = {
+            enable-smartcard-authentication = false;
+          };
+        }
+      ]
       ++ [ "${gdm}/share/gdm/greeter-dconf-defaults" ];
+
+    programs.dconf.profiles.user.databases = [
+      {
+        settings."org/gnome/login-screen" = {
+          enable-smartcard-authentication = config.security.pam.p11.enable;
+
+          # We currently don't provide a `gdm-switchable-auth` PAM service.
+          enable-switchable-authentication = false;
+        };
+      }
+    ];
 
     # Use AutomaticLogin if delay is zero, because it's immediate.
     # Otherwise with TimedLogin with zero seconds the prompt is still
     # presented and there's a little delay.
     services.displayManager.gdm.settings = {
       daemon = lib.mkMerge [
-        { WaylandEnable = cfg.wayland; }
         # nested if else didn't work
         (lib.mkIf (config.services.displayManager.autoLogin.enable && cfg.autoLogin.delay != 0) {
           TimedLoginEnable = true;
@@ -423,7 +439,7 @@ in
             {
               name = "unix";
               control = "sufficient";
-              modulePath = "${config.security.pam.package}/lib/security/pam_unix.so";
+              modulePath = config.security.pam.pam_unixModulePath;
             }
           ];
 
@@ -453,6 +469,22 @@ in
               control = "required";
               modulePath = "${config.security.pam.package}/lib/security/pam_env.so";
               settings.conffile = "/etc/pam/environment";
+              settings.readenv = 0;
+            }
+            # make sure the spawned session has the same variables as `display-manager.service`
+            # https://github.com/NixOS/nixpkgs/issues/523332
+            {
+              name = "env-greeter";
+              control = "required";
+              modulePath = "${config.security.pam.package}/lib/security/pam_env.so";
+              settings.conffile =
+                let
+                  env = config.services.displayManager.generic.environment;
+                in
+                pkgs.writeText "gdm-launch-environment-env-conf" ''
+                  PATH          DEFAULT="''${PATH}:${pkgs.gnome-session}/bin"
+                  XDG_DATA_DIRS DEFAULT="''${XDG_DATA_DIRS}:${env.XDG_DATA_DIRS}"
+                '';
               settings.readenv = 0;
             }
             {
@@ -553,7 +585,7 @@ in
             {
               name = "unix";
               control = "sufficient";
-              modulePath = "${config.security.pam.package}/lib/security/pam_unix.so";
+              modulePath = config.security.pam.pam_unixModulePath;
             }
           ];
 
@@ -561,9 +593,8 @@ in
             {
               name = "unix";
               control = "requisite";
-              modulePath = "${config.security.pam.package}/lib/security/pam_unix.so";
+              modulePath = config.security.pam.pam_unixModulePath;
               settings.nullok = true;
-              settings.yescrypt = true;
             }
           ];
 
@@ -611,6 +642,85 @@ in
               name = "fprintd";
               control = "required";
               modulePath = "${pkgs.fprintd}/lib/security/pam_fprintd.so";
+            }
+            {
+              name = "env";
+              control = "required";
+              modulePath = "${config.security.pam.package}/lib/security/pam_env.so";
+              settings.conffile = "/etc/pam/environment";
+              settings.readenv = 0;
+            }
+            {
+              name = "gdm";
+              enable = pamLogin.enable && pamLogin.enableGnomeKeyring;
+              control = "[success=ok default=1]";
+              modulePath = "${gdm}/lib/security/pam_gdm.so";
+            }
+            {
+              name = "gnome_keyring";
+              enable = pamLogin.enable && pamLogin.enableGnomeKeyring;
+              control = "optional";
+              modulePath = "${pkgs.gnome-keyring}/lib/security/pam_gnome_keyring.so";
+            }
+          ];
+
+          account = utils.pam.autoOrderRules [
+            {
+              name = "login";
+              control = "include";
+              modulePath = "login";
+            }
+          ];
+
+          password = utils.pam.autoOrderRules [
+            {
+              name = "deny";
+              control = "required";
+              modulePath = "${config.security.pam.package}/lib/security/pam_deny.so";
+            }
+          ];
+
+          session = utils.pam.autoOrderRules [
+            {
+              name = "login";
+              control = "include";
+              modulePath = "login";
+            }
+          ];
+        };
+      };
+
+      # Do not attempt to authenticate via smartcard when the login option
+      # "Password" is selected (gdm-password).
+      login.p11Auth = lib.mkIf config.security.pam.p11.enable false;
+
+      gdm-smartcard = lib.mkIf config.security.pam.p11.enable {
+        useDefaultRules = false;
+        rules = {
+          auth = utils.pam.autoOrderRules [
+            {
+              name = "nologin";
+              control = "requisite";
+              modulePath = "${config.security.pam.package}/lib/security/pam_nologin.so";
+            }
+            {
+              name = "faillock";
+              control = "requisite";
+              modulePath = "${config.security.pam.package}/lib/security/pam_faillock.so";
+              settings.preauth = true;
+            }
+            {
+              name = "p11";
+              control = "required";
+              modulePath = "${pkgs.pam_p11}/lib/security/pam_p11.so";
+              args = [
+                "${pkgs.opensc}/lib/opensc-pkcs11.so"
+              ];
+            }
+            {
+              name = "shells";
+              control = "required";
+              modulePath = "${config.security.pam.package}/lib/security/pam_shells.so";
             }
             {
               name = "env";

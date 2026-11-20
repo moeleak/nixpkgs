@@ -2,22 +2,27 @@
   lib,
   fetchFromGitHub,
   buildHomeAssistantComponent,
+  nix-update-script,
 }:
 
 buildHomeAssistantComponent rec {
   owner = "bastgau";
   domain = "pi_hole_v6";
-  version = "1.17.0";
+  version = "1.22.1";
 
   src = fetchFromGitHub {
     inherit owner;
     repo = "ha-pi-hole-v6";
     tag = "v${version}";
-    hash = "sha256-C9QqdAFe1P5bzuMuYWCy8hQINAbc/yOIxdxp2jpM2N8=";
+    hash = "sha256-J5/Wp35oCCCNIKgsGXLkfhcefCyyjdhGOQVPKdnVP9s=";
   };
 
   # has no tests
   doCheck = false;
+
+  passthru.updateScript = nix-update-script {
+    extraArgs = [ "--version-regex=^v([0-9]+\\.[0-9]+\\.[0-9]+)$" ];
+  };
 
   meta = {
     changelog = "https://github.com/bastgau/ha-pi-hole-v6/releases/tag/${src.tag}";

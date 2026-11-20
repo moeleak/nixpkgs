@@ -385,6 +385,8 @@ in
     services.dbus.packages = [ cups.out ] ++ optional polkitEnabled cups-pk-helper;
     services.udev.packages = cfg.drivers;
 
+    services.colord.enable = lib.mkDefault true;
+
     # Allow passwordless printer admin for members of wheel group
     security.polkit.extraConfig = mkIf polkitEnabled ''
       polkit.addRule(function(action, subject) {
@@ -426,7 +428,9 @@ in
 
       preStart =
         lib.optionalString cfg.stateless ''
-          rm -rf /var/cache/cups /var/lib/cups /var/spool/cups
+          shopt -s extglob
+          rm -rf /var/cache/cups /var/spool/cups /var/lib/cups/!(ssl)
+          shopt -u extglob
         ''
         + ''
           (umask 022 && mkdir -p /var/cache /var/lib /var/spool)

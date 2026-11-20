@@ -24,14 +24,14 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "xterm";
-  version = "407";
+  version = "412";
 
   src = fetchurl {
     urls = [
-      "https://invisible-island.net/archives/xterm/${finalAttrs.pname}-${finalAttrs.version}.tgz"
-      "https://invisible-mirror.net/archives/xterm/${finalAttrs.pname}-${finalAttrs.version}.tgz"
+      "https://invisible-island.net/archives/xterm/xterm-${finalAttrs.version}.tgz"
+      "https://invisible-mirror.net/archives/xterm/xterm-${finalAttrs.version}.tgz"
     ];
-    hash = "sha256-ITbrpTAGiht1Zau/F4IydPXO+3/jYYNVy8idxVyLe2o=";
+    hash = "sha256-tIvHgMHLwU9tiSafflk3Eq9glYdpYNZQvii1Xl2tZaY=";
   };
 
   patches = [ ./sixel-256.support.patch ];
@@ -131,9 +131,10 @@ stdenv.mkDerivation (finalAttrs: {
       window whenever it is resized.
     '';
     homepage = "https://invisible-island.net/xterm";
-    license = with lib.licenses; [ mit ];
+    license = lib.licenses.mit;
     platforms = with lib.platforms; linux ++ darwin;
     changelog = "https://invisible-island.net/xterm/xterm.log.html#xterm_${finalAttrs.version}";
     mainProgram = "xterm";
+    maintainers = [ lib.maintainers.booxter ];
   };
 })

@@ -36,13 +36,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "xemu";
-  version = "0.8.134";
+  version = "0.8.136";
 
   src = fetchFromGitHub {
     owner = "xemu-project";
     repo = "xemu";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-BWOLKa7B1GURG4Zfo65ZQrr54nRaRHYibKv71j6gtiY=";
+    hash = "sha256-eZRv3GImEkT/zM0m8gnLF8hhPSbbUA5yPR7lr+fzHOI=";
 
     nativeBuildInputs = [
       git
@@ -59,7 +59,7 @@ stdenv.mkDerivation (finalAttrs: {
       find subprojects -type d -name .git -prune -execdir rm -r {} +
     '';
   };
-  __structuredAttrs = false;
+  __structuredAttrs = true;
   nativeBuildInputs = [
     meson
     cmake
@@ -110,9 +110,6 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     # As seen in the official build script ($src/build.sh)
     "--disable-cocoa"
-  ]
-  ++ lib.optionals (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64) [
-    "--enable-hvf"
   ];
 
   buildFlags = [ "qemu-system-i386" ];
@@ -153,14 +150,9 @@ stdenv.mkDerivation (finalAttrs: {
     substituteInPlace ./build.ninja --replace /usr/bin/env $(which env)
   '';
 
-  postBuild =
-    lib.optionalString (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64) ''
-      # Needed for HVF acceleration
-      codesign --entitlements $src/accel/hvf/entitlements.plist -f -s - qemu-system-i386-unsigned
-    ''
-    + lib.optionalString stdenv.hostPlatform.isDarwin ''
-      mv qemu-system-i386-unsigned qemu-system-i386
-    '';
+  postBuild = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    mv qemu-system-i386-unsigned qemu-system-i386
+  '';
 
   installPhase = ''
     runHook preInstall
@@ -191,7 +183,6 @@ stdenv.mkDerivation (finalAttrs: {
     mainProgram = "xemu";
     maintainers = with lib.maintainers; [
       marcin-serwin
-      matteopacini
     ];
     platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };

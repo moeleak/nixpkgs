@@ -33,20 +33,24 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "langchain-huggingface";
-  version = "1.2.2";
+  version = "1.2.3";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "langchain-ai";
     repo = "langchain";
     tag = "langchain-huggingface==${finalAttrs.version}";
-    hash = "sha256-jMbFqui0XoKZ15B+5kJAamW5Dasv/JCIZS2KtteRBXg=";
+    hash = "sha256-muibdSyBybUR1YTVsWr00mg0uSgUm2zwKRM3KU9Ju38=";
   };
 
   sourceRoot = "${finalAttrs.src.name}/libs/partners/huggingface";
 
   build-system = [ hatchling ];
 
+  pythonRelaxDeps = [
+    # Upper bound dropped upstream: https://github.com/langchain-ai/langchain/pull/41407
+    "huggingface-hub"
+  ];
   dependencies = [
     huggingface-hub
     langchain-core
@@ -75,6 +79,8 @@ buildPythonPackage (finalAttrs: {
   disabledTests = [
     # Requires a circular dependency on langchain
     "test_init_chat_model_huggingface"
+    # AssertionError: Expected 'bind' to have been called once. Called 0 times.
+    "test_bind_tools"
   ];
 
   pythonImportsCheck = [ "langchain_huggingface" ];
@@ -84,6 +90,7 @@ buildPythonPackage (finalAttrs: {
     skipBulkUpdate = true;
     updateScript = gitUpdater {
       rev-prefix = "langchain-huggingface==";
+      ignoredVersions = "a|b|dev|rc";
     };
   };
 

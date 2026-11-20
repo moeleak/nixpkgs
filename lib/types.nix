@@ -1,5 +1,8 @@
-# Definitions related to run-time type checking.  Used in particular
-# to type-check NixOS configurations.
+/**
+  Option types are a way to put constraints on the values a module option
+  can take. Types are also responsible of how values are merged in case of
+  multiple value definitions.
+*/
 { lib }:
 
 let
@@ -20,13 +23,14 @@ let
     isStorePath
     isString
     substring
-    throwIf
+    sort
     toDerivation
     toList
     types
     ;
   inherit (lib.lists)
     concatLists
+    concatMap
     elemAt
     filter
     foldl'
@@ -68,8 +72,12 @@ let
 
   inherit (lib.modules)
     mergeDefinitions
-    fixupOptionType
     mergeOptionDecls
+    defaultOrderPriority
+    defaultOverridePriority
+    mkDefinition
+    mkOrder
+    mkOverride
     ;
   inherit (lib.fileset)
     isFileset
@@ -85,6 +93,9 @@ let
     in
     if pos == null then "" else " at ${pos.file}:${toString pos.line}:${toString pos.column}";
 
+  hasColonInfix = hasInfix ":";
+  hasNewlineInfix = hasInfix "\n";
+
   # Internal functor to help for migrating functor.wrapped to functor.payload.elemType
   # Note that individual attributes can be overridden if needed.
   elemTypeFunctor =
@@ -92,7 +103,6 @@ let
     { elemType, ... }@payload:
     {
       inherit name payload;
-      wrappedDeprecationMessage = makeWrappedDeprecationMessage payload;
       type = types.${name};
       binOp =
         a: b:
@@ -101,14 +111,6 @@ let
         in
         if merged == null then null else { elemType = merged; };
     };
-  makeWrappedDeprecationMessage =
-    payload:
-    { loc }:
-    lib.warn ''
-      The deprecated `${lib.optionalString (loc != null) "type."}functor.wrapped` attribute ${
-        lib.optionalString (loc != null) "of the option `${showOption loc}` "
-      }is accessed, use `${lib.optionalString (loc != null) "type."}nestedTypes.elemType` instead.
-    '' payload.elemType;
 
   checkDefsForError =
     check: loc: defs:
@@ -161,21 +163,11 @@ rec {
   defaultTypeMerge =
     f: f':
     let
-      mergedWrapped = f.wrapped.typeMerge f'.wrapped.functor;
       mergedPayload = f.binOp f.payload f'.payload;
 
       hasPayload =
         assert (f'.payload != null) == (f.payload != null);
         f.payload != null;
-      hasWrapped =
-        let
-          hasWrappedNonNull = set: set ? "wrapped" && set.wrapped != null;
-        in
-        assert (hasWrappedNonNull f') == (hasWrappedNonNull f);
-        hasWrappedNonNull f;
-
-      typeFromPayload = if mergedPayload == null then null else f.type mergedPayload;
-      typeFromWrapped = if mergedWrapped == null then null else f.type mergedWrapped;
     in
     # Abort early: cannot merge different types
     if f.name != f'.name then
@@ -183,22 +175,7 @@ rec {
     else
 
     if hasPayload then
-      # Just return the payload if returning wrapped is deprecated
-      if f ? wrappedDeprecationMessage then
-        typeFromPayload
-      else if hasWrapped then
-        # Has both wrapped and payload
-        throw ''
-          Type ${f.name} defines both `functor.payload` and `functor.wrapped` at the same time, which is not supported.
-
-          Use either `functor.payload` or `functor.wrapped` but not both.
-
-          If your code worked before remove either `functor.wrapped` or `functor.payload` from the type definition.
-        ''
-      else
-        typeFromPayload
-    else if hasWrapped then
-      typeFromWrapped
+      if mergedPayload == null then null else f.type mergedPayload
     else
       f.type;
 
@@ -206,12 +183,120 @@ rec {
   defaultFunctor = name: {
     inherit name;
     type = lib.types.${name} or null;
-    wrapped = null;
     payload = null;
     binOp = a: b: null;
   };
 
   isOptionType = isType "option-type";
+
+  /**
+    Custom types can be created with the `mkOptionType` function. As type
+    creation includes some more complex topics such as submodule handling,
+    it is recommended to get familiar with `types.nix` code before creating
+    a new type.
+
+    The only required parameter is `name`.
+
+    `name`
+
+    :   A string representation of the type function name.
+
+    `description`
+
+    :   Description of the type used in documentation. Give information of
+        the type and any of its arguments.
+
+    `check`
+
+    :   A function to type check the definition value. Takes the definition
+        value as a parameter and returns a boolean indicating the type check
+        result, `true` for success and `false` for failure.
+
+    `merge`
+
+    :   A function to merge multiple definitions values. Takes two
+        parameters:
+
+        *`loc`*
+
+        :   The option path as a list of strings, e.g. `["boot" "loader
+                     "grub" "enable"]`.
+
+        *`defs`*
+
+        :   The list of sets of defined `value` and `file` where the value
+            was defined, e.g. `[ {
+                     file = "/foo.nix"; value = 1; } { file = "/bar.nix"; value = 2 }
+                     ]`. The `merge` function should return the merged value
+            or throw an error in case the values are impossible or not meant
+            to be merged.
+
+    `getSubOptions`
+
+    :   For composed types that can take a submodule as type parameter, this
+        function generate sub-options documentation. It takes the current
+        option prefix as a list and return the set of sub-options. Usually
+        defined in a recursive manner by adding a term to the prefix, e.g.
+        `prefix:
+              elemType.getSubOptions (prefix ++
+              ["prefix"])` where *`"prefix"`* is the newly added prefix.
+
+    `getSubModules`
+
+    :   For composed types that can take a submodule as type parameter, this
+        function should return the type parameters submodules. If the type
+        parameter is called `elemType`, the function should just recursively
+        look into submodules by returning `elemType.getSubModules;`.
+
+    `substSubModules`
+
+    :   For composed types that can take a submodule as type parameter, this
+        function can be used to substitute the parameter of a submodule
+        type. It takes a module as parameter and return the type with the
+        submodule options substituted. It is usually defined as a type
+        function call with a recursive call to `substSubModules`, e.g for a
+        type `composedType` that take an `elemtype` type parameter, this
+        function should be defined as `m:
+              composedType (elemType.substSubModules m)`.
+
+    `typeMerge`
+
+    :   A function to merge multiple type declarations. Takes the type to
+        merge `functor` as parameter. A `null` return value means that type
+        cannot be merged.
+
+        *`f`*
+
+        :   The type to merge `functor`.
+
+        Note: There is a generic `defaultTypeMerge` that work with most of
+        value and composed types.
+
+    `functor`
+
+    :   An attribute set representing the type. It is used for type
+        operations and has the following keys:
+
+        `type`
+
+        :   The type function.
+
+        `wrapped`
+
+        :   Holds the type parameter for composed types.
+
+        `payload`
+
+        :   Holds the value parameter for value types. The types that have a
+            `payload` are the `enum`, `separatedString` and `submodule`
+            types.
+
+        `binOp`
+
+        :   A binary operation that can merge the payloads of two same
+            types. Defined as a function that take two payloads as
+            parameters and return the payloads merged.
+  */
   mkOptionType =
     {
       # Human-readable representation of the type, should be equivalent to
@@ -302,17 +387,8 @@ rec {
         deprecationMessage
         nestedTypes
         descriptionClass
+        functor
         ;
-      functor =
-        if functor ? wrappedDeprecationMessage then
-          functor
-          // {
-            wrapped = functor.wrappedDeprecationMessage {
-              loc = null;
-            };
-          }
-        else
-          functor;
       description = if description == null then name else description;
     };
 
@@ -349,9 +425,16 @@ rec {
     _file = "<built-in module that disables checks for the purpose of documentation generation>";
   };
 
-  # When adding new types don't forget to document them in
-  # nixos/doc/manual/development/option-types.section.md!
-
+  /**
+    A type which doesn't do any checking, merging or nested evaluation. It
+    accepts a single arbitrary value that is not recursed into, making it
+    useful for values coming from outside the module system, such as package
+    sets or arbitrary data. Options of this type are still evaluated according
+    to priorities and conditionals, so `mkForce`, `mkIf` and co. still work on
+    the option value itself, but not for any value nested within it. This type
+    should only be used when checking, merging and nested evaluation are not
+    desirable.
+  */
   raw = mkOptionType {
     name = "raw";
     description = "raw value";
@@ -360,6 +443,43 @@ rec {
     merge = mergeOneOption;
   };
 
+  /**
+    A type that accepts any value and recursively merges attribute sets
+    together. This type is recommended when the option type is unknown.
+
+    ::: {.example}
+    # `types.anything`
+
+    Two definitions of this type like
+
+    ```nix
+    {
+      str = lib.mkDefault "foo";
+      pkg.hello = pkgs.hello;
+      fun.fun = x: x + 1;
+    }
+    ```
+
+    ```nix
+    {
+      str = lib.mkIf true "bar";
+      pkg.gcc = pkgs.gcc;
+      fun.fun = lib.mkForce (x: x + 2);
+    }
+    ```
+
+    will get merged to
+
+    ```nix
+    {
+      str = "bar";
+      pkg.gcc = pkgs.gcc;
+      pkg.hello = pkgs.hello;
+      fun.fun = x: x + 2;
+    }
+    ```
+    :::
+  */
   anything = mkOptionType {
     name = "anything";
     description = "anything";
@@ -408,6 +528,10 @@ rec {
     descriptionClass = "noun";
   };
 
+  /**
+    A boolean, its values can be `true` or `false`.
+    All definitions must have the same value, after priorities. An error is thrown in case of a conflict.
+  */
   bool = mkOptionType {
     name = "bool";
     description = "boolean";
@@ -416,6 +540,11 @@ rec {
     merge = mergeEqualOption;
   };
 
+  /**
+    A boolean, its values can be `true` or `false`.
+    The result is `true` if _any_ of multiple definitions is `true`.
+    In other words, definitions are merged with the logical _OR_ operator.
+  */
   boolByOr = mkOptionType {
     name = "boolByOr";
     description = "boolean (merged using or)";
@@ -431,6 +560,9 @@ rec {
       ) false defs;
   };
 
+  /**
+    A signed integer.
+  */
   int = mkOptionType {
     name = "int";
     description = "signed integer";
@@ -439,13 +571,52 @@ rec {
     merge = mergeEqualOption;
   };
 
-  # Specialized subdomains of int
+  /**
+    `types.ints.{s8, s16, s32}`
+
+    :   Signed integers with a fixed length (8, 16 or 32 bits). They go from
+        −2^n/2 to
+        2^n/2−1 respectively (e.g. `−128` to
+        `127` for 8 bits).
+
+    `types.ints.unsigned`
+
+    :   An unsigned integer (that is >= 0).
+
+    `types.ints.{u8, u16, u32}`
+
+    :   Unsigned integers with a fixed length (8, 16 or 32 bits). They go
+        from 0 to 2^n−1 respectively (e.g. `0`
+        to `255` for 8 bits).
+
+    `types.ints.between` *`lowest highest`*
+
+    :   An integer between *`lowest`* and *`highest`* (both inclusive).
+
+        :::{.example}
+        # `lib.types.ints.between` usage example
+
+        ```nix
+        (ints.between 0 100).check (-1)
+        => false
+        (ints.between 0 100).check (101)
+        => false
+        (ints.between 0 0).check 0
+        => true
+        ```
+
+        :::
+
+    `types.ints.positive`
+
+    :   A positive integer (that is > 0).
+  */
   ints =
     let
       betweenDesc = lowest: highest: "${toString lowest} and ${toString highest} (both inclusive)";
       between =
         lowest: highest:
-        assert lib.assertMsg (lowest <= highest) "ints.between: lowest must be smaller than highest";
+        assert lowest <= highest || throw "ints.between: lowest must be smaller than highest";
         addCheck int (x: x >= lowest && x <= highest)
         // {
           name = "intBetween";
@@ -468,25 +639,6 @@ rec {
 
     in
     {
-      # TODO: Deduplicate with docs in nixos/doc/manual/development/option-types.section.md
-      /**
-        An int with a fixed range.
-
-        # Example
-        :::{.example}
-        ## `lib.types.ints.between` usage example
-
-        ```nix
-        (ints.between 0 100).check (-1)
-        => false
-        (ints.between 0 100).check (101)
-        => false
-        (ints.between 0 0).check 0
-        => true
-        ```
-
-        :::
-      */
       inherit between;
 
       unsigned = addCheck lib.types.int (x: x >= 0) // {
@@ -511,9 +663,20 @@ rec {
       s32 = sign 32 4294967296;
     };
 
-  # Alias of u16 for a port number
+  /**
+    A port number. This type is an alias to
+    `types.ints.u16`.
+  */
   port = ints.u16;
 
+  /**
+    A floating point number.
+
+    ::: {.warning}
+    Converting a floating point number to a string with `toString` or `toJSON`
+    may result in [precision loss](https://github.com/NixOS/nix/issues/5733).
+    :::
+  */
   float = mkOptionType {
     name = "float";
     description = "floating point number";
@@ -522,8 +685,26 @@ rec {
     merge = mergeEqualOption;
   };
 
+  /**
+    Either a signed integer or a floating point number. No implicit conversion
+    is done between the two types, and multiple equal definitions will only be
+    merged if they have the same type.
+  */
   number = either int float;
 
+  /**
+    `types.numbers.between` *`lowest highest`*
+
+    :   An integer or floating point number between *`lowest`* and *`highest`* (both inclusive).
+
+    `types.numbers.nonnegative`
+
+    :   A nonnegative integer or floating point number (that is >= 0).
+
+    `types.numbers.positive`
+
+    :   A positive integer or floating point number (that is > 0).
+  */
   numbers =
     let
       betweenDesc =
@@ -532,7 +713,7 @@ rec {
     {
       between =
         lowest: highest:
-        assert lib.assertMsg (lowest <= highest) "numbers.between: lowest must be smaller than highest";
+        assert lowest <= highest || throw "numbers.between: lowest must be smaller than highest";
         addCheck number (x: x >= lowest && x <= highest)
         // {
           name = "numberBetween";
@@ -551,6 +732,9 @@ rec {
       };
     };
 
+  /**
+    A string. Multiple definitions cannot be merged.
+  */
   str = mkOptionType {
     name = "str";
     description = "string";
@@ -571,15 +755,21 @@ rec {
   singleLineStr =
     let
       inherit (strMatching "[^\n\r]*\n?") check merge;
+      removeNewlineSuffix = lib.removeSuffix "\n";
     in
     mkOptionType {
       name = "singleLineStr";
       description = "(optionally newline-terminated) single-line string";
       descriptionClass = "noun";
       inherit check;
-      merge = loc: defs: lib.removeSuffix "\n" (merge loc defs);
+      merge = loc: defs: removeNewlineSuffix (merge loc defs);
     };
 
+  /**
+    A string matching a specific regular expression. Multiple
+    definitions cannot be merged. The regular expression is processed
+    using `builtins.match`.
+  */
   strMatching =
     pattern:
     mkOptionType {
@@ -595,8 +785,12 @@ rec {
       };
     };
 
-  # Merge multiple definitions by concatenating them (with the given
-  # separator between the values).
+  /**
+    `types.separatedString` *`sep`*
+
+    A string. Multiple definitions are concatenated with *`sep`*, e.g.
+    `types.separatedString "|"`.
+  */
   separatedString =
     sep:
     mkOptionType rec {
@@ -612,13 +806,25 @@ rec {
       };
     };
 
+  /**
+    A string. Multiple definitions are concatenated with a new line
+    `"\n"`.
+  */
   lines = separatedString "\n";
+
+  /**
+    A string. Multiple definitions are concatenated with a comma `","`.
+  */
   commas = separatedString ",";
+
+  /**
+    A string. Multiple definitions are concatenated with a colon `":"`.
+  */
   envVar = separatedString ":";
 
   passwdEntry =
     entryType:
-    addCheck entryType (str: !(hasInfix ":" str || hasInfix "\n" str))
+    addCheck entryType (str: !(hasColonInfix str || hasNewlineInfix str))
     // {
       name = "passwdEntry ${entryType.name}";
       description = "${
@@ -627,11 +833,25 @@ rec {
       descriptionClass = "nonRestrictiveClause";
     };
 
+  /**
+    A free-form attribute set.
+
+    ::: {.warning}
+    This type will be deprecated in the future because it doesn't
+    recurse into attribute sets, silently drops earlier attribute
+    definitions, and doesn't discharge `lib.mkDefault`, `lib.mkIf`
+    and co. For allowing arbitrary attribute sets, prefer
+    `types.attrsOf types.anything` instead which doesn't have these
+    problems.
+    :::
+  */
   attrs = mkOptionType {
     name = "attrs";
     description = "attribute set";
     check = isAttrs;
-    merge = loc: foldl' (res: def: res // def.value) { };
+    merge =
+      loc: defs:
+      if length defs == 1 then (head defs).value else foldl' (res: def: res // def.value) { } defs;
     emptyValue = {
       value = { };
     };
@@ -642,7 +862,7 @@ rec {
     description = "fileset";
     descriptionClass = "noun";
     check = isFileset;
-    merge = loc: defs: unions (map (x: x.value) defs);
+    merge = loc: defs: unions (getValues defs);
     emptyValue.value = empty;
   };
 
@@ -654,6 +874,11 @@ rec {
   # - hardcoded store path literals (/nix/store/hash-foo) or strings without context
   #   ("/nix/store/hash-foo"). These get a context added to them using builtins.storePath.
   # If you don't need a *top-level* store path, consider using pathInStore instead.
+
+  /**
+    A top-level store path. This can be an attribute set pointing
+    to a store path, like a derivation or a flake input.
+  */
   package = mkOptionType {
     name = "package";
     descriptionClass = "noun";
@@ -670,6 +895,9 @@ rec {
     check = x: isDerivation x && hasAttr "shellPath" x;
   };
 
+  /**
+    A type for the top level Nixpkgs package set.
+  */
   pkgs = addCheck (
     unique { message = "A Nixpkgs pkgs set can not be merged with another pkgs set."; } attrs
     // {
@@ -679,28 +907,74 @@ rec {
     }
   ) (x: (x._type or null) == "pkgs");
 
+  /**
+    A filesystem path that starts with a slash. Even if derivations can be
+     considered as paths, the more specific `types.package` should be preferred.
+  */
   path = pathWith {
     absolute = true;
   };
 
+  /**
+    A path that is contained in the Nix store. This can be a top-level store
+    path like `pkgs.hello` or a descendant like `"${pkgs.hello}/bin/hello"`,
+    (or, more simply, `lib.getExe pkgs.hello`).
+  */
   pathInStore = pathWith {
     inStore = true;
   };
 
+  /**
+    A path that is not contained in the Nix store. Typical use cases are:
+    secrets, password or any other external file.
+
+    ::: {.warning}
+    This type only validates that the path is not *currently* in the Nix store.
+    It does NOT prevent the value from being copied to the store later when:
+    - Referenced in a derivation
+    - Used in certain path operations (e.g., `${path}` interpolation)
+    - Passed to functions that copy to the store
+
+    Users must still be careful about how they reference these paths.
+    :::
+  */
   externalPath = pathWith {
     absolute = true;
     inStore = false;
   };
 
+  /**
+    `types.pathWith` { *`inStore`* ? `null`, *`absolute`* ? `null` }
+
+    A filesystem path. Either a string or something that can be coerced
+    to a string.
+
+    **Parameters**
+
+    `inStore` (`Boolean` or `null`, default `null`)
+    : Whether the path must be in the store (`true`), must not be in the store
+      (`false`), or it doesn't matter (`null`)
+
+    `absolute` (`Boolean` or `null`, default `null`)
+    : Whether the path must be absolute (`true`), must not be absolute
+      (`false`), or it doesn't matter (`null`)
+
+    **Behavior**
+    - `pathWith { inStore = true; }` is equivalent to `pathInStore`
+    - `pathWith { absolute = true; }` is equivalent to `path`
+    - `pathWith { inStore = false; absolute = true; }` requires an absolute
+      path that is not in the store. Useful for password files that shouldn't be
+      leaked into the store.
+  */
   pathWith =
     {
       inStore ? null,
       absolute ? null,
     }:
-    throwIf (inStore != null && absolute != null && inStore && !absolute)
-      "In pathWith, inStore means the path must be absolute"
-      mkOptionType
-      {
+    if inStore != null && absolute != null && inStore && !absolute then
+      throw "In pathWith, inStore means the path must be absolute"
+    else
+      mkOptionType {
         name = "path";
         description = (
           (if absolute == null then "" else (if absolute then "absolute " else "relative "))
@@ -729,7 +1003,7 @@ rec {
               else
                 /. + builtins.unsafeDiscardStringContext x
             );
-            isAbsolute = substring 0 1 (toString x) == "/";
+            isAbsolute = x.type or null == "derivation" || substring 0 1 (toString x) == "/";
             isExpectedType = (
               if inStore == null || inStore then isStringLike x else isString x # Do not allow a true path, which could be copied to the store later on.
             );
@@ -739,6 +1013,12 @@ rec {
           && (absolute == null || absolute == isAbsolute);
       };
 
+  /**
+    `types.listOf` *`t`*
+
+    A list of *`t`* type, e.g. `types.listOf
+          int`. Multiple definitions are merged with list concatenation.
+  */
   listOf =
     elemType:
     mkOptionType rec {
@@ -761,16 +1041,17 @@ rec {
             evals = filter (x: x.optionalValue ? value) (
               concatLists (
                 imap1 (
-                  n: def:
+                  n:
+                  { file, value, ... }:
                   imap1 (
                     m: def':
                     (mergeDefinitions (loc ++ [ "[definition ${toString n}-entry ${toString m}]" ]) elemType [
                       {
-                        inherit (def) file;
+                        inherit file;
                         value = def';
                       }
                     ])
-                  ) def.value
+                  ) value
                 ) defs
               )
             );
@@ -805,13 +1086,256 @@ rec {
       substSubModules = m: nonEmptyListOf (elemType.substSubModules m);
     };
 
+  /**
+    `types.attrListOf` *`t`*
+
+    An ordered list of single-attribute attribute sets, where each value is of *`t`* type.
+    The output is always `[ { name1 = value1; } { name2 = value2; } ... ]`.
+
+    Definitions can be provided in two formats, which may be mixed via `lib.mkMerge`, `imports`, etc:
+
+    - **List format**: `[ { a = 1; } { b = 2; } ]` — each element must be a single-attribute attribute set.
+      Elements may be wrapped in `lib.mkOrder` (or `lib.mkBefore`/`lib.mkAfter`) to control ordering;
+      unwrapped elements use the default order priority.
+
+    - **Attribute set format**: `{ a = lib.mkOrder 100 1; b = 2; }` — each name-value pair becomes a single-attribute attribute set in the output.
+      Values may be wrapped in `lib.mkOrder` (or `lib.mkBefore`/`lib.mkAfter`) to control ordering.
+      Values without `lib.mkOrder` use the default priority.
+
+    Multiple definitions of the same option are concatenated and then sorted by priority.
+    Entries at the same priority level preserve their definition order.
+  */
+  attrListOf = elemType: attrListWith { inherit elemType; };
+
+  /**
+    `types.attrListWith` { *`elemType`*, *`asAttrs`* ? false, *`mergeAttrValues`* ? _name: values: values }
+
+    An ordered list of single-attribute attribute sets, where each value is of *`elemType`* type.
+
+    **Parameters**
+
+    `elemType` (Required)
+    : Specifies the type of each value in the attribute list.
+
+    `asAttrs`
+    : When `true`, the option value is an attribute set instead of a list.
+      Duplicate keys are merged using `mergeAttrValues`.
+      The ordered list is always available via `valueMeta.attrListValue`.
+
+    `mergeAttrValues`
+    : A function `name: values: mergedValue` that controls how duplicate keys
+      are combined when `asAttrs = true`. This is passed as the callback to
+      `lib.zipAttrsWith`. The `values` list is in order of priority.
+      By default, all values are collected into a list.
+
+    **Behavior**
+
+    - `attrListWith { elemType = t; }` is equivalent to `attrListOf t`
+  */
+  attrListWith =
+    {
+      elemType,
+      asAttrs ? false,
+      mergeAttrValues ? _name: values: values,
+    }:
+    mkOptionType rec {
+      name = "attrListOf";
+      description = "attribute list of ${
+        optionDescriptionPhrase (class: class == "noun" || class == "composite") elemType
+      }";
+      descriptionClass = "composite";
+      check = {
+        __functor = _self: x: isList x || isAttrs x;
+        isV2MergeCoherent = true;
+      };
+      merge = {
+        __functor =
+          self: loc: defs:
+          (self.v2 { inherit loc defs; }).value;
+        v2 =
+          { loc, defs }:
+          let
+            # Peel order and override properties from a value in any nesting order.
+            # Returns { value, prio, overridePrio }.
+            # mkOrder is stripped (we consume it for sorting).
+            # mkOverride is preserved in value (mergeDefinitions strips it).
+            peelProperties =
+              value:
+              let
+                type = value._type or null;
+              in
+              if type == "order" then
+                let
+                  inner = peelProperties value.content;
+                in
+                {
+                  inherit (inner) value overridePrio;
+                  prio = value.priority;
+                }
+              else if type == "override" then
+                let
+                  inner = peelProperties value.content;
+                in
+                {
+                  inherit (inner) prio;
+                  overridePrio = value.priority;
+                  # Re-wrap mkOverride around the inner value (with mkOrder stripped)
+                  value = mkOverride value.priority inner.value;
+                }
+              else
+                {
+                  inherit value;
+                  prio = defaultOrderPriority;
+                  overridePrio = defaultOverridePriority;
+                };
+
+            # Extract { file, key, value, prio, overridePrio } from a single-key attrset,
+            # optionally wrapped in mkOrder at the element level (list format).
+            extractItem =
+              file: raw:
+              let
+                hasOrder = isType "order" raw;
+                item = if hasOrder then raw.content else raw;
+                key = head (attrNames item);
+                peeled = peelProperties item.${key};
+              in
+              if isAttrs item && length (attrNames item) == 1 then
+                peeled
+                // {
+                  inherit file key;
+                  prio = if hasOrder then raw.priority else peeled.prio;
+                }
+              else
+                throw "A definition for option `${showOption loc}' is not of type `${description}'. ${
+                  if !isAttrs item then
+                    "Each list element must be an attribute set, but got ${builtins.typeOf item}"
+                  else
+                    "Each list element must be a single-key attribute set, but got ${toString (length (attrNames item))} keys"
+                }.${
+                  showDefs [
+                    {
+                      inherit file;
+                      value = raw;
+                    }
+                  ]
+                }";
+
+            # Convert a definition to a flat list of { file, key, value, prio, overridePrio }
+            defToItems =
+              def:
+              if isList def.value then
+                map (extractItem def.file) def.value
+              else
+                # isAttrs: properties are on the values directly
+                map (
+                  key:
+                  peelProperties def.value.${key}
+                  // {
+                    inherit (def) file;
+                    inherit key;
+                  }
+                ) (attrNames def.value);
+
+            allItems = concatMap defToItems defs;
+
+            # Per key, find the highest override priority (lowest number)
+            winningOverridePrio = foldl' (
+              acc: item:
+              let
+                prev = acc.${item.key} or defaultOverridePriority;
+              in
+              if item.overridePrio < prev then
+                acc // { ${item.key} = item.overridePrio; }
+              else
+                # minimize `//` operations
+                acc
+            ) { } allItems;
+
+            # Keep only items at the winning override priority for their key
+            items = sort (a: b: a.prio < b.prio) (
+              filter (
+                item: item.overridePrio == winningOverridePrio.${item.key} or defaultOverridePriority
+              ) allItems
+            );
+
+            evals = filter (e: e.eval.optionalValue ? value) (
+              map (item: {
+                inherit (item) key file prio;
+                eval = mergeDefinitions (loc ++ [ item.key ]) elemType [
+                  {
+                    inherit (item) file value;
+                  }
+                ];
+              }) items
+            );
+
+            attrListValue = map (e: { ${e.key} = e.eval.optionalValue.value or e.eval.mergedValue; }) evals;
+          in
+          {
+            headError = checkDefsForError check loc defs;
+            value = if asAttrs then zipAttrsWith mergeAttrValues attrListValue else attrListValue;
+            valueMeta.attrList = map (e: e.eval.checkedAndMerged.valueMeta) evals;
+            /**
+              The ordered list representation, especially useful when asAttrs is set.
+            */
+            valueMeta.attrListValue = attrListValue;
+            valueMeta.definitions = map (
+              e:
+              mkDefinition {
+                inherit (e) file;
+                value = mkOrder e.prio { ${e.key} = e.eval.optionalValue.value or e.eval.mergedValue; };
+              }
+            ) evals;
+          };
+      };
+      emptyValue = {
+        value = if asAttrs then { } else [ ];
+      };
+      getSubOptions = prefix: elemType.getSubOptions (prefix ++ [ "*" ]);
+      getSubModules = elemType.getSubModules;
+      substSubModules =
+        m:
+        attrListWith {
+          inherit asAttrs mergeAttrValues;
+          elemType = elemType.substSubModules m;
+        };
+      typeMerge = t: null; # Disable type merging
+      nestedTypes.elemType = elemType;
+    };
+
+  /**
+    `types.attrsOf` *`t`*
+
+    An attribute set of where all the values are of *`t`* type. Multiple
+    definitions result in the joined attribute set.
+
+    ::: {.note}
+    This type is *strict* in its values, which in turn means attributes
+    cannot depend on other attributes. See `
+           types.lazyAttrsOf` for a lazy version.
+    :::
+  */
   attrsOf = elemType: attrsWith { inherit elemType; };
 
-  # A version of attrsOf that's lazy in its values at the expense of
-  # conditional definitions not working properly. E.g. defining a value with
-  # `foo.attr = mkIf false 10`, then `foo ? attr == true`, whereas with
-  # attrsOf it would correctly be `false`. Accessing `foo.attr` would throw an
-  # error that it's not defined. Use only if conditional definitions don't make sense.
+  /**
+    `types.lazyAttrsOf` *`t`*
+
+    An attribute set of where all the values are of *`t`* type. Multiple
+    definitions result in the joined attribute set. This is the lazy
+    version of `types.attrsOf
+          `, allowing attributes to depend on each other.
+
+    ::: {.warning}
+    This version does not fully support conditional definitions! With an
+    option `foo` of this type and a definition
+    `foo.attr = lib.mkIf false 10`, evaluating `foo ? attr` will return
+    `true` even though it should be false. Accessing the value will then
+    throw an error. For types *`t`* that have an `emptyValue` defined,
+    that value will be returned instead of throwing an error. So if the
+    type of `foo.attr` was `lazyAttrsOf (nullOr int)`, `null` would be
+    returned instead for the same `mkIf false` definition.
+    :::
+  */
   lazyAttrsOf =
     elemType:
     attrsWith {
@@ -819,16 +1343,40 @@ rec {
       lazy = true;
     };
 
-  # base type for lazyAttrsOf and attrsOf
+  /**
+    `types.attrsWith` { *`elemType`*, *`lazy`* ? false, *`placeholder`* ? "name" }
+
+    An attribute set of where all the values are of *`elemType`* type.
+
+    **Parameters**
+
+    `elemType` (Required)
+    : Specifies the type of the values contained in the attribute set.
+
+    `lazy`
+    : Determines whether the attribute set is lazily evaluated. See: `types.lazyAttrsOf`
+
+    `placeholder` (`String`, default: `name` )
+    : Placeholder string in documentation for the attribute names.
+      The default value `name` results in the placeholder `<name>`
+
+    **Behavior**
+
+    - `attrsWith { elemType = t; }` is equivalent to `attrsOf t`
+    - `attrsWith { lazy = true; elemType = t; }` is equivalent to `lazyAttrsOf t`
+    - `attrsWith { placeholder = "id"; elemType = t; }`
+
+      Displays the option as `foo.<id>` in the manual.
+  */
   attrsWith =
     let
       # Push down position info.
       pushPositions = map (
-        def:
+        { file, value, ... }:
         mapAttrs (n: v: {
-          inherit (def) file;
+          inherit file;
           value = v;
-        }) def.value
+        }) value
       );
       binOp =
         lhs: rhs:
@@ -876,22 +1424,21 @@ rec {
           let
             evals =
               if lazy then
-                zipAttrsWith (name: defs: mergeDefinitions (loc ++ [ name ]) elemType defs) (pushPositions defs)
+                zipAttrsWith (name: mergeDefinitions (loc ++ [ name ]) elemType) (pushPositions defs)
               else
                 # Filtering makes the merge function more strict
                 # Meaning it is less lazy
                 filterAttrs (n: v: v.optionalValue ? value) (
-                  zipAttrsWith (name: defs: mergeDefinitions (loc ++ [ name ]) elemType defs) (pushPositions defs)
+                  zipAttrsWith (name: mergeDefinitions (loc ++ [ name ]) elemType) (pushPositions defs)
                 );
           in
           {
             headError = checkDefsForError check loc defs;
             value = mapAttrs (
-              n: v:
               if lazy then
-                v.optionalValue.value or elemType.emptyValue.value or v.mergedValue
+                n: v: v.optionalValue.value or elemType.emptyValue.value or v.mergedValue
               else
-                v.optionalValue.value
+                n: v: v.optionalValue.value
             ) evals;
             valueMeta.attrs = mapAttrs (n: v: v.checkedAndMerged.valueMeta) evals;
           };
@@ -932,6 +1479,55 @@ rec {
       nestedTypes.elemType = elemType;
     };
 
+  /**
+    `types.attrTag` *`{ attr1 = option1; attr2 = option2; ... }`*
+
+    An attribute set containing one attribute, whose name must be picked from
+    the attribute set (`attr1`, etc) and whose value consists of definitions that are valid for the corresponding option (`option1`, etc).
+
+    This type appears in the documentation as _attribute-tagged union_.
+
+    Example:
+
+    ```nix
+    { lib, ... }:
+    let inherit (lib) type mkOption;
+    in {
+      options.toyRouter.rules = mkOption {
+        description = ''
+          Rules for a fictional packet routing service.
+        '';
+        type = types.attrsOf (
+          types.attrTag {
+            bounce = mkOption {
+              description = "Send back a packet explaining why it wasn't forwarded.";
+              type = types.submodule {
+                options.errorMessage = mkOption { … };
+              };
+            };
+            forward = mkOption {
+              description = "Forward the packet.";
+              type = types.submodule {
+                options.destination = mkOption { … };
+              };
+            };
+            drop = types.mkOption {
+              description = "Drop the packet without sending anything back.";
+              type = types.submodule {};
+            };
+          });
+      };
+      config.toyRouter.rules = {
+        http = {
+          bounce = {
+            errorMessage = "Unencrypted HTTP is banned. You must always use https://.";
+          };
+        };
+        ssh = { drop = {}; };
+      };
+    }
+    ```
+  */
   attrTag =
     tags:
     let
@@ -943,8 +1539,8 @@ rec {
         builtins.addErrorContext
           "while checking that attrTag tag ${lib.strings.escapeNixIdentifier n} is an option with a type${inAttrPosSuffix tags_ n}"
           (
-            throwIf (opt._type or null != "option")
-              "In attrTag, each tag value must be an option, but tag ${lib.strings.escapeNixIdentifier n} ${
+            if opt._type or null != "option" then
+              throw "In attrTag, each tag value must be an option, but tag ${lib.strings.escapeNixIdentifier n} ${
                 if opt ? _type then
                   if opt._type == "option-type" then
                     "was a bare type, not wrapped in mkOption."
@@ -953,23 +1549,24 @@ rec {
                 else
                   "was not."
               }"
+            else
               opt
-            // {
-              declarations =
-                opt.declarations or (
-                  let
-                    pos = builtins.unsafeGetAttrPos n tags_;
-                  in
-                  if pos == null then [ ] else [ pos.file ]
-                );
-              declarationPositions =
-                opt.declarationPositions or (
-                  let
-                    pos = builtins.unsafeGetAttrPos n tags_;
-                  in
-                  if pos == null then [ ] else [ pos ]
-                );
-            }
+              // {
+                declarations =
+                  opt.declarations or (
+                    let
+                      pos = builtins.unsafeGetAttrPos n tags_;
+                    in
+                    if pos == null then [ ] else [ pos.file ]
+                  );
+                declarationPositions =
+                  opt.declarationPositions or (
+                    let
+                      pos = builtins.unsafeGetAttrPos n tags_;
+                    in
+                    if pos == null then [ ] else [ pos ]
+                  );
+              }
           )
       ) tags_;
       choicesStr = concatMapStringsSep ", " lib.strings.escapeNixIdentifier (attrNames tags);
@@ -1004,6 +1601,27 @@ rec {
         else
           throw "The option `${showOption loc}` is defined as ${lib.strings.escapeNixIdentifier choice}, but ${lib.strings.escapeNixIdentifier choice} is not among the valid choices (${choicesStr}). Value ${choice} was defined in ${showFiles (getFiles defs)}.";
       nestedTypes = tags;
+      getSubModules =
+        let
+          tagsWithSubModules = filterAttrs (_: mods: mods != null) (
+            mapAttrs (_: opt: opt.type.getSubModules) tags
+          );
+        in
+        if tagsWithSubModules == { } then null else [ tagsWithSubModules ];
+      substSubModules =
+        allWrappedModules:
+        let
+          tagsWithNewTypes = zipAttrsWith (tag: tags.${tag}.type.substSubModules) (
+            concatMap (
+              { _file, imports }: map (mapAttrs (_: imports: { inherit _file imports; })) imports
+            ) allWrappedModules
+          );
+        in
+        attrTag (
+          mapAttrs (
+            tag: opt: opt // (optionalAttrs (tagsWithNewTypes ? ${tag}) { type = tagsWithNewTypes.${tag}; })
+          ) tags
+        );
       functor = defaultFunctor "attrTag" // {
         type = { tags, ... }: lib.types.attrTag tags;
         payload = { inherit tags; };
@@ -1041,7 +1659,10 @@ rec {
       };
     };
 
-  # A value produced by `lib.mkLuaInline`
+  /**
+    A string wrapped using `lib.mkLuaInline`. Allows embedding lua expressions
+    inline within generated lua. Multiple definitions cannot be merged.
+  */
   luaInline = mkOptionType {
     name = "luaInline";
     description = "inline lua";
@@ -1050,8 +1671,21 @@ rec {
     merge = mergeEqualOption;
   };
 
+  /**
+    `types.uniq` *`t`*
+
+    Ensures that type *`t`* cannot be merged. It is used to ensure option
+    definitions are provided only once.
+  */
   uniq = unique { message = ""; };
 
+  /**
+    `types.unique` `{ message = m }` *`t`*
+
+    Ensures that type *`t`* cannot be merged. Prints the message *`m`*, after
+    the line `The option <option path> is defined multiple times.` and before
+    a list of definition locations.
+  */
   unique =
     { message }:
     type:
@@ -1072,7 +1706,14 @@ rec {
       nestedTypes.elemType = type;
     };
 
-  # Null or value of ...
+  /**
+    `types.nullOr` *`t`*
+
+    `null` or type *`t`*. Multiple definitions are merged according to
+    type *`t`*.
+
+    This is mostly equivalent to `either (enum [ null ]) t`, but `nullOr` provides a `null` fallback for attribute values with `mkIf false` definitions in `lazyAttrsOf (nullOr t)`, whereas `either` would throw an error when the attribute is accessed.
+  */
   nullOr =
     elemType:
     mkOptionType rec {
@@ -1081,18 +1722,44 @@ rec {
         optionDescriptionPhrase (class: class == "noun" || class == "conjunction") elemType
       }";
       descriptionClass = "conjunction";
-      check = x: x == null || elemType.check x;
-      merge =
-        loc: defs:
-        let
-          nulls = filter (def: def.value == null) defs;
-        in
-        if nulls == [ ] then
-          elemType.merge loc defs
-        else if length nulls == length defs then
-          null
-        else
-          throw "The option `${showOption loc}` is defined both null and not null, in ${showFiles (getFiles defs)}.";
+      check = {
+        __functor = _self: x: x == null || elemType.check x;
+        isV2MergeCoherent = true;
+      };
+      merge = {
+        __functor =
+          self: loc: defs:
+          let
+            inherit (self.v2 { inherit loc defs; }) headError value;
+          in
+          if headError.causedByMixedNulls or false then throw headError.message else value;
+        v2 =
+          { loc, defs }:
+          if all (def: def.value != null) defs then
+            # There are no null values
+            if elemType.merge ? v2 then
+              checkV2MergeCoherence loc elemType (elemType.merge.v2 { inherit loc defs; })
+            else
+              {
+                value = elemType.merge loc defs;
+                headError = checkDefsForError elemType.check loc defs;
+                valueMeta = { };
+              }
+          else
+            # There are some null values
+            {
+              headError =
+                if length defs == 1 || all (def: def.value == null) defs then
+                  null
+                else
+                  {
+                    message = "The option `${showOption loc}` is defined both null and not null, in ${showFiles (getFiles defs)}.";
+                    causedByMixedNulls = true;
+                  };
+              value = null;
+              valueMeta = { };
+            };
+      };
       emptyValue = {
         value = null;
       };
@@ -1135,7 +1802,154 @@ rec {
       nestedTypes.elemType = elemType;
     };
 
-  # A submodule (like typed attribute set). See NixOS manual.
+  /**
+    `types.submodule` *`o`*
+
+    A set of sub options *`o`*. *`o`* can be an attribute set, a function
+    returning an attribute set, or a path to a file containing such a
+    value. Submodules are used in composed types to create modular
+    options. This is equivalent to
+    `types.submoduleWith { modules = toList o; shorthandOnlyDefinesConfig = true; }`.
+
+    `submodule` is a very powerful type that defines a set of sub-options
+    that are handled like a separate module.
+
+    It takes a parameter *`o`*, that should be a set, or a function returning
+    a set with an `options` key defining the sub-options. Submodule option
+    definitions are type-checked accordingly to the `options` declarations.
+    Of course, you can nest submodule option definitions for even higher
+    modularity.
+
+    The option set can be defined directly
+    ([Example: Directly defined submodule](#ex-submodule-direct)) or as reference
+    ([Example: Submodule defined as a reference](#ex-submodule-reference)).
+
+    Note that even if your submodule’s options all have a default value,
+    you will still need to provide a default value (e.g. an empty attribute set)
+    if you want to allow users to leave it undefined.
+
+    ::: {#ex-submodule-direct .example}
+    # Directly defined submodule
+    ```nix
+    {
+      options.mod = mkOption {
+        description = "submodule example";
+        type =
+          with types;
+          submodule {
+            options = {
+              foo = mkOption { type = int; };
+              bar = mkOption { type = str; };
+            };
+          };
+      };
+    }
+    ```
+    :::
+
+    ::: {#ex-submodule-reference .example}
+    # Submodule defined as a reference
+    ```nix
+    let
+      modOptions = {
+        options = {
+          foo = mkOption { type = int; };
+          bar = mkOption { type = int; };
+        };
+      };
+    in
+    {
+      options.mod = mkOption {
+        description = "submodule example";
+        type = with types; submodule modOptions;
+      };
+    }
+    ```
+    :::
+
+    The `submodule` type is especially interesting when used with composed
+    types like `attrsOf` or `listOf`. When composed with `listOf`
+    ([Example: Declaration of a list of submodules](#ex-submodule-listof-declaration)), `submodule` allows
+    multiple definitions of the submodule option set
+    ([Example: Definition of a list of submodules](#ex-submodule-listof-definition)).
+
+    ::: {#ex-submodule-listof-declaration .example}
+    # Declaration of a list of submodules
+    ```nix
+    {
+      options.mod = mkOption {
+        description = "submodule example";
+        type =
+          with types;
+          listOf (submodule {
+            options = {
+              foo = mkOption { type = int; };
+              bar = mkOption { type = str; };
+            };
+          });
+      };
+    }
+    ```
+    :::
+
+    ::: {#ex-submodule-listof-definition .example}
+    # Definition of a list of submodules
+    ```nix
+    {
+      config.mod = [
+        {
+          foo = 1;
+          bar = "one";
+        }
+        {
+          foo = 2;
+          bar = "two";
+        }
+      ];
+    }
+    ```
+    :::
+
+    When composed with `attrsOf`
+    ([Example: Declaration of attribute sets of submodules](#ex-submodule-attrsof-declaration)), `submodule` allows
+    multiple named definitions of the submodule option set
+    ([Example: Definition of attribute sets of submodules](#ex-submodule-attrsof-definition)).
+
+    ::: {#ex-submodule-attrsof-declaration .example}
+    # Declaration of attribute sets of submodules
+    ```nix
+    {
+      options.mod = mkOption {
+        description = "submodule example";
+        type =
+          with types;
+          attrsOf (submodule {
+            options = {
+              foo = mkOption { type = int; };
+              bar = mkOption { type = str; };
+            };
+          });
+      };
+    }
+    ```
+    :::
+
+    ::: {#ex-submodule-attrsof-definition .example}
+    # Definition of attribute sets of submodules
+    ```nix
+    {
+      config.mod.one = {
+        foo = 1;
+        bar = "one";
+      };
+      config.mod.two = {
+        foo = 2;
+        bar = "two";
+      };
+    }
+    ```
+    :::
+  */
   submodule =
     modules:
     submoduleWith {
@@ -1143,7 +1957,24 @@ rec {
       modules = toList modules;
     };
 
-  # A module to be imported in some other part of the configuration.
+  /**
+    Whereas `submodule` represents an option tree, `deferredModule` represents
+    a module value, such as a module file or a configuration.
+
+    It can be set multiple times.
+
+    Module authors can use its value in `imports`, in `submoduleWith`'s `modules`
+    or in `evalModules`' `modules` parameter, among other places.
+
+    Note that `imports` must be evaluated before the module fixpoint. Because
+    of this, deferred modules can only be imported into "other" fixpoints, such
+    as submodules.
+
+    One use case for this type is the type of a "default" module that allow the
+    user to affect all submodules in an `attrsOf submodule` at once. This is
+    more convenient and discoverable than expecting the module user to
+    type-merge with the `attrsOf submodule` option.
+  */
   deferredModule = deferredModuleWith { };
 
   # A module to be imported in some other part of the configuration.
@@ -1188,6 +2019,21 @@ rec {
       };
     };
 
+  /**
+    The type of a module system option declaration, as created by `lib.mkOption`.
+    This allows an option to hold another option declaration as its value, which
+    can then be spliced into a module's `options` attrset. Note that this only
+    accepts option declarations, not evaluated options (i.e. options that have
+    been processed by `evalModules` and have a `value` field).
+
+    ::: {.warning}
+    Use of this type is a form of metaprogramming that makes modules harder
+    to reason about, since options and their types become dynamic values
+    rather than statically declared structure. Prefer conventional module
+    patterns where possible, and only reach for `types.optionDeclaration` when the
+    added complexity is justified.
+    :::
+  */
   optionDeclaration = mkOptionType {
     name = "optionDeclaration";
     description = "option declaration";
@@ -1195,7 +2041,12 @@ rec {
     check = opt: isType "option" opt && !(opt ? value);
   };
 
-  # The type of a type!
+  /**
+    The type of an option's type. Its merging operation ensures that nested
+    options have the correct file location annotated, and that if possible,
+    multiple option definitions are correctly merged together. The main use
+    case is as the type of the `_module.freeformType` option.
+  */
   optionType = mkOptionType {
     name = "optionType";
     description = "optionType";
@@ -1222,12 +2073,83 @@ rec {
           ) defs;
           # Merges all the types into a single one, including submodule merging.
           # This also propagates file information to all submodules
-          mergedOption = fixupOptionType loc (mergeOptionDecls loc optionModules);
+          mergedOption = mergeOptionDecls loc optionModules;
         in
         mergedOption.type;
   };
 
+  /**
+    `types.submoduleWith` { *`modules`*, *`specialArgs`* ? {}, *`shorthandOnlyDefinesConfig`* ? false }
+
+    Like `types.submodule`, but more flexible and with better defaults.
+    It has parameters
+
+    -   *`modules`* A list of modules to use by default for this
+        submodule type. This gets combined with all option definitions
+        to build the final list of modules that will be included.
+
+        ::: {.note}
+        Only options defined with this argument are included in rendered
+        documentation.
+        :::
+
+    -   *`specialArgs`* An attribute set of extra arguments to be passed
+        to the module functions. The option `_module.args` should be
+        used instead for most arguments since it allows overriding.
+        *`specialArgs`* should only be used for arguments that can't go
+        through the module fixed-point, because of infinite recursion or
+        other problems. An example is overriding the `lib` argument,
+        because `lib` itself is used to define `_module.args`, which
+        makes using `_module.args` to define it impossible.
+
+    -   *`shorthandOnlyDefinesConfig`* Whether definitions of this type
+        should default to the `config` section of a module (see
+        [Example: Structure of NixOS Modules](https://nixos.org/manual/nixos/unstable/#ex-module-syntax))
+        if it is an attribute set. Enabling this only has a benefit
+        when the submodule defines an option named `config` or `options`.
+        In such a case it would allow the option to be set with
+        `the-submodule.config = "value"` instead of requiring
+        `the-submodule.config.config = "value"`. This is because
+        only when modules *don't* set the `config` or `options`
+        keys, all keys are interpreted as option definitions in the
+        `config` section. Enabling this option implicitly puts all
+        attributes in the `config` section.
+
+        With this option enabled, defining a non-`config` section
+        requires using a function:
+        `the-submodule = { ... }: { options = { ... }; }`.
+  */
   submoduleWith =
+    let
+      inherit (lib.modules) evalModules;
+
+      defaultModules = [
+        {
+          # This is a work-around for the fact that some sub-modules,
+          # such as the one included in an attribute set, expects an "args"
+          # attribute to be given to the sub-module. As the option
+          # evaluation does not have any specific attribute name yet, we
+          # provide a default for the documentation and the freeform type.
+          #
+          # This is necessary as some option declaration might use the
+          # "name" attribute given as argument of the submodule and use it
+          # as the default of option declarations.
+          #
+          # We use lookalike unicode single angle quotation marks because
+          # of the docbook transformation the options receive. In all uses
+          # &gt; and &lt; wouldn't be encoded correctly so the encoded values
+          # would be used, and use of `<` and `>` would break the XML document.
+          # It shouldn't cause an issue since this is cosmetic for the manual.
+          _module.args.name = lib.mkOptionDefault "‹name›";
+        }
+      ];
+
+      name = "submodule";
+      check = {
+        __functor = _self: x: isAttrs x || isFunction x || path.check x;
+        isV2MergeCoherent = true;
+      };
+    in
     {
       modules,
       specialArgs ? { },
@@ -1236,57 +2158,26 @@ rec {
       class ? null,
     }@attrs:
     let
-      inherit (lib.modules) evalModules;
-
-      allModules =
-        defs:
-        map (
-          { value, file }:
-          if isAttrs value && shorthandOnlyDefinesConfig then
-            {
-              _file = file;
-              config = value;
-            }
-          else
-            {
-              _file = file;
-              imports = [ value ];
-            }
-        ) defs;
+      allModules = map (
+        { value, file }:
+        if shorthandOnlyDefinesConfig && isAttrs value then
+          {
+            _file = file;
+            config = value;
+          }
+        else
+          {
+            _file = file;
+            imports = [ value ];
+          }
+      );
 
       base = evalModules {
         inherit class specialArgs;
-        modules = [
-          {
-            # This is a work-around for the fact that some sub-modules,
-            # such as the one included in an attribute set, expects an "args"
-            # attribute to be given to the sub-module. As the option
-            # evaluation does not have any specific attribute name yet, we
-            # provide a default for the documentation and the freeform type.
-            #
-            # This is necessary as some option declaration might use the
-            # "name" attribute given as argument of the submodule and use it
-            # as the default of option declarations.
-            #
-            # We use lookalike unicode single angle quotation marks because
-            # of the docbook transformation the options receive. In all uses
-            # &gt; and &lt; wouldn't be encoded correctly so the encoded values
-            # would be used, and use of `<` and `>` would break the XML document.
-            # It shouldn't cause an issue since this is cosmetic for the manual.
-            _module.args.name = lib.mkOptionDefault "‹name›";
-          }
-        ]
-        ++ modules;
+        modules = defaultModules ++ modules;
       };
 
       freeformType = base._module.freeformType;
-
-      name = "submodule";
-
-      check = {
-        __functor = _self: x: isAttrs x || isFunction x || path.check x;
-        isV2MergeCoherent = true;
-      };
     in
     mkOptionType {
       inherit name;
@@ -1413,7 +2304,15 @@ rec {
       };
     };
 
-  # A value from a set of allowed ones.
+  /**
+    `types.enum` *`l`*
+
+    One element of the list *`l`*, e.g. `types.enum [ "left" "right" ]`.
+    Multiple definitions cannot be merged.
+
+    If you want to pair these values with more information, possibly of
+    distinct types, consider using a [sum type](#function-library-lib.types.attrTag).
+  */
   enum =
     values:
     let
@@ -1484,14 +2383,37 @@ rec {
     in
     valueType;
 
+  /**
+    A type representing JSON-compatible values. This includes `null`, booleans,
+    integers, floats, strings, paths, attribute sets, and lists.
+    Attribute sets and lists can be arbitrarily nested and contain any JSON-compatible
+    values.
+  */
   json = serializableValueWith { typeName = "JSON"; };
 
+  /**
+    A type representing TOML-compatible values. This includes booleans,
+    integers, floats, strings, paths, attribute sets, and lists.
+    Attribute sets and lists can be arbitrarily nested and contain any TOML-compatible
+    values.
+  */
   toml = serializableValueWith {
     typeName = "TOML";
     nullable = false;
   };
 
-  # Either value of type `t1` or `t2`.
+  /**
+    <!-- SYNC WITH oneOf BELOW -->
+
+    `types.either` *`t1 t2`*
+
+    Type *`t1`* or type *`t2`*, e.g. `with types; either int str`.
+    Multiple definitions cannot be merged.
+
+    ::: {.warning}
+    `either` and `oneOf` eagerly decide the active type based on the passed types' shallow check method. For composite types like `attrsOf` and `submodule`, which both match all attribute set definitions, the first type argument will be chosen for the returned option value, and this therefore also decides how nested values are checked and merged. For example, `either (attrsOf int) (submodule {...})` will always use `attrsOf int` for any attribute set value, even if it was intended as a submodule. This behavior is a trade-off that keeps the implementation simple and the evaluation order predictable, avoiding unexpected strictness problems such as infinite recursions. When proper type discrimination is needed, consider using a [sum type](#function-library-lib.types.attrTag) like `attrTag` instead.
+    :::
+  */
   either =
     t1: t2:
     mkOptionType rec {
@@ -1579,7 +2501,19 @@ rec {
       nestedTypes.right = t2;
     };
 
-  # Any of the types in the given list
+  /**
+    <!-- SYNC WITH either ABOVE -->
+
+    `types.oneOf` \[ *`t1 t2`* ... \]
+
+    Type *`t1`* or type *`t2`* and so forth, e.g.
+    `with types; oneOf [ int str bool ]`. Multiple definitions cannot be
+    merged.
+
+    ::: {.warning}
+    `either` and `oneOf` eagerly decide the active type based on the passed types' shallow check method. For composite types like `attrsOf` and `submodule`, which both match all attribute set definitions, the first matching type in the list will be chosen for the returned option value, and this therefore also decides how nested values are checked and merged. For example, `oneOf [ (attrsOf int) (submodule {...}) ]` will always use `attrsOf int` for any attribute set value, even if it was intended as a submodule. This behavior is a trade-off that keeps the implementation simple and the evaluation order predictable, avoiding unexpected strictness problems such as infinite recursions. When proper type discrimination is needed, consider using a [sum type](#function-library-lib.types.attrTag) like `attrTag` instead.
+    :::
+  */
   oneOf =
     ts:
     let
@@ -1588,13 +2522,19 @@ rec {
     in
     foldl' either head' (tail ts);
 
-  # Either value of type `coercedType` or `finalType`, the former is
-  # converted to `finalType` using `coerceFunc`.
+  /**
+    `types.coercedTo` *`from f to`*
+
+    Type *`to`* or type *`from`* which will be coerced to type *`to`* using
+    function *`f`* which takes an argument of type *`from`* and return a
+    value of type *`to`*. Can be used to preserve backwards compatibility
+    of an option if its type was changed.
+  */
   coercedTo =
     coercedType: coerceFunc: finalType:
-    assert lib.assertMsg (
+    assert
       coercedType.getSubModules == null
-    ) "coercedTo: coercedType must not have submodules (it’s a ${coercedType.description})";
+      || throw "coercedTo: coercedType must not have submodules (it’s a ${coercedType.description})";
     mkOptionType rec {
       name = "coercedTo";
       description = "${optionDescriptionPhrase (class: class == "noun") finalType} or ${
@@ -1654,9 +2594,7 @@ rec {
       getSubModules = finalType.getSubModules;
       substSubModules = m: coercedTo coercedType coerceFunc (finalType.substSubModules m);
       typeMerge = t: null;
-      functor = (defaultFunctor name) // {
-        wrappedDeprecationMessage = makeWrappedDeprecationMessage { elemType = finalType; };
-      };
+      functor = defaultFunctor name;
       nestedTypes.coercedType = coercedType;
       nestedTypes.finalType = finalType;
     };
@@ -1667,6 +2605,19 @@ rec {
     :::{.warning}
     This function has some broken behavior see: [#396021](https://github.com/NixOS/nixpkgs/issues/396021)
     Fixing is not trivial, we appreciate any help!
+    :::
+
+    ::: {.example}
+    # Adding a type check
+
+    ```nix
+    {
+      byte = mkOption {
+        description = "An integer between 0 and 255.";
+        type = types.addCheck types.int (x: x >= 0 && x <= 255);
+      };
+    }
+    ```
     :::
   */
   addCheck =

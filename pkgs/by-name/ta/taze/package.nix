@@ -3,7 +3,7 @@
   stdenv,
   fetchFromGitHub,
   nodejs,
-  pnpm_9,
+  pnpm_11,
   fetchPnpmDeps,
   pnpmConfigHook,
   npmHooks,
@@ -12,26 +12,26 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "taze";
-  version = "19.11.0";
+  version = "21.2.0";
 
   src = fetchFromGitHub {
     owner = "antfu-collective";
     repo = "taze";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-lWCfaIZF1g8tO+QKd5igxCI44OEiLk1cNS4MMtqGL4M=";
+    hash = "sha256-raAtOH9fVaN8BuQASXailJLMWKUKi0zhZ+/rECcgAQo=";
   };
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
-    pnpm = pnpm_9;
-    fetcherVersion = 3;
-    hash = "sha256-x9XPnvyrAmFqIMhjBFQYQE1qKDG6uxzd0NnxIjdOXio=";
+    pnpm = pnpm_11;
+    fetcherVersion = 4;
+    hash = "sha256-aML7uHmW3JWYkCaZnQV1OnVWiueQZ3ilT9KH6l6vGJA=";
   };
 
   nativeBuildInputs = [
     nodejs
     pnpmConfigHook
-    pnpm_9
+    pnpm_11
     npmHooks.npmInstallHook
   ];
 
@@ -42,6 +42,14 @@ stdenv.mkDerivation (finalAttrs: {
     find dist -type f \( -name '*.cjs' -or -name '*.cts' -or -name '*.ts' \) -delete
 
     runHook postBuild
+  '';
+
+  preInstall = ''
+    # Prune deps before installing to save space
+    CI=true pnpm prune --prod --ignore-scripts
+    # Clean up broken symlinks left behind by `pnpm prune`
+    # https://github.com/pnpm/pnpm/issues/3645
+    find node_modules -xtype l -delete
   '';
 
   dontNpmPrune = true;

@@ -1,5 +1,6 @@
 {
   lib,
+  stdenv,
   fetchFromGitHub,
   buildGoModule,
   buildNpmPackage,
@@ -9,15 +10,15 @@
 
 buildGoModule (finalAttrs: {
   pname = "adguardhome";
-  version = "0.107.74";
+  version = "0.107.80";
   src = fetchFromGitHub {
     owner = "AdguardTeam";
     repo = "AdGuardHome";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-cAuthACY/rBVRTSv/UIarhScm+EoTUhnkQ0RUtvhAFg=";
+    hash = "sha256-B+Li3aeijXFcc+AAXkafinldEluHu1oeUdk919eGkxQ=";
   };
 
-  vendorHash = "sha256-o4hpiqQEt8gkYFeAkxPDisvLWbi7WOBZ7xMXrPt6Cdo=";
+  vendorHash = "sha256-xQUbRYS1z9WI8x0Uw/QNrITw8Itof6KxRdtnC0DJVkg=";
 
   dashboard = buildNpmPackage {
     inherit (finalAttrs) src version;
@@ -25,7 +26,7 @@ buildGoModule (finalAttrs: {
     postPatch = ''
       cd client
     '';
-    npmDepsHash = "sha256-SOHmXvGLpjs8h0X+AJ6/jAYpxzoizhwRjIzx4SqJOCo=";
+    npmDepsHash = "sha256-Yyv8dTKhZ9IlIW/x/57cl/+cpvjjycaFLSyOR0IiIPk=";
     npmBuildScript = "build-prod";
     postBuild = ''
       mkdir -p $out/build/
@@ -42,6 +43,19 @@ buildGoModule (finalAttrs: {
     "-w"
     "-X github.com/AdguardTeam/AdGuardHome/internal/version.version=${finalAttrs.version}"
   ];
+
+  __darwinAllowLocalNetworking = true;
+  __structuredAttrs = true;
+  checkFlags = lib.optionals stdenv.hostPlatform.isDarwin (
+    let
+      skippedTests = [
+        "TestDoQServer"
+        "TestWeekly_UnmarshalYAML/bad_time_zone"
+        "TestWeekly_UnmarshalJSON/bad_time_zone"
+      ];
+    in
+    [ "-skip=^${builtins.concatStringsSep "$|^" skippedTests}$" ]
+  );
 
   passthru = {
     updateScript = ./update.sh;

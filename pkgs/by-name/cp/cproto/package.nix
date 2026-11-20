@@ -8,7 +8,7 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "cproto";
-  version = "4.7y";
+  version = "4.8a";
 
   src = fetchurl {
     urls = [
@@ -16,7 +16,7 @@ stdenv.mkDerivation (finalAttrs: {
       # No version listings and apparently no versioned tarball over http(s).
       "https://invisible-island.net/archives/cproto/cproto-${finalAttrs.version}.tgz"
     ];
-    sha256 = "sha256-C9HYvo/wpMpD+Uf5V1DTT2TtqTyeLKeRAP1gFAt8YzE=";
+    sha256 = "sha256-vrEh4IwNR7W9cZBxwyp37cwx3/mSqE49mlnA9+yfrdM=";
   };
 
   # patch made by Joe Khoobyar copied from gentoo bugs

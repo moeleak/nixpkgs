@@ -1,55 +1,45 @@
 {
   lib,
   buildNpmPackage,
-  fetchFromGitHub,
-  radicle-httpd,
+  fetchFromRadicle,
   writers,
+  _experimental-update-script-combinators,
+  unstableGitUpdater,
+  nix-update-script,
 }:
-
-let
-  # radicle-explorer bundles these freely available Emoji assets, but does not
-  # redistribute them.
-  twemojiAssets = fetchFromGitHub {
-    owner = "twitter";
-    repo = "twemoji";
-    tag = "v14.0.2";
-    hash = "sha256-YoOnZ5uVukzi/6bLi22Y8U5TpplPzB7ji42l+/ys5xI=";
-    meta.license = [ lib.licenses.cc-by-40 ];
-  };
-in
 
 buildNpmPackage (finalAttrs: {
   pname = "radicle-explorer";
-  inherit (radicle-httpd) version;
+  version = "0-unstable-2026-11-09";
 
-  # radicle-explorer uses the radicle-httpd API, and they are developed in the
-  # same repo. For this reason we pin the sources to each other, but due to
-  # radicle-httpd using a more limited sparse checkout we need to carry a
-  # separate hash.
-  src = radicle-httpd.src.override {
-    hash = "sha256-cnQsPWkRChC8yPrICRoUpGW2GGLB2TK9+3v8ZRGe3x0=";
-    sparseCheckout = [ ];
+  src = fetchFromRadicle {
+    seed = "seed.radicle.dev";
+    repo = "z4V1sjrXqjvFdnCUbxPFqd5p4DtH5";
+    rev = "11cf896b903fafc8ff860f8547394d98664ecd99";
+    nonConeMode = true;
+    sparseCheckout = [
+      "/explorer"
+      "/package-lock.json"
+      "/package.json"
+      "/shared"
+    ];
+    hash = "sha256-aCmK3J+/wnjYFBBXM7vHOPXBnfaqNzC5z9dYIK5+b/4=";
   };
 
-  npmDepsHash = "sha256-8vmAs788PjdUTaQ5E8YLX0KiIPymJbH51oNaGZACe6I=";
+  npmDepsHash = "sha256-Cz6HoYGzMhVRwPUbw6S7Dh7FwNEO3r2xj7L8k332ZnE=";
 
-  postPatch = ''
-    patchShebangs --build ./scripts
-    : >scripts/install-twemoji-assets
-
-    cp -r "${twemojiAssets}/assets/svg" public/twemoji
-  '';
+  npmWorkspace = "explorer";
 
   preBuild = ''
     if [[ $configFile ]]; then
-      cp "$configFile" config/local.json
+      cp "$configFile" explorer/config/local.json
     fi
   '';
 
   installPhase = ''
     runHook preInstall
 
-    mv build $out
+    mv explorer/build $out
 
     runHook postInstall
   '';
@@ -73,6 +63,11 @@ buildNpmPackage (finalAttrs: {
   passthru.withConfig =
     config:
     finalAttrs.finalPackage.overrideAttrs { configFile = writers.writeJSON "config.json" config; };
+
+  passthru.updateScript = _experimental-update-script-combinators.sequence [
+    (unstableGitUpdater { hardcodeZeroVersion = true; })
+    (nix-update-script { extraArgs = [ "--version=skip" ]; })
+  ];
 
   meta = {
     description = "Web frontend for Radicle";

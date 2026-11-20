@@ -8,14 +8,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "ohme";
-  version = "1.9.0";
+  version = "1.9.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "dan-r";
     repo = "ohmepy";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-4Cz08MFtWJomWHQzTubD3s8kMfUt7aZwD7buwEN2yn8=";
+    hash = "sha256-CW8xJmtmvV4KkOghwTr/DEkQv8s48AK4xPfeOh1/pHw=";
   };
 
   build-system = [ setuptools ];

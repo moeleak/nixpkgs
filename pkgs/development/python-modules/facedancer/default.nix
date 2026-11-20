@@ -13,14 +13,14 @@
 
 buildPythonPackage rec {
   pname = "facedancer";
-  version = "3.1.2";
+  version = "3.1.3";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "greatscottgadgets";
     repo = "facedancer";
     tag = version;
-    hash = "sha256-CJU+ltQ+bWBK5AGS2WMR5RMx4UblknrCAMZyIAG/1bQ=";
+    hash = "sha256-kWXO3q4KpMZNgZvVEw3yhKQ7eLzaVQ/4y+GQcd7Hd8U=";
   };
 
   postPatch = ''
@@ -52,7 +52,7 @@ buildPythonPackage rec {
     license = lib.licenses.bsd3;
     maintainers = with lib.maintainers; [
       mog
-      carlossless
+      karstx
     ];
     # https://github.com/greatscottgadgets/facedancer/issues/172
     broken = pythonAtLeast "3.14";

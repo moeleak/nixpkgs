@@ -2,6 +2,9 @@
   lib,
   stdenv,
   makeWrapper,
+  runCommandLocal,
+  buildFactorApplication,
+  buildFactorVocab,
   buildEnv,
   copyDesktopItems,
   makeDesktopItem,
@@ -10,10 +13,13 @@
   freealut,
   gdk-pixbuf,
   glib,
-  gnome2,
-  gtk2-x11,
+  gtk2-x11, # to be retired with <= 0.101
+  gtkglext, # to be retired with <= 0.101
   libGL,
   libGLU,
+  gtk4,
+  gtk3,
+  libepoxy,
   librsvg,
   graphviz,
   libogg,
@@ -21,7 +27,7 @@
   openal,
   openssl,
   pango,
-  pcre,
+  pcre2,
   udis86,
   zlib,
   # Enable factor GUI support
@@ -44,15 +50,13 @@ let
     versionOlder
     versionAtLeast
     ;
-  # missing from lib/strings
-  escapeNixString = s: lib.escape [ "$" ] (builtins.toJSON s);
-  toFactorArgs = x: lib.concatStringsSep " " (map escapeNixString x);
+  toFactorArgs = x: lib.concatStringsSep " " (map lib.strings.escapeNixString x);
   defaultLibs = optionals enableDefaults [
     libogg
     libvorbis
     openal
     openssl
-    pcre
+    pcre2
     udis86
     zlib
   ];
@@ -61,19 +65,36 @@ let
     defaultLibs
     ++ extraLibs
     ++ binPackages
-    ++ (lib.flatten (map (v: v.extraLibs or [ ]) extraVocabs))
-    ++ optionals guiSupport [
-      cairo
-      freealut
-      gdk-pixbuf
-      glib
-      gnome2.gtkglext
-      gtk2-x11
-      libGL
-      libGLU
-      pango
-    ];
-  bins = binPackages ++ defaultBins ++ (lib.flatten (map (v: v.extraPaths or [ ]) extraVocabs));
+    ++ (builtins.concatMap (v: v.extraLibs or [ ]) extraVocabs)
+    ++ optionals guiSupport (
+      [
+        cairo
+        freealut
+        gdk-pixbuf
+        glib
+        libGL
+        libGLU
+        pango
+      ]
+      ++ (
+        if (versionOlder factor-unwrapped.version "0.102") then
+          [
+            gtk2-x11
+            gtkglext
+          ]
+        else if (stdenv.hostPlatform.isx86_32) then
+          [
+            gtk3
+            libepoxy
+          ]
+        else
+          [
+            gtk4
+            libepoxy
+          ]
+      )
+    );
+  bins = binPackages ++ defaultBins ++ (builtins.concatMap (v: v.extraPaths or [ ]) extraVocabs);
   vocabTree = buildEnv {
     name = "${factor-unwrapped.pname}-vocabs";
     ignoreCollisions = true;
@@ -95,6 +116,9 @@ stdenv.mkDerivation (finalAttrs: {
     makeWrapper
   ];
   buildInputs = optional guiSupport gdk-pixbuf;
+
+  __structuredAttrs = true;
+  strictDeps = true;
 
   dontUnpack = true;
 
@@ -210,6 +234,8 @@ stdenv.mkDerivation (finalAttrs: {
     runHook postInstallCheck
   '';
 
+  dontStrip = true; # Have been stripped already
+
   passthru = {
     inherit
       defaultLibs
@@ -220,6 +246,16 @@ stdenv.mkDerivation (finalAttrs: {
       extraVocabs
       vocabTree
       ;
+    tests = {
+      hello-world = import ./test/hello-world {
+        inherit
+          lib
+          runCommandLocal
+          buildFactorApplication
+          buildFactorVocab
+          ;
+      };
+    };
   };
 
   meta = factor-unwrapped.meta // {

@@ -15,16 +15,16 @@
   requests,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "epitran";
-  version = "1.35.1";
+  version = "1.35.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "dmort27";
     repo = "epitran";
-    tag = "v${version}";
-    hash = "sha256-XXEZEptrVH+wfWm85B8yZ+RI+6AUZjWFKMjst/V7aE0=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-O9AzL+snaL0WawsL00v0nnuUZqqC0gAmrlJWLsDnfyU=";
   };
 
   build-system = [
@@ -42,9 +42,8 @@ buildPythonPackage rec {
 
   nativeCheckInputs = [ unittestCheckHook ];
 
-  unittestFlagsArray = [
-    "-s"
-    "test"
+  unittestFlags = [
+    "--start-directory=test"
   ];
 
   pythonImportsCheck = [
@@ -56,8 +55,8 @@ buildPythonPackage rec {
   meta = {
     description = "Tools for transcribing languages into IPA";
     homepage = "https://github.com/dmort27/epitran";
-    changelog = "https://github.com/dmort27/epitran/releases/tag/${src.tag}";
+    changelog = "https://github.com/dmort27/epitran/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ vizid ];
   };
-}
+})

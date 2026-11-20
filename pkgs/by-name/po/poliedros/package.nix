@@ -14,7 +14,7 @@
   nix-update-script,
 }:
 let
-  version = "1.5.2";
+  version = "2.0.0";
 in
 python3Packages.buildPythonApplication {
   pname = "poliedros";
@@ -25,7 +25,7 @@ python3Packages.buildPythonApplication {
     owner = "kriptolix";
     repo = "Poliedros";
     tag = "v${version}";
-    hash = "sha256-1xrXR0kY4zq2cafhVgPvWcJD7pEEiZX7tW1/T3Mfe+A=";
+    hash = "sha256-3Q/IrYQjBOSLHgsdYzgbCMxS6MzX32Csx6DVDjvXy+c=";
   };
 
   nativeBuildInputs = [
@@ -45,7 +45,9 @@ python3Packages.buildPythonApplication {
 
   dontWrapGApps = true;
 
-  makeWrapperArgs = [ "\${gappsWrapperArgs[@]}" ];
+  preFixup = ''
+    makeWrapperArgs+=("''${gappsWrapperArgs[@]}")
+  '';
 
   passthru.updateScript = nix-update-script { };
 

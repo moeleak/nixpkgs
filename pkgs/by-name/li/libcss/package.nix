@@ -20,20 +20,20 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   patches = [
+    # CVE-2026-116740: NULL pointer dereference in media query parser
+    # remove on next release
+    (fetchpatch {
+      name = "fix-null-pointer-dereference.patch";
+      url = "https://github.com/netsurf-browser/libcss/commit/006ffc4096040da13690abc380e5f828ec08284d.patch";
+      hash = "sha256-/e2lPBwATfgHx59CsT29XcDLGVPUGX/jalpbKquNnME=";
+    })
+
     # select: computed: Squash -Wcalloc-transposed-args (gcc-14)
     # remove on next release
-    (fetchpatch {
-      name = "fix-calloc-transposed-args-computed.patch";
-      url = "https://source.netsurf-browser.org/libcss.git/patch/?id=0541e18b442d2f46abc0f0b09e0db950e1b657e5";
-      hash = "sha256-6nrT1S1E+jU6UDr3BZo9GH8jcSiIwTNLnmI1rthhhws=";
-    })
+    ./fix-calloc-transposed-args-computed.patch
     # select: select: Squash -Wcalloc-transposed-args (gcc-14)
     # remove on next release
-    (fetchpatch {
-      name = "fix-calloc-transposed-args-select.patch";
-      url = "https://source.netsurf-browser.org/libcss.git/patch/?id=8619d09102d6cc34d63fe87195c548852fc93bf4";
-      hash = "sha256-Clkhw/n/+NQR/T8Gi+2Lc1Neq5dWsNKM8RqieYuTnzQ=";
-    })
+    ./fix-calloc-transposed-args-select.patch
   ];
 
   nativeBuildInputs = [ pkg-config ];

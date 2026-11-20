@@ -5,16 +5,16 @@
 }:
 rustPlatform.buildRustPackage (oldAttrs: {
   pname = "yggdrasil-ng";
-  version = "0.1.6";
+  version = "0.3.2";
 
   src = fetchFromGitHub {
     owner = "Revertron";
     repo = "Yggdrasil-ng";
     tag = "v${oldAttrs.version}";
-    hash = "sha256-nJLK5O2kjFRGZ3JwqwLHtYqvJfrOxtZOjdM6q2NNrbk=";
+    hash = "sha256-UAux898QNT+2EyU4oLJZjmPZmHvv81SyHhx24uV+UeA=";
   };
 
-  cargoHash = "sha256-mJr8IMTbB+mSrsxzq6ehnfBueulNqZtxU/1aHAyv954=";
+  cargoHash = "sha256-wcfMhqQXkHxqPXoZC6jWdtjpEcF/LHG9eOvckJFB6Ok=";
 
   __structuredAttrs = true;
 
@@ -22,7 +22,7 @@ rustPlatform.buildRustPackage (oldAttrs: {
     mainProgram = "telemt";
     description = "Yggdrasil Network rewritten in Rust";
     homepage = "https://github.com/Revertron/Yggdrasil-ng";
-    license = with lib.licenses; [ mpl20 ];
+    license = lib.licenses.mpl20;
     maintainers = with lib.maintainers; [
       r4v3n6101
       malik

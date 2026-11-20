@@ -7,14 +7,14 @@
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "mapproxy";
-  version = "6.0.1";
+  version = "8.1.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mapproxy";
     repo = "mapproxy";
     tag = finalAttrs.version;
-    hash = "sha256-1LDN0vfnJlINHCIagQWhai4uJP+Fidi/9seBoJIlLl0=";
+    hash = "sha256-fyVkA9e75PRxrxxXHtLstwM/JRNDTOjxquMpG2qmDHc=";
   };
 
   prePatch = ''
@@ -30,10 +30,12 @@ python3Packages.buildPythonApplication (finalAttrs: {
     boto3 # needed for caches service
     jinja2
     jsonschema
+    multiprocess
     pillow
     python-dateutil
     pyyaml
     pyproj
+    requests
     shapely
     gdal
     lxml

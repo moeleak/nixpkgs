@@ -12,13 +12,13 @@ let
 in
 buildNpmPackage (finalAttrs: {
   pname = "zashboard";
-  version = "3.5.1";
+  version = "3.30.0";
 
   src = fetchFromGitHub {
     owner = "Zephyruso";
     repo = "zashboard";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-yTLkfNhfmhJ/2oopKQ+F6ycYYwUXpbyz4SSE3IIpTgc=";
+    hash = "sha256-HT00+zpeCOWvf9jOpsbQx/R+WYTzkzVnXD6YYc8FyRc=";
   };
 
   npmDeps = null;
@@ -26,7 +26,7 @@ buildNpmPackage (finalAttrs: {
     inherit (finalAttrs) pname version src;
     inherit pnpm;
     fetcherVersion = 3;
-    hash = "sha256-DMR9vNgsWdBK0BbSGzxEZUBZpa4szF2NIFO/GePwIUw=";
+    hash = "sha256-x0y2r5YtLYkYT/XZtWG7Rr8al4cUCM6wjqfkPnNe3aI=";
   };
 
   nativeBuildInputs = [ pnpm ];
@@ -54,6 +54,9 @@ buildNpmPackage (finalAttrs: {
     homepage = "https://github.com/Zephyruso/zashboard";
     changelog = "https://github.com/Zephyruso/zashboard/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ chillcicada ];
+    maintainers = with lib.maintainers; [
+      chillcicada
+      levihuayuzhang
+    ];
   };
 })

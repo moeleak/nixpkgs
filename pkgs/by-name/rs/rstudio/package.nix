@@ -17,7 +17,7 @@
   git,
   jdk,
   makeWrapper,
-  nodejs,
+  nodejs_22,
   npmHooks,
   python3,
   xcbuild,
@@ -25,8 +25,9 @@
   yarnConfigHook,
   zip,
 
-  boost190,
-  electron_39,
+  acl,
+  boost191,
+  electron_43,
   fontconfig,
   gnumake,
   hunspellDicts,
@@ -45,27 +46,34 @@
 }:
 
 let
-  electron = electron_39;
-  boost = boost190;
+  nodejs = nodejs_22; # the lockfile doesn't work with nodejs_24 for some reason
+  electron = electron_43;
+  boost = boost191;
 
-  mathJaxSrc = fetchzip {
-    url = "https://s3.amazonaws.com/rstudio-buildtools/mathjax-27.zip";
-    hash = "sha256-J7SZK/9q3HcXTD7WFHxvh++ttuCd89Vc4SEBrUEU0AI=";
+  mathJax27Src = fetchzip {
+    url = "https://s3.amazonaws.com/rstudio-buildtools/mathjax-2.7.9.zip";
+    hash = "sha256-eQY8Q7ty7OcCs9E2hLsZjX5GncodGdEIbdUYDdKy9Ds=";
+  };
+
+  mathJax4Src = fetchzip {
+    url = "https://s3.amazonaws.com/rstudio-buildtools/mathjax-4.1.3.zip";
+    hash = "sha256-DCfc3H09FXuihKca62oZM6z1nsW8+6kMvad1HBBJI3A=";
   };
 
   # Note: we could build this from source, but let's just do what upstream does for now
   gwt = fetchzip {
-    url = "https://rstudio-buildtools.s3.us-east-1.amazonaws.com/gwt/gwt-2.12.2.tar.gz";
+    url = "https://rstudio-buildtools.s3.us-east-1.amazonaws.com/gwt/gwt-2.12.2-autumn-hawkbit.tar.gz";
     stripRoot = false;
-    hash = "sha256-DgcCiheYeP7sISduz6E3WhTty2nSs14k2OYIG93KmkY=";
+    hash = "sha256-eRmdDiAjMz/nvQCXmRwGAt6HC3Nr5KACsxahS1cLpHA=";
   };
 
   quartoSrc = fetchFromGitHub {
     owner = "quarto-dev";
     repo = "quarto";
     # Note: rev should ideally be the last commit of the release/rstudio-[codename] branch
-    rev = "8c1669f3095c5afee6bcd98a659d51a43300bda9";
-    hash = "sha256-01urKiFz5iDtW8r+w7zwUDXUOKZIOhi/ip329RsuQ+Q=";
+    # Last updated: 2026-10-28 to release/rstudio-blue-mistflower branch
+    rev = "2d5a23d918079ce38f584a31b4639aa769379d64";
+    hash = "sha256-lN1QzCSM/KNBUIK4wJpOXJzpoUVJo1hVQMA4UUacPRY=";
   };
 
   hunspellDictionaries = lib.filter lib.isDerivation (lib.unique (lib.attrValues hunspellDicts));
@@ -73,7 +81,13 @@ let
   # -large versions in case of clashes
   largeDicts = lib.filter (d: lib.hasInfix "-large-wordlist" d.name) hunspellDictionaries;
   otherDicts = lib.filter (
-    d: !(lib.hasAttr "dictFileName" d && lib.elem d.dictFileName (map (d: d.dictFileName) largeDicts))
+    d:
+    !(
+      lib.hasInfix "ru-ru-libreoffice" d.name # conflits with ru-ru-mozilla
+      || (
+        lib.hasAttr "dictFileName" d && lib.elem d.dictFileName (lib.map (d: d.dictFileName) largeDicts)
+      )
+    )
   ) hunspellDictionaries;
   dictionaries = largeDicts ++ otherDicts;
 
@@ -86,14 +100,14 @@ let
   '';
 in
 stdenv.mkDerivation (finalAttrs: {
-  pname = "rstudio";
-  version = "2026.04.0+526";
+  pname = "rstudio" + lib.optionalString server "-server";
+  version = "2026.10.1+239";
 
   src = fetchFromGitHub {
     owner = "rstudio";
     repo = "rstudio";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-6oHH3C3/MGFSOuI+FvyrLyOKRyy455Wkr75ZL8ZeiWg=";
+    hash = "sha256-uUqDvlBid7zbcXeNMHk9ARWJM3u3qbrXhwci/Z5e280=";
   };
 
   # sources fetched into _deps via cmake's FetchContent
@@ -125,7 +139,7 @@ stdenv.mkDerivation (finalAttrs: {
     dontBuild = true;
     dontFixup = true;
 
-    outputHash = "sha256-XzSDU4GVY6OrIFG4qCWUF94nV6fcz9zyFSlSvttVrYw=";
+    outputHash = "sha256-GZgQQAmU5YeH3IQhmFUD4zU/IlA6Qau/7j7b76gXYtQ=";
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
   };
@@ -159,6 +173,9 @@ stdenv.mkDerivation (finalAttrs: {
     soci
     sqlite.dev
   ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    acl
+  ]
   ++ lib.optionals (!server) [
     fontconfig
   ]
@@ -191,8 +208,17 @@ stdenv.mkDerivation (finalAttrs: {
   env = {
     ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
 
-    # on Darwin, cmake uses find_library to locate R instead of using the PATH
-    NIX_LDFLAGS = "-L${R}/lib/R/lib";
+    # electron-forge's console output is squeezed into one narrow column if unset
+    CI = "1";
+
+    NIX_LDFLAGS = toString (
+      lib.optionals stdenv.hostPlatform.isDarwin [
+        # on Darwin, cmake uses find_library to locate R instead of using the PATH
+        "-L${R}/lib/R/lib"
+        # The build fails without this due to undefined symbol "_OBJC_CLASS_$_NSNumber"
+        "-framework Foundation"
+      ]
+    );
 
     RSTUDIO_VERSION_MAJOR = lib.versions.major finalAttrs.version;
     RSTUDIO_VERSION_MINOR = lib.versions.minor finalAttrs.version;
@@ -213,6 +239,9 @@ stdenv.mkDerivation (finalAttrs: {
     ./dont-yarn-install.patch
     ./dont-npm-ci.patch
     ./fix-darwin.patch
+
+    # seems to only cause an issue on Darwin (maybe clang-only issue?)
+    ./add-missing-header.patch
   ];
 
   postPatch = ''
@@ -231,11 +260,19 @@ stdenv.mkDerivation (finalAttrs: {
     # set install path of freedesktop files
     substituteInPlace src/node/desktop/CMakeLists.txt \
       --replace-fail "/usr/share" "$out/share"
+
+    # Prevent Boost.URL linker error
+    substituteInPlace src/cpp/CMakeLists.txt \
+      --replace-fail 'C++17' 'C++20' \
+      --replace-fail 'c++17' 'c++20' \
+      --replace-fail 'gnu++17' 'gnu++20'
+    substituteInPlace cmake/compiler.cmake \
+      --replace-fail 'CMAKE_CXX_STANDARD 17' 'CMAKE_CXX_STANDARD 20'
   '';
 
   yarnOfflineCache = fetchYarnDeps {
     src = quartoSrc;
-    hash = "sha256-XRxClyAaz3ja+Tr97aoqVxKhWOxezZ6OmEPGILdeOww=";
+    hash = "sha256-aBo6kh/+pzkKeg147ZsGC7BR9UQP36UwGPHS9LGW/wg=";
   };
 
   dontYarnInstallDeps = true; # will call manually in preConfigure
@@ -249,9 +286,9 @@ stdenv.mkDerivation (finalAttrs: {
 
   npmDeps = fetchNpmDeps {
     name = "rstudio-${finalAttrs.version}-npm-deps";
-    inherit (finalAttrs) src;
+    inherit (finalAttrs) src patches;
     postPatch = "cd ${finalAttrs.npmRoot}";
-    hash = "sha256-lO+wJk0HWYrKO1Rqz8laVpZK5RUfA9ijYvtPEtVf1r4=";
+    hash = "sha256-nH7hPnVePybM8kG0SJKfwHVZcMEM8CWf3dX+xlgz3b8=";
   };
 
   preConfigure = ''
@@ -274,7 +311,7 @@ stdenv.mkDerivation (finalAttrs: {
     mkdir dependencies/dictionaries
     for dict in ${builtins.concatStringsSep " " dictionaries}; do
       for i in "$dict/share/hunspell/"*; do
-        ln -s $i dependencies/dictionaries/
+        test -f dependencies/dictionaries/$(basename $i) || ln -s $i dependencies/dictionaries/
       done
     done
 
@@ -283,12 +320,13 @@ stdenv.mkDerivation (finalAttrs: {
     ln -s ${quartoWrapper} dependencies/quarto
 
     # version in dependencies/common/install-mathjax
-    ln -s ${mathJaxSrc} dependencies/mathjax-27
+    ln -s ${mathJax27Src} dependencies/mathjax-27
+    ln -s ${mathJax4Src} dependencies/mathjax-4
 
     # node used by cmake and node used for distribution
     # version in cmake/globals.cmake
     RSTUDIO_NODE_VERSION="22.22.2"
-    RSTUDIO_INSTALLED_NODE_VERSION="22.22.2"
+    RSTUDIO_INSTALLED_NODE_VERSION="24.21.0"
 
     mkdir -p dependencies/common/node
     ln -s ${nodejs} dependencies/common/node/$RSTUDIO_NODE_VERSION
@@ -367,10 +405,7 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Set of integrated tools for the R language";
     homepage = "https://www.rstudio.com/";
     license = lib.licenses.agpl3Only;
-    maintainers = with lib.maintainers; [
-      ciil
-      tomasajt
-    ];
+    maintainers = [ lib.maintainers.tomasajt ];
     mainProgram = "rstudio" + lib.optionalString server "-server";
     # rstudio-server on darwin is only partially supported by upstream
     platforms = lib.platforms.linux ++ lib.optionals (!server) lib.platforms.darwin;

@@ -2,31 +2,31 @@
   lib,
   buildPythonPackage,
   fetchPypi,
+
+  # build-system
   hatchling,
   hatch-jupyter-builder,
+  jupyter-builder,
+
+  # passthru
   jupyter-collaboration,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "jupyter-docprovider";
-  version = "2.4.0";
+  version = "3.0.4";
   pyproject = true;
-  __structuredAttrs = true;
 
   src = fetchPypi {
     pname = "jupyter_docprovider";
     inherit (finalAttrs) version;
-    hash = "sha256-e5AfudgAWZ4qtoVX/WORECpoiIRShsT3y7brK7owlOA=";
+    hash = "sha256-yO49NbuaWAOFZBPkR7G5vYDOF7J6xtLaYj4cpER/LIw=";
   };
-
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace-fail ', "jupyterlab>=4.0.0"' ""
-  '';
 
   build-system = [
     hatchling
     hatch-jupyter-builder
+    jupyter-builder
   ];
 
   pythonImportsCheck = [ "jupyter_docprovider" ];

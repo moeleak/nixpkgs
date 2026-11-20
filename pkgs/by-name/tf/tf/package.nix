@@ -6,16 +6,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "tf";
-  version = "2.12.0";
+  version = "2.14.2";
 
   src = fetchFromGitHub {
     owner = "dex4er";
     repo = "tf";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-a/IWfiBZkRLgJWiEGzyWOpyZfI1EQkIsYaiNuRwH6hE=";
+    hash = "sha256-L7XKSVuzUA5Igse4Oh7fqtT0iM6aqO9k5bpYco39TfI=";
   };
 
-  vendorHash = "sha256-h1ApWUK62l4O9Xr6TyXM++uzYqWkxlzvgZOwkWMYke0=";
+  vendorHash = "sha256-aStC8p/IYX3ExclRif4ASiLhX70xExMrUN4VBA74bLE=";
 
   subPackages = [ "." ];
 

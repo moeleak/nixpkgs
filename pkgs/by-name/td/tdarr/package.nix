@@ -1,23 +1,35 @@
 {
   lib,
+  callPackage,
   symlinkJoin,
-  tdarr-server,
-  tdarr-node,
 }:
 
+let
+  version = "3.06.00";
+
+  mkTdarr = callPackage ./mktdarr.nix { inherit version; };
+  server = callPackage ./server.nix { inherit mkTdarr; };
+  node = callPackage ./node.nix { inherit mkTdarr; };
+in
 symlinkJoin {
-  name = "tdarr-${tdarr-server.version}";
+  name = "tdarr-${version}";
   pname = "tdarr";
-  inherit (tdarr-server) version;
+  inherit version;
 
   paths = [
-    tdarr-server
-    tdarr-node
+    server
+    node
   ];
 
   passthru = {
-    server = tdarr-server;
-    node = tdarr-node;
+    inherit server node;
+    tests = server.tests or { } // node.tests or { };
+
+    # Server and node share one version.
+    updateScript = {
+      command = [ ./update-hashes.sh ];
+      supportedFeatures = [ "commit" ];
+    };
   };
 
   meta = {
@@ -27,7 +39,6 @@ symlinkJoin {
     platforms = [
       "x86_64-linux"
       "aarch64-linux"
-      "x86_64-darwin"
       "aarch64-darwin"
     ];
     maintainers = with lib.maintainers; [ mistyttm ];

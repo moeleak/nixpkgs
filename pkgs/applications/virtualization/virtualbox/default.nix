@@ -43,6 +43,8 @@
   xz,
   yasm,
   glslang,
+  vulkan-loader,
+  wrapGAppsHook3,
   nixosTests,
   # If open-watcom-bin is not passed, VirtualBox will fall back to use
   # the shipped alternative sources (assembly).
@@ -55,7 +57,7 @@
   python3,
   extensionPack ? null,
   fakeroot,
-  pulseSupport ? config.pulseaudio or stdenv.hostPlatform.isLinux,
+  pulseSupport ? stdenv.hostPlatform.isLinux,
   libpulseaudio,
   enableHardening ? false,
   headless ? false,
@@ -72,19 +74,19 @@ let
   buildType = "release";
   # Use maintainers/scripts/update.nix to update the version and all related hashes or
   # change the hashes in extpack.nix and guest-additions/default.nix as well manually.
-  virtualboxVersion = "7.2.8";
+  virtualboxVersion = "7.2.22";
   virtualboxSubVersion = "";
-  virtualboxSha256 = "0642ed4a12b7204cd30c0abbc2c10c1cc7ad55ce1756a01e86a16d4b6b066592";
+  virtualboxSha256 = "440a2b3eeb46e7e992961b70ef24f43e95b3c99fa2ab30aac20b963ef9e91ad7";
 
-  kvmPatchVboxVersion = "7.2.6";
-  kvmPatchVersion = "20260201";
-  kvmPatchHash = "sha256-pq4DPLwHRRAMJjmfXympDxJK9+d+LwTOxBqxAm0pl3o=";
+  kvmPatchVboxVersion = "7.2.22";
+  kvmPatchVersion = "20261021";
+  kvmPatchHash = "sha256-7dlaAQxomhKGYdPQbE33e8AQs8w4LtmXPgCa+dxJiXk=";
 
   # The KVM build is not compatible to VirtualBox's kernel modules. So don't export
   # modsrc at all.
   withModsrc = !enableKvm;
 
-  virtualboxGuestAdditionsIso = callPackage guest-additions-iso/default.nix {
+  virtualboxGuestAdditionsIso = callPackage ./guest-additions-iso {
     inherit virtualboxVersion;
   };
 
@@ -133,10 +135,14 @@ stdenv.mkDerivation (finalAttrs: {
     yasm
     glslang
   ]
-  ++ optional (!headless) wrapQtAppsHook;
+  ++ optionals (!headless) [
+    wrapQtAppsHook
+    wrapGAppsHook3
+  ];
 
   # Wrap manually because we wrap just a small number of executables.
   dontWrapQtApps = true;
+  dontWrapGApps = true;
 
   buildInputs = [
     acpica-tools
@@ -385,6 +391,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   preFixup =
     optionalString (!headless) ''
+      qtWrapperArgs+=("''${gappsWrapperArgs[@]}")
       wrapQtApp $out/bin/VirtualBox
     ''
     # If hardening is disabled, wrap the VirtualBoxVM binary instead of patching
@@ -392,6 +399,12 @@ stdenv.mkDerivation (finalAttrs: {
     + optionalString (!headless && !enableHardening) ''
       wrapQtApp $out/libexec/virtualbox/VirtualBoxVM
     '';
+
+  postFixup = optionalString stdenv.hostPlatform.isLinux ''
+    # VBoxDxVk loads Vulkan dynamically; add its path after RPATH shrinking.
+    patchelf --add-rpath ${lib.makeLibraryPath [ vulkan-loader ]} \
+      "$out/libexec/virtualbox/VBoxDxVk.so"
+  '';
 
   passthru = {
     inherit extensionPack; # for inclusion in profile to prevent gc
@@ -415,6 +428,7 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://www.virtualbox.org/";
     maintainers = with lib.maintainers; [
       friedrichaltheide
+      parthy
     ];
     platforms = [ "x86_64-linux" ];
     mainProgram = "VirtualBox";

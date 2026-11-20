@@ -24,6 +24,12 @@ stdenv.mkDerivation (finalAttrs: {
     hash = "sha256-AYZWfqMckPKgXNIX9kAAv1mvD3opLi5EUElFsigiF3c=";
   };
 
+  postPatch = ''
+    substituteInPlace x11.h \
+      --replace-fail "#include <cstring>" "#include <cstring>
+    #include <unistd.h>"
+  '';
+
   nativeBuildInputs = [
     pkg-config
     makeWrapper
@@ -66,7 +72,7 @@ stdenv.mkDerivation (finalAttrs: {
     description = "OpenGL/X11 application for GNU/Linux consisting of a single window that shows simple 3D scene of a textured rectangle with applied vertex and fragment shaders (GLSL)";
     homepage = "https://graphics.globalcode.info/v_0/shader-shark.xhtml";
     license = lib.licenses.gpl3;
-    maintainers = [ lib.maintainers.lucasew ];
+    maintainers = [ ];
     platforms = lib.platforms.linux;
   };
 })

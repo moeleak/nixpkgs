@@ -26,13 +26,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "liquidsoap";
-  version = "2.4.4";
+  version = "2.4.6";
 
   src = fetchFromGitHub {
     owner = "savonet";
     repo = "liquidsoap";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-uRqYyxLF6PuSDvbL77qn2PvttqqM9S00BjcaKUFxlQw=";
+    hash = "sha256-N9aZ6IaasUyCf2wtU2eCMUoB7AJADbMgJ/M8oz2hOT4=";
   };
 
   postPatch = ''
@@ -141,7 +141,7 @@ stdenv.mkDerivation (finalAttrs: {
     ocamlPackages.shine
     ocamlPackages.soundtouch
     ocamlPackages.speex
-    ocamlPackages.ocaml_sqlite3
+    ocamlPackages.sqlite3
     ocamlPackages.srt
     ocamlPackages.ssl
     ocamlPackages.taglib

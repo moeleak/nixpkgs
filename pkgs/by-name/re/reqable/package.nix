@@ -28,11 +28,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "reqable";
-  version = "3.1.0";
+  version = "3.3.11";
 
   src = fetchurl {
     url = "https://github.com/reqable/reqable-app/releases/download/${finalAttrs.version}/reqable-app-linux-x86_64.deb";
-    hash = "sha256-lJby2hewmjGpq2MwED/ZJbbGg7qt0aDwwqRVhoo/uys=";
+    hash = "sha256-+fpFTu9eZjjyCSFRKK3b6hxxHm5mOR5XZXMXCR1qW5s=";
   };
 
   nativeBuildInputs = [

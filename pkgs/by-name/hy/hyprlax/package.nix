@@ -11,13 +11,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "hyprlax";
-  version = "2.2.2";
+  version = "2.2.8";
 
   src = fetchFromGitHub {
     owner = "sandwichfarm";
     repo = "hyprlax";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-nBJkVBaeT2GIGWVYGEWRCQ14UznplKE2zm+4HyEfq3M=";
+    hash = "sha256-FsWi+0rvGY/FASPD1MIEQXJbHGma0LoqKyWZsIvafbM=";
   };
 
   nativeBuildInputs = [

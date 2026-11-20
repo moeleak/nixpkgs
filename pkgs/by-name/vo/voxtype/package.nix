@@ -19,8 +19,11 @@
   libnotify,
   openssl,
   pciutils,
+  pulseaudio,
+  sqlite,
   wl-clipboard,
   wtype,
+  which,
   xclip,
   xdotool,
 
@@ -33,7 +36,12 @@
   vulkan-loader,
 
   onnxSupport ? false,
+  oniguruma,
   onnxruntime,
+
+  hipSupport ? false,
+  rocmPackages,
+  rocmGpuTargets ? builtins.concatStringsSep ";" rocmPackages.clr.gpuTargets,
 
   waylandSupport ? stdenv.hostPlatform.isLinux,
   waylandRuntimePackages ? [
@@ -51,20 +59,29 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "voxtype";
-  version = "0.6.6";
+  version = "1.1.1";
+
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "peteonrails";
     repo = "voxtype";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-D0CgT0Avb7il6/GU8CtxWUGlMHhYZIPbHX952L4orDM=";
+    hash = "sha256-7Djbq7nUIqL3afCEYKnPWtRnx4jXBvhY4iA1m/4w8Ak=";
   };
 
-  cargoHash = "sha256-h0b3H+79v8G28XNBDdCOZ+Vo+6wpfzckPCsDbRzp1m4=";
+  # The lock file pins openvino-genai to a git fork whose openvino-sys crate
+  # carries a submodule with a symlink loop, which fetchCargoVendor cannot
+  # copy. The fork only matters for the openvino-whisper feature, which is not
+  # built here, so resolve it from crates.io instead.
+  cargoPatches = [ ./openvino-genai-from-crates-io.patch ];
+
+  cargoHash = "sha256-/3EINM6XjftYdi8B2/WQ+62vhOC/wX4x156IjXLmNv8=";
 
   buildFeatures =
     [ ]
     ++ lib.optionals vulkanSupport [ "gpu-vulkan" ]
+    ++ lib.optionals hipSupport [ "gpu-hipblas" ]
     ++ lib.optionals onnxSupport [
       "parakeet-load-dynamic"
       "moonshine"
@@ -82,7 +99,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     makeBinaryWrapper
     pkg-config
   ]
-  ++ lib.optional vulkanSupport [
+  ++ lib.optionals hipSupport [
+    rocmPackages.clr
+  ]
+  ++ lib.optionals vulkanSupport [
     shaderc
     vulkan-headers
     vulkan-loader
@@ -91,12 +111,22 @@ rustPlatform.buildRustPackage (finalAttrs: {
   buildInputs = [
     alsa-lib
     openssl
+    sqlite
   ]
+  ++ lib.optionals hipSupport (
+    with rocmPackages;
+    [
+      clr
+      hipblas
+      rocblas
+    ]
+  )
   ++ lib.optionals vulkanSupport [
     vulkan-headers
     vulkan-loader
   ]
   ++ lib.optionals onnxSupport [
+    oniguruma
     onnxruntime
   ];
 
@@ -109,6 +139,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     RUSTFLAGS = lib.optionalString (
       stdenv.hostPlatform.isLinux && stdenv.hostPlatform.isx86_64
     ) "-C target-cpu=x86-64-v3";
+  }
+  // lib.optionalAttrs hipSupport {
+    HIP_PATH = "${rocmPackages.clr}";
+    AMDGPU_TARGETS = rocmGpuTargets;
   };
 
   preBuild = ''
@@ -131,6 +165,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
         (lib.makeBinPath (
           [
             libnotify
+            pulseaudio # pactl for media ducking
+            which
           ]
           ++ lib.optionals vulkanSupport [
             pciutils
@@ -146,7 +182,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       ''}
   ''
   + lib.optionalString installManPages ''
-    installManPage target/debug/build/voxtype-*/out/man/*
+    installManPage target/${stdenv.hostPlatform.rust.cargoShortTarget}/$cargoBuildType/build/voxtype-*/out/man/*
   ''
   + lib.optionalString installShellCompletions ''
     installShellCompletion packaging/completions/voxtype.{bash,zsh,fish}
@@ -171,7 +207,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     downloadPage = "https://voxtype.io/download/";
     changelog = "https://github.com/peteonrails/voxtype/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ DuskyElf ];
+    maintainers = with lib.maintainers; [
+      DuskyElf
+      pbek
+    ];
     platforms = lib.platforms.linux;
     mainProgram = "voxtype";
   };

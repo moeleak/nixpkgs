@@ -26,24 +26,24 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "hydra-core";
-  version = "1.3.2";
+  version = "1.3.8";
   pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "facebookresearch";
+    owner = "hydra-ecosystem";
     repo = "hydra";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-kD4BStnstr5hwyAOxdpPzLAJ9MZqU/CPiHkaD2HnUPI=";
+    hash = "sha256-p3YOHTniKOtufhrcF1uEQCRJjU3SvtJ12xpfyYVoJKA=";
   };
 
   patches = [
     (replaceVars ./antlr4.patch {
       antlr_jar = "${antlr4.out}/share/java/antlr-${antlr4.version}-complete.jar";
     })
-    # https://github.com/facebookresearch/hydra/pull/2731
+    # https://github.com/hydra-ecosystem/hydra/pull/2731
     (fetchpatch {
       name = "setuptools-67.5.0-test-compatibility.patch";
-      url = "https://github.com/facebookresearch/hydra/commit/25873841ed8159ab25a0c652781c75cc4a9d6e08.patch";
+      url = "https://github.com/hydra-ecosystem/hydra/commit/25873841ed8159ab25a0c652781c75cc4a9d6e08.patch";
       hash = "sha256-oUfHlJP653o3RDtknfb8HaaF4fpebdR/OcbKHzJFK/Q=";
     })
   ];
@@ -81,8 +81,12 @@ buildPythonPackage (finalAttrs: {
     "test_bash_completion_with_dot_in_path"
     "test_install_uninstall"
     "test_config_search_path"
+
     # does not raise UserWarning
     "test_initialize_compat_version_base"
+
+    # AssertionError: Regex pattern did not match
+    "test_initialize_bad_version_base"
   ]
   ++ lib.optionals (pythonAtLeast "3.13") [
     # AssertionError: Regex pattern did not match
@@ -142,7 +146,7 @@ buildPythonPackage (finalAttrs: {
   meta = {
     description = "Framework for configuring complex applications";
     homepage = "https://hydra.cc";
-    changelog = "https://github.com/facebookresearch/hydra/blob/${finalAttrs.src.tag}/NEWS.md";
+    changelog = "https://github.com/hydra-ecosystem/hydra/blob/${finalAttrs.src.tag}/NEWS.md";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ bcdarwin ];
   };

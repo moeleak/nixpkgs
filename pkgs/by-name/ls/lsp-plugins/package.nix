@@ -39,7 +39,7 @@ in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "lsp-plugins";
-  version = "1.2.29";
+  version = "1.2.37";
 
   outputs = [
     "out"
@@ -49,7 +49,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = fetchurl {
     url = "https://github.com/lsp-plugins/lsp-plugins/releases/download/${finalAttrs.version}/lsp-plugins-src-${finalAttrs.version}.tar.gz";
-    hash = "sha256-QEKXw63YecUI2wbVEZ4R78HQRzUn0qae057HfB0ZcvI=";
+    hash = "sha256-rn8iskm0GjfbllIpriq3I3Mw+DJ5Np+ZYSd9i/ENLfQ=";
   };
 
   # By default, GStreamer plugins are installed right alongside GStreamer itself

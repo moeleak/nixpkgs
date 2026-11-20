@@ -1,5 +1,6 @@
 {
   lib,
+  stdenv,
   rustPlatform,
   fetchFromGitHub,
   pkg-config,
@@ -10,16 +11,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "uutils-procps";
-  version = "0.0.1-unstable-2026-05-13";
+  version = "0.0.1-unstable-2026-10-29";
 
   src = fetchFromGitHub {
     owner = "uutils";
     repo = "procps";
-    rev = "c0b901770156504d1a2021794d5375b7f35a2112";
-    hash = "sha256-1aB/xFZaB9mvjYsHud0wajpdXKVKFLIFfeb9vpJebFQ=";
+    rev = "e697667b3f758803e38d8ab4c8f912171beca602";
+    hash = "sha256-fIlYq3exg8+d2xaldj6siK+j0A3buISBHfPagguCwSk=";
   };
 
-  cargoHash = "sha256-fv7bgnbuhE2XKxb7ZKL2Vjt+mmrdqK6bSVKRBdTgoRE=";
+  cargoHash = "sha256-0HjYZKTDkvMf10GIf2tOLIwQaK92JFbp/i7Sev9wu18=";
 
   cargoBuildFlags = [ "--workspace" ];
 
@@ -28,7 +29,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     writableTmpDirAsHomeHook
   ];
 
-  buildInputs = [ systemdLibs ];
+  buildInputs = lib.optionals (lib.meta.availableOn stdenv.hostPlatform systemdLibs) [ systemdLibs ];
 
   checkFlags = [
     # can't run on sandbox

@@ -10,13 +10,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "netgen";
-  version = "1.5.319";
+  version = "1.5.327";
 
   src = fetchFromGitHub {
     owner = "RTimothyEdwards";
     repo = "netgen";
     tag = finalAttrs.version;
-    hash = "sha256-n6UoxoPfUlWrl/3HFEXsZTl+nSTjUzK9WSt4q1kXrZs=";
+    hash = "sha256-2Bt7MUwVGqRsCvAG2lJV39vLHWGCxwGzb1HefQXOYQQ=";
   };
 
   strictDeps = true;
@@ -50,6 +50,9 @@ stdenv.mkDerivation (finalAttrs: {
     mainProgram = "netgen";
     homepage = "https://github.com/RTimothyEdwards/netgen";
     license = lib.licenses.gpl1Only;
-    maintainers = [ lib.maintainers.gonsolo ];
+    maintainers = [
+      lib.maintainers.gonsolo
+      lib.maintainers.MrAbhi19
+    ];
   };
 })

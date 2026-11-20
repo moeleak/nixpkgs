@@ -27,7 +27,7 @@ maven.buildMavenPackage rec {
 
   mvnJdk = jdk;
   mvnParameters = "-Dmaven.test.skip=true";
-  mvnHash = "sha256-54DT4C+WzyUBPxayA9YnB9I/Igd19iZygByUh5of51I=";
+  mvnHash = "sha256-ktG/y+m63Yb75X1RlOt1WjmyyWlu88YGta5cdUtNvIE=";
 
   env = {
     APP_VERSION = version;

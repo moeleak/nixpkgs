@@ -10,16 +10,18 @@
 
 buildGoModule (finalAttrs: {
   pname = "buf";
-  version = "1.69.0";
+  version = "1.75.0";
+
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "bufbuild";
     repo = "buf";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-x8Dj4xl67Jq0ViWu+Tz+3lAnfIpE926dIr+oe4ul0gI=";
+    hash = "sha256-G7la7dj1xrzVUZJUmnVtYacP3K1jCCVnUxBN+yadMoo=";
   };
 
-  vendorHash = "sha256-zhXpWpYd/bim5f4EQJujVm072LPgBusjCFGYAwK10HE=";
+  vendorHash = "sha256-kXtxVyyNt+uNS4hZHWYRrHalK2gAp3N67YRrL9Er+tE=";
 
   patches = [
     # Skip a test that requires networking to be available to work.
@@ -44,7 +46,7 @@ buildGoModule (finalAttrs: {
 
   preCheck = ''
     # Some tests take longer depending on builder load.
-    substituteInPlace private/bufpkg/bufcheck/lint_test.go \
+    substituteInPlace private/bufpkg/bufcheck/lint_test.go private/bufpkg/bufcheck/breaking_test.go \
       --replace-fail 'context.WithTimeout(t.Context(), 60*time.Second)' \
                      'context.WithTimeout(t.Context(), 600*time.Second)'
     # For WebAssembly runtime tests

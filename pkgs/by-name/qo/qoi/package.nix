@@ -10,13 +10,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "qoi";
-  version = "0-unstable-2026-04-21"; # no upstream version yet.
+  version = "0-unstable-2026-09-27"; # no upstream version yet.
 
   src = fetchFromGitHub {
     owner = "phoboslab";
     repo = "qoi";
-    rev = "e084ec009b38c755acc40fe31d3f83ee17935b9d";
-    hash = "sha256-sPwmpkMo++Eo33fsiLHY6QYScXQNCucQyNPJdDysgFw=";
+    rev = "ffb2d2cb74a1de60819b21b939f7209aa53e91c1";
+    hash = "sha256-iA5ohbiafJxqRuMrJ/JfcDOOzcI3HstfK1W8HRpJKIw=";
   };
 
   patches = [
@@ -30,7 +30,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   strictDeps = true;
-  enableParalleBuilding = true;
+  enableParallelBuilding = true;
 
   buildInputs = [ libpng ];
 

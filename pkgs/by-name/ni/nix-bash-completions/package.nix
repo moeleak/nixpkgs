@@ -25,6 +25,11 @@ stdenv.mkDerivation (finalAttrs: {
     # Fix completion with Nix 2.4+ on non-NixOS: https://github.com/hedning/nix-bash-completions/pull/26
     # Rebased locally due to conflict with the above patch (https://github.com/hedning/nix-bash-completions/pull/28).
     ./0001-Fix-completion-with-Nix-2.4-on-non-NixOS.patch
+
+    # Fix nix-store --gc completion: --print-roots exclusion group used spaces
+    # instead of pipes, causing word splitting that produced bogus candidates
+    # like --delete)--print-roots. https://github.com/NixOS/nix/issues/16069
+    ./0002-fix-nix-store-gc-print-roots-completion.patch
   ];
 
   postPatch = ''
@@ -60,10 +65,7 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Bash completions for Nix, NixOS, and NixOps";
     license = lib.licenses.bsd3;
     platforms = lib.platforms.all;
-    maintainers = with lib.maintainers; [
-      hedning
-      ncfavier
-    ];
+    maintainers = with lib.maintainers; [ ncfavier ];
     # Set a lower priority such that Nix wins in case of conflicts.
     priority = 10;
   };

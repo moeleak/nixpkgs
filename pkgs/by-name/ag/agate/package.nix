@@ -14,7 +14,7 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "agate";
-  version = "3.3.22";
+  version = "3.3.25";
 
   __darwinAllowLocalNetworking = true;
 
@@ -22,10 +22,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     owner = "mbrubeck";
     repo = "agate";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-TDBCIioVeuQz4Dj7Pf5VG+tLLokGjhgv5e6z1spr3vk=";
+    hash = "sha256-6gAurd65EvwCv9GDqUSy6mfAmQK7SXapOVL67YJwYlQ=";
   };
 
-  cargoHash = "sha256-dNbtNQlbUZuZNcyydkRtzC0/Md1HrM3SDbA33exafiI=";
+  cargoHash = "sha256-/bX2IhH5mA4J65ZNR+R5GgfXAcCI16jF90IxjxHVi/U=";
 
   nativeBuildInputs = [ pkg-config ];
   buildInputs = [ openssl ];
@@ -52,11 +52,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
       static files. It uses async I/O, and should be quite efficient even when
       running on low-end hardware and serving many concurrent requests.
     '';
-    license = with lib.licenses; [
-      asl20
-      # or
-      mit
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        asl20
+        mit
+      ];
     maintainers = with lib.maintainers; [ jk ];
   };
 })

@@ -42,6 +42,7 @@
   xapian,
   gpgme,
   util-linux,
+  readline,
   tzdata,
   icu,
   libffi,
@@ -52,13 +53,13 @@
   cmake,
   libssh2,
   openssl,
-  openssl_1_1,
   libmysqlclient,
   git,
   perl,
   pcre2,
   gecode_3,
   curl,
+  cacert,
   libsodium,
   snappy,
   libossp_uuid,
@@ -143,6 +144,14 @@ in
     meta.mainProgram = "zentest";
   };
 
+  algoliasearch = attrs: {
+    postInstall = ''
+      installPath=$(cat $out/nix-support/gem-meta/install-path)
+      rm $installPath/resources/ca-bundle.crt
+      ln -s ${cacert}/etc/ssl/certs/ca-bundle.crt $installPath/resources/ca-bundle.crt
+    '';
+  };
+
   atk = attrs: {
     dependencies = attrs.dependencies ++ [ "gobject-introspection" ];
     nativeBuildInputs = [
@@ -198,6 +207,14 @@ in
       libpthread-stubs
       libxdmcp
     ];
+  };
+
+  certified = attrs: {
+    postInstall = ''
+      installPath=$(cat $out/nix-support/gem-meta/install-path)
+      rm $installPath/certs/ca-bundle.crt
+      ln -s ${cacert}/etc/ssl/certs/ca-bundle.crt $installPath/certs/ca-bundle.crt
+    '';
   };
 
   charlock_holmes = attrs: {
@@ -292,6 +309,14 @@ in
     postPatch = ''
       substituteInPlace lib/ethon/curls/settings.rb \
         --replace "libcurl" "${curl.out}/lib/libcurl${stdenv.hostPlatform.extensions.sharedLibrary}"
+    '';
+  };
+
+  excon = attrs: {
+    postInstall = ''
+      installPath=$(cat $out/nix-support/gem-meta/install-path)
+      rm $installPath/data/cacert.pem
+      ln -s ${cacert}/etc/ssl/certs/ca-bundle.crt $installPath/data/cacert.pem
     '';
   };
 
@@ -567,9 +592,7 @@ in
     ]
     ++ lib.optional stdenv.hostPlatform.isDarwin cctools
     ++ lib.optional (
-      lib.versionAtLeast attrs.version "1.53.0"
-      && stdenv.hostPlatform.isDarwin
-      && stdenv.hostPlatform.isAarch64
+      lib.versionAtLeast attrs.version "1.53.0" && stdenv.hostPlatform.isDarwin
     ) autoSignDarwinBinariesHook;
     buildInputs = [ openssl ];
     hardeningDisable = [ "format" ];
@@ -632,6 +655,16 @@ in
       "-Wno-error=incompatible-pointer-types"
       "-Wno-error=int-conversion"
     ];
+  };
+
+  httpclient = attrs: {
+    postInstall = ''
+      installPath=$(cat $out/nix-support/gem-meta/install-path)
+      for f in cacert.pem cacert1024.pem; do
+        rm $installPath/lib/httpclient/$f
+        ln -s ${cacert}/etc/ssl/certs/ca-bundle.crt $installPath/lib/httpclient/$f
+      done
+    '';
   };
 
   iconv = attrs: {
@@ -771,6 +804,17 @@ in
     ];
   };
 
+  # nap 1.2.0 dropped its bundled cacert.pem and uses the system CA store
+  nap =
+    attrs:
+    lib.optionalAttrs (lib.versionOlder attrs.version "1.2.0") {
+      postInstall = ''
+        installPath=$(cat $out/nix-support/gem-meta/install-path)
+        rm $installPath/support/cacert.pem
+        ln -s ${cacert}/etc/ssl/certs/ca-bundle.crt $installPath/support/cacert.pem
+      '';
+    };
+
   ncursesw = attrs: {
     buildInputs = [ ncurses ];
     buildFlags = [
@@ -810,10 +854,15 @@ in
       }
     );
 
-  openssl = attrs: {
+  openssl =
+    attrs:
     # https://github.com/ruby/openssl/issues/369
-    buildInputs = [ (if (lib.versionAtLeast attrs.version "3.0.0") then openssl else openssl_1_1) ];
-  };
+    assert
+      lib.versionAtLeast attrs.version "3.0.0"
+      || throw "OpenSSL 1.1 is EOL and the corresponding Ruby gem was removed.";
+    {
+      buildInputs = [ openssl ];
+    };
 
   opus-ruby = attrs: {
     dontBuild = false;
@@ -892,6 +941,11 @@ in
     buildFlags = [ "--without-imlib2-config" ];
   };
 
+  prawn-gmagick = attrs: {
+    buildInputs = [ graphicsmagick ];
+    nativeBuildInputs = [ pkg-config ];
+  };
+
   psych = attrs: {
     buildInputs = [ libyaml ];
   };
@@ -951,6 +1005,10 @@ in
     buildFlags = [
       "--enable-system-libraries"
     ];
+  };
+
+  readline-ext = attrs: {
+    buildInputs = [ readline ];
   };
 
   rest-client = attrs: {
@@ -1036,6 +1094,20 @@ in
     buildFlags = [ "--with-ssh" ];
   };
 
+  rbtrace =
+    attrs:
+    # unpack the vendored msgpack so the gnu-config hook can refresh its old config.{guess,sub}
+    lib.optionalAttrs (stdenv.hostPlatform.isRiscV64 || stdenv.hostPlatform.isLoongArch64) {
+      dontBuild = false;
+      postPatch = ''
+        tar -xzf ext/src/msgpack-1.1.0.tar.gz -C ext/src
+      '';
+      preConfigure = ''
+        tar -czf ext/src/msgpack-1.1.0.tar.gz -C ext/src msgpack-1.1.0
+        rm -r ext/src/msgpack-1.1.0
+      '';
+    };
+
   sassc = attrs: {
     nativeBuildInputs = [ rake ];
     dontBuild = false;
@@ -1055,6 +1127,8 @@ in
       substituteInPlace ext/sass/Rakefile \
         --replace \'dart-sass/sass\' \'${dart-sass}/bin/sass\' \
         --replace ' => %w[dart-sass]' ""
+
+      sed -i "/^file File.absolute_path('cli.rb', ARCHDIR)/a\\  mkdir_p ARCHDIR" ext/sass/Rakefile
     '';
   };
 
@@ -1192,5 +1266,7 @@ in
 
   zookeeper = attrs: {
     buildInputs = lib.optionals stdenv.hostPlatform.isDarwin [ cctools ];
+    # avoid failing on strchr discarding const
+    env.NIX_CFLAGS_COMPILE = lib.optionalString stdenv.cc.isGNU "-Wno-error=discarded-qualifiers";
   };
 }

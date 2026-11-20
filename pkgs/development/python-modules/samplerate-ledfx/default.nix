@@ -3,12 +3,12 @@
   buildPythonPackage,
   cmake,
   fetchFromGitHub,
+  fetchpatch,
   libsamplerate,
   numpy,
   pybind11,
   pytest-asyncio,
   pytestCheckHook,
-  pythonAtLeast,
   setuptools,
   setuptools-scm,
 }:
@@ -18,14 +18,18 @@ buildPythonPackage (finalAttrs: {
   version = "0.2.6";
   pyproject = true;
 
-  disabled = pythonAtLeast "3.14";
-
   src = fetchFromGitHub {
     owner = "LedFx";
-    repo = "python-samplerate-ledfx";
+    repo = "samplerate-ledfx";
     tag = "v${finalAttrs.version}";
     hash = "sha256-SLmaWSq/Ou23BfdWKlzE9gIfORgF9skUVEw1Tzpd5b4=";
   };
+
+  patches = [
+    # Fix Python 3.14 support based on https://github.com/tuxu/python-samplerate/commit/06e88d1a869db30ce9037498f4dec2f74601d127
+    # but with fixes that it applies
+    ./fix-python3.14-support.diff
+  ];
 
   # unvendor pybind11, libsamplerate
   postPatch = ''
@@ -52,11 +56,16 @@ buildPythonPackage (finalAttrs: {
     pytestCheckHook
   ];
 
+  disabledTestPaths = [
+    # timing sensitive: AssertionError: Expected speedup > 1.0, got 0.68x
+    "tests/test_threading_performance.py::test_conditional_gil_release_large_data_threading"
+  ];
+
   pythonImportsCheck = [ "samplerate" ];
 
   meta = {
     description = "Bindings for libsamplerate based on CFFI and NumPy";
-    homepage = "https://github.com/LedFx/python-samplerate-ledfx";
+    homepage = "https://github.com/LedFx/samplerate-ledfx";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ SuperSandro2000 ];
   };

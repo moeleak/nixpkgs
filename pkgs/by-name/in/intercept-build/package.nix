@@ -12,7 +12,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
 
   pyproject = false;
 
-  src = clang-unwrapped + "/bin";
+  src = clang-unwrapped.python + "/bin";
 
   dontUnpack = true;
 
@@ -33,6 +33,6 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
       asl20
       llvm-exception
     ];
-    maintainers = with lib.maintainers; [ RossSmyth ];
+    maintainers = [ ];
   };
 })

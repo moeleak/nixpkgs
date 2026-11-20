@@ -194,7 +194,8 @@ let
         #
         # Unless in a container, the job is not made part of network.target, so
         # if an interface is not found (e.g. a USB interface not plugged in) it
-        # will not hang the boot sequence.
+        # will not hang the boot sequence. The exception is lo, which is always
+        # present but has no device unit, so nothing else would start the job.
         #
         # If the interface is the default gateway, the job will also set the
         # default gateway and delay network-online.target.
@@ -238,7 +239,7 @@ let
 
             wantedBy =
               deviceDependency i.name
-              ++ optional config.boot.isContainer "network.target"
+              ++ optional (config.boot.isContainer || i.name == "lo") "network.target"
               ++ optional (isDefaultGateway4 || isDefaultGateway6) "network-online.target";
             bindsTo = deviceDependency i.name;
             partOf = [ "networking-scripted.target" ];
@@ -345,7 +346,7 @@ let
             script = ''
               ip tuntap add dev "${i.name}" mode "${i.virtualType}" ${
                 lib.optionalString (i.virtualOwner != null) ''user "${i.virtualOwner}"''
-              }
+              } ${lib.optionalString (i.virtualGroup != null) ''group "${i.virtualGroup}"''}
             '';
             postStop = ''
               ip link del dev ${i.name} || true
@@ -430,8 +431,9 @@ let
                 rm -f /run/${n}.interfaces
               '';
               reload = ''
+                # shellcheck disable=SC2013
                 # Un-enslave child interfaces (old list of interfaces)
-                for interface in `cat /run/${n}.interfaces`; do
+                for interface in $(cat /run/${n}.interfaces); do
                   ip link set dev "$interface" nomaster up
                 done
 

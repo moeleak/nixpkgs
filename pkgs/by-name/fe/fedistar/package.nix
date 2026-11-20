@@ -16,29 +16,30 @@
   glib-networking,
   webkitgtk_4_1,
   openssl,
+  sqlite,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fedistar";
-  version = "1.13.0";
+  version = "1.13.3";
 
   src = fetchFromGitHub {
     owner = "h3poteto";
     repo = "fedistar";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Q2IfWeMV6yvmCmKBc/iufO28DyIIlj50wp9A7LbQcIY=";
+    hash = "sha256-iQnKC6R9kXyQUZXjbihDr8l5XdQ266azP6hBqWBsEZM=";
   };
 
   cargoRoot = "src-tauri";
   buildAndTestSubdir = "src-tauri";
 
-  cargoHash = "sha256-eYPvG07V0DKPQfs6g+oayDcF3Xn74Aq52ZA+psyoSnY=";
+  cargoHash = "sha256-DJN1HvlYfruQawk2+2JAx5tx61haIG0NKezyycjL7DA=";
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
     pnpm = pnpm_10;
     fetcherVersion = 3;
-    hash = "sha256-GnVBCrBCnS0Tl9jZu3poIZZJO2SRdlS8jOYUE9G+BFM=";
+    hash = "sha256-DcaetxlNiXWYbkxC6TXpOhx4TgIiHdOkquVHxM6jROo=";
   };
 
   nativeBuildInputs = [
@@ -54,6 +55,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   buildInputs = [
     openssl
+    sqlite
   ]
   ++ lib.optionals stdenvNoCC.hostPlatform.isLinux [
     glib-networking

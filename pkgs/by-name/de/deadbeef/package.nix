@@ -1,6 +1,5 @@
 {
   lib,
-  config,
   clangStdenv,
   fetchFromGitHub,
   autoreconfHook,
@@ -46,7 +45,7 @@
   # output plugins
   alsaSupport ? true,
   alsa-lib,
-  pulseSupport ? config.pulseaudio or true,
+  pulseSupport ? true,
   libpulseaudio,
   pipewireSupport ? true,
   pipewire,
@@ -65,19 +64,19 @@ let
 in
 clangStdenv.mkDerivation (finalAttrs: {
   pname = "deadbeef";
-  version = "1.10.2";
+  version = "1.10.3";
 
   src = fetchFromGitHub {
     owner = "DeaDBeeF-Player";
     repo = "deadbeef";
     fetchSubmodules = true;
     tag = finalAttrs.version;
-    hash = "sha256-9naokzS2PxnyeO8AnqwLOsrYf/8I6Ah3oesUy2f22vs=";
+    hash = "sha256-SAp6XAE3fKTR27xYrdkNHneYDGJW1+XJdX6eBI9+EY0=";
   };
 
   buildInputs = [
     jansson
-    swift-corelibs-libdispatch
+    (swift-corelibs-libdispatch.override { useSwift = false; })
     gtk3
     gsettings-desktop-schemas
   ]
@@ -162,6 +161,8 @@ clangStdenv.mkDerivation (finalAttrs: {
     platforms = [
       "x86_64-linux"
       "i686-linux"
+      "riscv64-linux"
+      "aarch64-linux"
     ];
     maintainers = [ ];
   };

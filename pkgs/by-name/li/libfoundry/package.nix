@@ -13,9 +13,12 @@
   gtk4,
   gtksourceview5,
   json-glib,
+  libadwaita,
   libdex,
   libgit2,
+  libpanel,
   libpeas2,
+  libsecret,
   libsoup_3,
   libspelling,
   libssh2,
@@ -25,6 +28,7 @@
   meson,
   ninja,
   pkg-config,
+  readline,
   template-glib,
   vte-gtk4,
   webkitgtk_6_0,
@@ -34,7 +38,7 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "libfoundry${lib.optionalString withGtk "-gtk"}";
-  version = "1.0.1";
+  version = "1.2.0";
 
   outputs = [
     "out"
@@ -44,7 +48,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = fetchurl {
     url = "mirror://gnome/sources/foundry/${lib.versions.majorMinor finalAttrs.version}/foundry-${finalAttrs.version}.tar.xz";
-    hash = "sha256-wHaJBv6zTdWBmeKFRHOeohe714g+WPJPEjIphryJkzk=";
+    hash = "sha256-fIaqeQyJUga2aMnxjCGo9dIAeL2bJx+Yd2lNMelWSzQ=";
   };
 
   patches = [
@@ -64,12 +68,16 @@ stdenv.mkDerivation (finalAttrs: {
     editorconfig-core-c
     flatpak
     gom
+    libadwaita
     libgit2
+    libpanel
+    libsecret
     libsoup_3
     libssh2
     libsysprof-capture
     libxml2
     libyaml
+    readline
     template-glib
   ]
   ++ lib.optionals withGtk [

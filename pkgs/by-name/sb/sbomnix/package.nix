@@ -4,21 +4,20 @@
   git,
   grype,
   nix,
-  nixVersions,
   nix-visualize,
   python3,
   vulnix,
 }:
 python3.pkgs.buildPythonApplication (finalAttrs: {
   pname = "sbomnix";
-  version = "1.7.6";
+  version = "1.10.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "tiiuae";
     repo = "sbomnix";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-LApJvPeyViGJiJPLu7dFBU79SbMKieLVFKbDtFHo7f4=";
+    hash = "sha256-DBWFzLwe87GxTOsHt2ypvy2p7D2HpZMe3pbW5taK5kQ=";
 
     # Remove documentation as it contains references to nix store
     postFetch = ''
@@ -28,18 +27,17 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
   };
 
   makeWrapperArgs = [
-    "--prefix PATH : ${
-      lib.makeBinPath [
-        git
-        # nix
-        # TODO: remove once sbomnix support new JSON format: https://github.com/tiiuae/sbomnix/issues/267
-        nixVersions.nix_2_31
-        python3.pkgs.graphviz
-        nix-visualize
-        vulnix
-        grype
-      ]
-    }"
+    "--prefix"
+    "PATH"
+    ":"
+    (lib.makeBinPath [
+      git
+      nix
+      python3.pkgs.graphviz
+      nix-visualize
+      vulnix
+      grype
+    ])
   ];
 
   build-system = [ python3.pkgs.setuptools ];
@@ -50,11 +48,11 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     dfdiskcache
     graphviz
     filelock
+    license-expression
     numpy
     packageurl-python
     packaging
     pandas
-    pyrate-limiter
     requests
     requests-cache
     requests-ratelimiter

@@ -7,6 +7,7 @@
   dbip-country-lite,
   formats,
   nix-update-script,
+  nixosTests,
   nezha-theme-admin,
   nezha-theme-user,
   withThemes ? [ ],
@@ -48,13 +49,13 @@ let
 in
 buildGoModule (finalAttrs: {
   pname = "nezha";
-  version = "2.0.7";
+  version = "2.6.1";
 
   src = fetchFromGitHub {
     owner = "nezhahq";
     repo = "nezha";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-QFNv1O0XYkH+OwrUbkmeuLKTSsumo+1uvunDn8LbTho=";
+    hash = "sha256-NBGr4gQI0BzGBMU0mwukUtgaqmcMP04iGqGmNWPvp/A=";
   };
 
   proxyVendor = true;
@@ -94,13 +95,14 @@ buildGoModule (finalAttrs: {
     GOROOT=''${GOROOT-$(go env GOROOT)} swag init --pd -d cmd/dashboard -g main.go -o cmd/dashboard/docs
   '';
 
-  vendorHash = "sha256-gRvWCX+6fSTEbL6Rp7FRoqNXz1HRVIlYl4ADi/fIq80=";
+  vendorHash = "sha256-NpGdVymENUkxW1N3BQGdVPGbp/snMOf22khQ6xEsNuk=";
 
   ldflags = [
     "-s"
     "-X github.com/nezhahq/nezha/service/singleton.Version=${finalAttrs.version}"
   ];
 
+  __darwinAllowLocalNetworking = true; # TestOptionalAuth_PATWithoutScopeIsDenied
   checkFlags = "-skip=^TestSplitDomainSOA$";
 
   postInstall = ''
@@ -113,13 +115,16 @@ buildGoModule (finalAttrs: {
 
   passthru = {
     updateScript = nix-update-script { };
+    tests = {
+      inherit (nixosTests) nezha;
+    };
   };
 
   meta = {
     description = "Self-hosted, lightweight server and website monitoring and O&M tool";
     homepage = "https://github.com/nezhahq/nezha";
     changelog = "https://github.com/nezhahq/nezha/releases/tag/v${finalAttrs.version}";
-    license = lib.licenses.asl20;
+    license = lib.licenses.wtfpl;
     maintainers = with lib.maintainers; [ moraxyc ];
     mainProgram = "nezha";
   };

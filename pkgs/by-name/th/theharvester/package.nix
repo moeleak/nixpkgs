@@ -6,14 +6,14 @@
 
 python3.pkgs.buildPythonApplication (finalAttrs: {
   pname = "theharvester";
-  version = "4.10.1";
+  version = "4.11.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "laramies";
     repo = "theharvester";
     tag = finalAttrs.version;
-    hash = "sha256-ajXGf8wH8WoVGNHDAUJ+fC3FN2OtUuKaIrXJ4KuRif0=";
+    hash = "sha256-/tXRqlM4m46R+iy5Dfmwn0ulJbgmpYTTRHRzyoUKa9A=";
   };
 
   pythonRelaxDeps = true;
@@ -74,10 +74,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     homepage = "https://github.com/laramies/theHarvester";
     changelog = "https://github.com/laramies/theHarvester/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.gpl2Only;
-    maintainers = with lib.maintainers; [
-      fab
-      treemo
-    ];
+    maintainers = with lib.maintainers; [ fab ];
     mainProgram = "theHarvester";
   };
 })

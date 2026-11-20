@@ -1,26 +1,28 @@
 {
   lib,
+  libgit2,
   rustPlatform,
   fetchFromGitHub,
   pkg-config,
   curl,
   openssl,
+  sqlite,
   versionCheckHook,
   nix-update-script,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "mdbook-plugins";
-  version = "0.3.4";
+  version = "1.0.6";
 
   src = fetchFromGitHub {
     owner = "RustForWeb";
     repo = "mdbook-plugins";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-28Olgft2IQvvJEQ9oqj5o96MT8rILUESQiTOtpc2xLw=";
+    hash = "sha256-c+FonzFVv/+BNs0bYzFE62ii2dTBB7glSOi5Xji3nBk=";
   };
 
-  cargoHash = "sha256-5Mok7E85DKmo0NIdUZJhinLCWKk+G0tIBKcTy71kUxk=";
+  cargoHash = "sha256-ppBy3ei8r6gxcsA8MziA0FYvRAt/6Rg7I/NX/6ejukg=";
 
   nativeBuildInputs = [
     pkg-config
@@ -29,7 +31,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   buildInputs = [
     curl
+    libgit2
     openssl
+    sqlite
   ];
 
   env.OPENSSL_NO_VENDOR = true;

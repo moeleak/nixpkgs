@@ -1,23 +1,23 @@
 {
   lib,
   stdenv,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
   installShellFiles,
 }:
 
-buildGoModule (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "lefthook";
-  version = "2.1.5";
+  version = "2.2.2";
 
   src = fetchFromGitHub {
     owner = "evilmartians";
     repo = "lefthook";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-HLC6X9JjiiR3Ecg5MQ33vELs6ooLLjQ9x++4xB1qyHU=";
+    hash = "sha256-8Gl+Q1xU3nPYWfPI9o+o5b29tZ5ca3eb0YeApnaQ2LI=";
   };
 
-  vendorHash = "sha256-75jrXoBXoPCE/Ue7OlGAA4nUDXHM5ccIaK4rsKgfG84=";
+  vendorHash = "sha256-EbyzNWEEE85MawYQZUyHPvQJ13DcaCSXYv4JFC+GSac=";
 
   nativeBuildInputs = [ installShellFiles ];
 
@@ -41,6 +41,6 @@ buildGoModule (finalAttrs: {
     changelog = "https://github.com/evilmartians/lefthook/raw/v${finalAttrs.version}/CHANGELOG.md";
     license = lib.licenses.mit;
     mainProgram = "lefthook";
-    maintainers = [ ];
+    maintainers = with lib.maintainers; [ nightconcept ];
   };
 })

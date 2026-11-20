@@ -6,14 +6,14 @@
 
 python3.pkgs.buildPythonApplication (finalAttrs: {
   pname = "ha-mqtt-discoverable-cli";
-  version = "0.23.0";
+  version = "0.25.2";
   pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "unixorn";
+    owner = "Home-Assistant-Tooling";
     repo = "ha-mqtt-discoverable-cli";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-QxqhLtB3FC8zFUa67surP+P5RK9sb57OmdlnSWd9Kew=";
+    hash = "sha256-NCCpx5+EL2JEWzN6M+a9c643PObQzfEuTHKvkljBmjU=";
   };
 
   pythonRelaxDeps = [ "ha-mqtt-discoverable" ];
@@ -32,8 +32,8 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
 
   meta = {
     description = "CLI for creating Home Assistant compatible MQTT entities that will be automatically discovered";
-    homepage = "https://github.com/unixorn/ha-mqtt-discoverable-cli";
-    changelog = "https://github.com/unixorn/ha-mqtt-discoverable-cli/releases/tag/${finalAttrs.src.tag}";
+    homepage = "https://github.com/Home-Assistant-Tooling/ha-mqtt-discoverable-cli";
+    changelog = "https://github.com/Home-Assistant-Tooling/ha-mqtt-discoverable-cli/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ fab ];
     mainProgram = "hmd";

@@ -10,14 +10,14 @@
 
 buildPythonPackage rec {
   pname = "jq";
-  version = "1.11.0";
+  version = "1.13.0";
   format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "mwilliamson";
     repo = "jq.py";
     tag = version;
-    hash = "sha256-v5Hi3SkLKX7KrCHiXDuEThSLghDU5VVhNGt1KpMEqC4=";
+    hash = "sha256-ECj/vU7A6acBdyJiYHGsABKAX3grJJXAIQqmCALN27Y=";
   };
 
   env.JQPY_USE_SYSTEM_LIBS = 1;
@@ -38,6 +38,7 @@ buildPythonPackage rec {
   disabledTests = [
     # tries to match exact error text, fails with jq 1.8
     "test_value_error_is_raised_if_program_is_invalid"
+    "test_value_error_is_raised_if_input_cannot_be_processed_by_program"
   ];
 
   pythonImportsCheck = [ "jq" ];

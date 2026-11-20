@@ -2,43 +2,39 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  fetchpatch,
   callPackage,
   jq,
   cmake,
   flex,
   bison,
   gecode,
-  mpfr,
   cbc,
   zlib,
 }:
 
-let
-  gecode_6_3_0 = gecode.overrideAttrs (_: {
-    version = "6.3.0";
-    src = fetchFromGitHub {
-      owner = "gecode";
-      repo = "gecode";
-      rev = "f7f0d7c273d6844698f01cec8229ebe0b66a016a";
-      hash = "sha256-skf2JEtNkRqEwfHb44WjDGedSygxVuqUixskTozi/5k=";
-    };
-    patches = [ ];
-  });
-in
-let
-  gecode = gecode_6_3_0;
-in
-
 stdenv.mkDerivation (finalAttrs: {
   pname = "minizinc";
-  version = "2.9.3";
+  version = "2.10.1";
 
   src = fetchFromGitHub {
     owner = "MiniZinc";
     repo = "libminizinc";
-    rev = finalAttrs.version;
-    sha256 = "sha256-eu2yNRESypXWCn8INTjGwwRXTWdGYvah/hc2iqFKQmw=";
+    tag = finalAttrs.version;
+    hash = "sha256-FYXofYaAGYMIlzwQV2rP+1Sv8OYbaqH4jHzB4J4c8G4=";
   };
+
+  patches = [
+    # Compatibility with Gecode 6.5.0
+    (fetchpatch {
+      url = "https://github.com/MiniZinc/libminizinc/commit/4a84a48ac8fb31010a421a038a0cfbcac501ee1f.patch";
+      includes = [
+        "CMakeLists.txt"
+        "cmake/*"
+      ];
+      hash = "sha256-W4wkylQalL8j0eTVDimMr6hzth8zfzFzPrWvLZ4+PBo=";
+    })
+  ];
 
   nativeBuildInputs = [
     bison
@@ -49,7 +45,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildInputs = [
     gecode
-    mpfr
     cbc
     zlib
   ];

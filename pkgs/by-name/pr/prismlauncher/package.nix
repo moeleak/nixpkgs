@@ -11,22 +11,27 @@
   kdePackages,
   lib,
   libGL,
-  libx11,
-  libxcursor,
-  libxext,
-  libxrandr,
-  libxxf86vm,
+  libdecor,
   libjack2,
   libpulseaudio,
   libusb1,
+  libx11,
+  libxcursor,
+  libxext,
+  libxkbcommon,
+  libxrandr,
+  libxxf86vm,
   openal,
   pciutils,
   pipewire,
   prismlauncher-unwrapped,
+  sdl3,
   stdenv,
   symlinkJoin,
   udev,
   vulkan-loader,
+  wayland,
+  wrapGAppsHook3,
   xrandr,
 
   additionalLibs ? [ ],
@@ -71,7 +76,10 @@ symlinkJoin {
 
   paths = [ prismlauncher' ];
 
-  nativeBuildInputs = [ kdePackages.wrapQtAppsHook ];
+  nativeBuildInputs = [
+    kdePackages.wrapQtAppsHook
+    wrapGAppsHook3
+  ];
 
   buildInputs = [
     kdePackages.qtbase
@@ -81,6 +89,10 @@ symlinkJoin {
   ++ lib.optional stdenv.hostPlatform.isLinux kdePackages.qtwayland;
 
   postBuild = ''
+    # Required for org.gtk.Settings.FileChooser
+    gappsWrapperArgsHook
+    qtWrapperArgs+=("''${gappsWrapperArgs[@]}")
+
     wrapQtAppsHook
   '';
 
@@ -91,6 +103,7 @@ symlinkJoin {
         ## native versions
         glfw3-minecraft
         openal
+        sdl3
 
         ## openal
         alsa-lib
@@ -105,6 +118,9 @@ symlinkJoin {
         libxext
         libxrandr
         libxxf86vm
+        wayland
+        libdecor
+        libxkbcommon
 
         udev # oshi
 
@@ -122,10 +138,25 @@ symlinkJoin {
       ++ additionalPrograms;
 
     in
-    [ "--prefix PRISMLAUNCHER_JAVA_PATHS : ${lib.makeSearchPath "bin/java" jdks}" ]
+    [
+      "--set"
+      "NIX_LAUNCHER_WRAPPER"
+      "${placeholder "out"}/bin/prismlauncher"
+
+      "--prefix"
+      "PRISMLAUNCHER_JAVA_PATHS"
+      ":"
+      (lib.makeSearchPath "bin/java" jdks)
+    ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
-      "--set LD_LIBRARY_PATH ${addDriverRunpath.driverLink}/lib:${lib.makeLibraryPath runtimeLibs}"
-      "--prefix PATH : ${lib.makeBinPath runtimePrograms}"
+      "--set"
+      "LD_LIBRARY_PATH"
+      "${addDriverRunpath.driverLink}/lib:${lib.makeLibraryPath runtimeLibs}"
+
+      "--prefix"
+      "PATH"
+      ":"
+      (lib.makeBinPath runtimePrograms)
     ];
 
   meta = {
@@ -139,5 +170,6 @@ symlinkJoin {
       mainProgram
       platforms
       ;
+    identifiers = { inherit (prismlauncher'.meta.identifiers) cpeParts; };
   };
 }

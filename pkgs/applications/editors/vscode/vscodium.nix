@@ -15,11 +15,10 @@ let
   plat =
     {
       x86_64-linux = "linux-x64";
-      x86_64-darwin = "darwin-x64";
       aarch64-linux = "linux-arm64";
       aarch64-darwin = "darwin-arm64";
-      armv7l-linux = "linux-armhf";
       loongarch64-linux = "linux-loong64";
+      riscv64-linux = "linux-riscv64";
     }
     .${system} or throwSystem;
 
@@ -27,12 +26,11 @@ let
 
   hash =
     {
-      x86_64-linux = "sha256-CP4tIZhDoC56T6N0RUebNRw3CjxG82odHt4WY8rgmS8=";
-      x86_64-darwin = "sha256-4EWKIXc+CKQLot7eN6Bkd/xigByEGafLMKJ832EOSwA=";
-      aarch64-linux = "sha256-5EwENP1lpHzqiWWeXNQzQOp/zAAEanSbDhWcMeup2sY=";
-      aarch64-darwin = "sha256-9n7kVtknqfSfTc2MmFps5bxSqMnL6KNhZgTb+DVUkhY=";
-      armv7l-linux = "sha256-aXGqp7ljvqDJNb5BMiBIm2CluIr70oiNPmR7BULLsv8=";
-      loongarch64-linux = "sha256-XPEssw+7NVKljyrWcc+Q2HzRr31seDwbdNn3EtyHlSY=";
+      x86_64-linux = "sha256-yhiVqgQL2RoJxwnXnqx4YtjBqgI3/cJbUD3uuLzYfv0=";
+      aarch64-linux = "sha256-nycK4kJWGBKs0Cvpz1wTyEjaNZs1Yyet/kS4FalTIwk=";
+      aarch64-darwin = "sha256-rej14Ov0fl6p4keIRPFQxo5D3vGStvi+BdAynSXsCRc=";
+      loongarch64-linux = "sha256-uS7mxUGCxWu6NArM9wgUIjL7H8s3sCXE/oRvG4drAj0=";
+      riscv64-linux = "sha256-r+5jMMCT6AR3oklayzOSbdNXkBSl5nKKty8DHYwz7YE=";
     }
     .${system} or throwSystem;
 
@@ -43,7 +41,8 @@ buildVscode rec {
 
   # Please backport all compatible updates to the stable release.
   # This is important for the extension ecosystem.
-  version = "1.112.01907";
+  version = "1.143.17232";
+  vscodeVersion = "1.143.1";
   pname = "vscodium";
 
   executableName = "codium";
@@ -78,19 +77,20 @@ buildVscode rec {
     '';
     homepage = "https://github.com/VSCodium/vscodium";
     downloadPage = "https://github.com/VSCodium/vscodium/releases";
+    changelog = "https://github.com/VSCodium/vscodium/releases/tag/${version}";
     license = lib.licenses.mit;
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     maintainers = with lib.maintainers; [
       bobby285271
     ];
     mainProgram = "codium";
+    mainDarwinApp = "VSCodium.app";
     platforms = [
       "x86_64-linux"
-      "x86_64-darwin"
       "aarch64-linux"
       "aarch64-darwin"
-      "armv7l-linux"
       "loongarch64-linux"
+      "riscv64-linux"
     ];
     # requires libc.so.6 and other glibc specifics
     broken = stdenv.hostPlatform.isLinux && !stdenv.hostPlatform.isGnu;

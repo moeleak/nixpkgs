@@ -1,23 +1,23 @@
 {
   lib,
   fetchFromGitHub,
-  buildGoModule,
+  buildGo127Module,
   versionCheckHook,
   writableTmpDirAsHomeHook,
 }:
 
-buildGoModule (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "gh-dash";
-  version = "4.24.0";
+  version = "4.26.3";
 
   src = fetchFromGitHub {
     owner = "dlvhdr";
     repo = "gh-dash";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-UewMOaXYervy5NGO2l9MgJuzRfYIHw12VKyFjJcjelc=";
+    hash = "sha256-OxU3gJyRD37nHzk2UyB3eQwulKmftcE8ZPsUZbJXHe0=";
   };
 
-  vendorHash = "sha256-fXgj2q0HAGu9Jfdy7NJ6iE5hEKmt50HAEg/9Wds56g0=";
+  vendorHash = "sha256-edFzZpM1DIwFnMLQlOuh5c8CFzYm3X2YheGFDgOLZ0I=";
 
   ldflags = [
     "-s"

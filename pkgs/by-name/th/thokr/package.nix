@@ -6,22 +6,24 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "thokr";
-  version = "0.4.1";
+  version = "0.7.0";
+
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
-    owner = "thatvegandev";
+    owner = "jrnxf";
     repo = "thokr";
     rev = "v${finalAttrs.version}";
-    sha256 = "0aryfx9qlnjdq3iq2d823c82fhkafvibmbz58g48b8ah5x5fv3ir";
+    sha256 = "sha256-ouirz8ogB15iDY3O1KpRo8HA1p/OQsT9UvZjfq2Soc0=";
   };
 
-  cargoHash = "sha256-BjUPXsErdLGmZaDIMaY+iV3XcoQHGNZbRmFJb/fblwU=";
+  cargoHash = "sha256-23e/YGz/If3zWnp925Ys3dnGYHJBQfdWKTbzCjVJa4E=";
 
   meta = {
     description = "Typing tui with visualized results and historical logging";
-    homepage = "https://github.com/thatvegandev/thokr";
+    homepage = "https://github.com/jrnxf/thokr";
     license = lib.licenses.mit;
-    maintainers = [ ];
+    maintainers = with lib.maintainers; [ aiyion ];
     mainProgram = "thokr";
   };
 })

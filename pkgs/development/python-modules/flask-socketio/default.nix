@@ -11,14 +11,14 @@
 
 buildPythonPackage rec {
   pname = "flask-socketio";
-  version = "5.6.0";
+  version = "5.7.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "miguelgrinberg";
     repo = "Flask-SocketIO";
     tag = "v${version}";
-    hash = "sha256-1FMAooXktrbA4FDHrS0CQuqoTV6B4xWh5IIxRTDAzLs=";
+    hash = "sha256-nw7FnuQHR7UX8EOI2UezpmXXvbJkj5zrbDcFo9hdIaU=";
   };
 
   build-system = [ setuptools ];

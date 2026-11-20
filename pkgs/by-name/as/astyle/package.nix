@@ -9,11 +9,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "astyle";
-  version = "3.6.16";
+  version = "3.6.24";
 
   src = fetchurl {
     url = "mirror://sourceforge/astyle/astyle-${finalAttrs.version}.tar.bz2";
-    hash = "sha256-QU6dpM/e6zXY98Fw4V70OvX6AGbJ9ZKnRvcHHzVuzac=";
+    hash = "sha256-lyA0sDbjh94jY5t5agaCbXiiyGRr40VLYOSK8TjpAzY=";
   };
 
   nativeBuildInputs = [ cmake ];
@@ -21,7 +21,7 @@ stdenv.mkDerivation (finalAttrs: {
   # upstream repo includes a build/ directory
   cmakeBuildDir = "_build";
 
-  cmakeFlags = lib.optional asLibrary [
+  cmakeFlags = lib.optionals asLibrary [
     "-DBUILD_SHARED_LIBS=ON"
   ];
 
@@ -37,7 +37,7 @@ stdenv.mkDerivation (finalAttrs: {
     mainProgram = "astyle";
     homepage = "https://astyle.sourceforge.net/";
     license = lib.licenses.lgpl3;
-    maintainers = with lib.maintainers; [ carlossless ];
+    maintainers = with lib.maintainers; [ karstx ];
     platforms = lib.platforms.unix;
   };
 })

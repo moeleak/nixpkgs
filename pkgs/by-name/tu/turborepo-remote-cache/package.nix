@@ -13,20 +13,20 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "turborepo-remote-cache";
-  version = "2.7.3";
+  version = "3.0.3";
 
   src = fetchFromGitHub {
     owner = "ducktors";
     repo = "turborepo-remote-cache";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-I5EySaE0SFUmJdK9AAR6Id1TpTS3IOclRazTio8wFeI=";
+    hash = "sha256-4c7HfiVKfCBaFRJvR55qQvIEN+X2XGIFPKDYXlfZSmM=";
   };
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
     pnpm = pnpm_10;
     fetcherVersion = 3;
-    hash = "sha256-CJE8fZEgde06Mm3sg9tRfbU/5jHT9caP67ODWCjQyJI=";
+    hash = "sha256-6Qprmy+tVY+fGmVHUPJ3ylFPf/ytk1S/eufyltR68VU=";
   };
 
   nativeBuildInputs = [
@@ -54,8 +54,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # Clean up broken symlinks left behind by `pnpm prune`
     # https://github.com/pnpm/pnpm/issues/3645
     find node_modules -xtype l -delete
-     # Remove non-deterministic files
-    rm node_modules/.modules.yaml
     runHook postBuild
   '';
 
@@ -84,6 +82,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     description = "This project is an open-source implementation of the Turborepo custom remote cache server.";
     license = lib.licenses.mit;
     mainProgram = "turborepo-remote-cache";
-    maintainers = with lib.maintainers; [ humemm ];
+    maintainers = with lib.maintainers; [
+      humemm
+      ibizaman
+    ];
   };
 })

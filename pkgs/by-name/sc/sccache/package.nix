@@ -4,21 +4,22 @@
   rustPlatform,
   pkg-config,
   openssl,
+  zstd,
   distributed ? false,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
-  version = "0.15.0";
+  version = "0.19.0";
   pname = "sccache";
 
   src = fetchFromGitHub {
     owner = "mozilla";
     repo = "sccache";
     rev = "v${finalAttrs.version}";
-    sha256 = "sha256-cisDCEevpF8tzdEQzgIN+OifdTDk2YXvuSLKyBQu+IE=";
+    sha256 = "sha256-iq9/SOS13z8hyt4x03azms+J19jtfYEr7ly4VIENi9s=";
   };
 
-  cargoHash = "sha256-p08KXAnGyAbn4JzacphucV+OjZt0iKjnZEFtONkkDRs=";
+  cargoHash = "sha256-V8WH8QFBpOOP3QV/B+mvqBuSt12VD4sB89gJw86igAE=";
 
   buildFeatures = lib.optionals distributed [
     "dist-client"
@@ -30,6 +31,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
   buildInputs = [
     openssl
+    zstd
   ];
 
   # Tests fail because of client server setup which is not possible inside the

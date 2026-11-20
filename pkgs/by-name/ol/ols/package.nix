@@ -8,14 +8,18 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "ols";
-  version = "dev-2026-05";
+  version = "dev-2026-10";
 
   src = fetchFromGitHub {
     owner = "DanielGavin";
     repo = "ols";
     tag = finalAttrs.version;
-    hash = "sha256-9tQVyauvXGTkKnQUSYKAhjL5ZZbhglqdcxdcs27P2k4=";
+    hash = "sha256-tVg9g5aN4ovUElpDzTSLpTQUq3OEiYUaq3YO98ex8wA=";
   };
+
+  patches = [
+    ./odin-2026-11-compat.patch
+  ];
 
   postPatch = ''
     substituteInPlace build.sh \
@@ -39,7 +43,9 @@ stdenv.mkDerivation (finalAttrs: {
     runHook preInstall
 
     install -Dm755 ols odinfmt -t $out/bin/
-    wrapProgram $out/bin/ols --set-default ODIN_ROOT ${odin}/share
+    wrapProgram $out/bin/ols \
+      --set-default ODIN_ROOT ${odin}/share \
+      --set-default OLS_BUILTIN_FOLDER ${odin}/share/base/builtin
 
     runHook postInstall
   '';
@@ -52,6 +58,7 @@ stdenv.mkDerivation (finalAttrs: {
     maintainers = with lib.maintainers; [
       astavie
       atomicptr
+      yvnth
     ];
     mainProgram = "ols";
   };

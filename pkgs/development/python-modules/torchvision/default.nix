@@ -28,14 +28,14 @@ let
 in
 buildPythonPackage.override { inherit (torch) stdenv; } (finalAttrs: {
   pname = "torchvision";
-  version = "0.26.0";
+  version = "0.29.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "pytorch";
     repo = "vision";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-FOdDGY3v8yWBhtNo9tZP79/xwrc7AoIY5Y1ZABzWe6g=";
+    hash = "sha256-rNWO8wyofMEmd5cB8NbmpDKUQioup5sukygXbqayPMk=";
   };
 
   nativeBuildInputs = [
@@ -49,7 +49,16 @@ buildPythonPackage.override { inherit (torch) stdenv; } (finalAttrs: {
     libjpeg_turbo
     libpng
     torch.cxxdev
-  ];
+  ]
+  ++ lib.optionals cudaSupport (
+    with cudaPackages;
+    [
+      cuda_cudart # cuda_runtime.h
+      libcublas # cublas_v2.h
+      libcusolver # cusolverDn.h
+      libcusparse # cusparse.h
+    ]
+  );
 
   dependencies = [
     numpy
@@ -59,6 +68,9 @@ buildPythonPackage.override { inherit (torch) stdenv; } (finalAttrs: {
   ];
 
   env = {
+    # Otherwise, the version is read from `version.txt` (`0.29.1a0`)
+    BUILD_VERSION = finalAttrs.version;
+
     TORCHVISION_INCLUDE = "${libjpeg_turbo.dev}/include/";
     TORCHVISION_LIBRARY = "${libjpeg_turbo}/lib/";
   }
@@ -83,7 +95,8 @@ buildPythonPackage.override { inherit (torch) stdenv; } (finalAttrs: {
 
   meta = {
     description = "PyTorch vision library";
-    homepage = "https://pytorch.org/";
+    homepage = "https://pytorch.org/vision";
+    downloadPage = "https://github.com/pytorch/vision";
     changelog = "https://github.com/pytorch/vision/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.bsd3;
     platforms = with lib.platforms; linux ++ lib.optionals (!cudaSupport) darwin;

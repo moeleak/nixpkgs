@@ -8,18 +8,17 @@
   installShellFiles,
   libredirect,
   versionCheckHook,
-  fuse,
 }:
 
 buildGoModule (finalAttrs: {
   pname = "openlist";
-  version = "4.2.1";
+  version = "4.2.9";
 
   src = fetchFromGitHub {
     owner = "OpenListTeam";
     repo = "OpenList";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-9MDcAQh06W6mOhYpFR49bxvTTrIoJnKY9P3WRVWsujI=";
+    hash = "sha256-zsbrS5kIKmuZkIrb+GD/34ij6hLoygZq9lfj4xYCuLM=";
     # populate values that require us to use git. By doing this in postFetch we
     # can delete .git afterwards and maintain better reproducibility of the src.
     leaveDotGit = true;
@@ -35,20 +34,23 @@ buildGoModule (finalAttrs: {
   frontend = callPackage ./frontend.nix { };
 
   proxyVendor = true;
-  vendorHash = "sha256-Ho9zVKdzpGKZ/ftJmidUkMBsN4qfvLa96Fg3ayTfYac=";
+  vendorHash = "sha256-3Ve8phO3GSnVu9FJWzPbIDBgLi76GsQXUkW5hyQ2Ho8=";
 
   nativeBuildInputs = [
     installShellFiles
   ]
   ++ lib.optional stdenv.hostPlatform.isDarwin libredirect.hook;
 
-  buildInputs = [ fuse ];
-
   tags = [ "jsoniter" ];
+
+  subPackages = [
+    "."
+    "pkg/gowebdav/cmd/gowebdav"
+  ];
 
   ldflags = [
     "-s"
-    "-X \"github.com/OpenListTeam/OpenList/v4/internal/conf.GitAuthor=The OpenList Projects Contributors <noreply@openlist.team>\""
+    "-X \"github.com/OpenListTeam/OpenList/v4/internal/conf.GitAuthor=The OpenList Projects Contributors <noreply@oplist.org>\""
     "-X github.com/OpenListTeam/OpenList/v4/internal/conf.Version=${finalAttrs.version}"
     "-X github.com/OpenListTeam/OpenList/v4/internal/conf.WebVersion=${finalAttrs.frontend.version}"
   ];
@@ -75,12 +77,6 @@ buildGoModule (finalAttrs: {
         "TestWebsocketAll"
         "TestWebsocketCaller"
         "TestDownloadOrder"
-      ]
-      ++ lib.optionals (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64) [
-        # --- FAIL: TestTask_Cancel (0.01s)
-        # task_test.go:48: task is running
-        # task_test.go:61: task status not canceled: canceling
-        "TestTask_Cancel"
       ];
     in
     [ "-skip=^${builtins.concatStringsSep "$|^" skippedTests}$" ];

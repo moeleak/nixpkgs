@@ -1,8 +1,8 @@
 [
   {
     "pname": "BouncyCastle.Cryptography",
-    "version": "2.6.2",
-    "hash": "sha256-Yjk2+x/RcVeccGOQOQcRKCiYzyx1mlFnhS5auCII+Ms="
+    "version": "2.7.0",
+    "hash": "sha256-8JH/zKtNA5k+Zgus4ndlmnne4JcvVNfx9L1G1oCWYkE="
   },
   {
     "pname": "CsvHelper",
@@ -16,38 +16,43 @@
   },
   {
     "pname": "MailKit",
-    "version": "4.15.1",
-    "hash": "sha256-ZI2ASxX1dY53YxWRii0Dow4aojR8VCEWzCWZLrH7wPw="
+    "version": "4.18.1",
+    "hash": "sha256-w3ncBmlPkTTfKH87ZPhKg4ZaLseFmwfcttqsO6NuBjo="
+  },
+  {
+    "pname": "Microsoft.Bcl.Cryptography",
+    "version": "10.0.2",
+    "hash": "sha256-+OYtcWsd1qZcEXadYeA4t6+pyADg1APQCxpKUtP002M="
   },
   {
     "pname": "Microsoft.IdentityModel.Abstractions",
-    "version": "8.17.0",
-    "hash": "sha256-AU+EMOZArc3rTdsnKYzAufFAtspuYQM3XYi8/VsQAio="
+    "version": "8.23.0",
+    "hash": "sha256-zifppQ3IMcUZvypp0B7LLAShjGSf2jUReA3jRnTPC7s="
   },
   {
     "pname": "Microsoft.IdentityModel.JsonWebTokens",
-    "version": "8.17.0",
-    "hash": "sha256-MH7vdhCNAae32p6UTvaDtmyvFDxa/W71qTsEQ6yC9xM="
+    "version": "8.23.0",
+    "hash": "sha256-R+IgPejqaH61agVBHOEP2eiieVbyrM7wTvKqLA24XZo="
   },
   {
     "pname": "Microsoft.IdentityModel.Logging",
-    "version": "8.17.0",
-    "hash": "sha256-IM6jsPMz+l9JA0cye/v2ke51xlfP0u5HtWBqc2aKDYM="
+    "version": "8.23.0",
+    "hash": "sha256-9Ho55VVVAsXmWuUQXKuGh83Gz6mO4uQR86Gnjb+SVSo="
   },
   {
     "pname": "Microsoft.IdentityModel.Tokens",
-    "version": "8.17.0",
-    "hash": "sha256-XcA0KXJbqMWt0I5LuHHMRLpgVQ18KcBej1BoySHeA1A="
+    "version": "8.23.0",
+    "hash": "sha256-Tkkc4HFS/Fw6Z6jqUKuI8TSLGYutTs+r1mAvXuJQ6fc="
   },
   {
     "pname": "MimeKit",
-    "version": "4.15.1",
-    "hash": "sha256-MI4Wr+JWoxR9wsYhKmW8j1EdJ59W/O4jv5D9Zb8mEUw="
+    "version": "4.18.1",
+    "hash": "sha256-W15tP12RW7aPyzlHD0eJ+5TDwggQkjZ3Hih+qDyyQYs="
   },
   {
     "pname": "Npgsql",
-    "version": "9.0.4",
-    "hash": "sha256-YH2QYLe56dH6NNGgSwLIaHefjkKQLh0Sf4vMWoJciyU="
+    "version": "9.0.5",
+    "hash": "sha256-5AF0qiVQwfKUqCXSFb+oJhe3Q1wwK9F9+Q9/A4RTIdo="
   },
   {
     "pname": "System.Security.Cryptography.Pkcs",

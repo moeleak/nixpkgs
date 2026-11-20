@@ -2,16 +2,17 @@
   lib,
   buildPythonPackage,
   fetchFromGitHub,
-  fetchpatch,
-  pytestCheckHook,
-  setuptools,
-  writableTmpDirAsHomeHook,
 
+  # build-system
+  hatch-vcs,
+  hatchling,
+
+  # dependencies
+  numpy,
   packaging,
   pandas,
   pyogrio,
   pyproj,
-  rtree,
   shapely,
 
   # optional-dependencies
@@ -22,25 +23,35 @@
   matplotlib,
   psycopg,
   pyarrow,
+  scipy,
   sqlalchemy,
   xyzservices,
+
+  # tests
+  pytestCheckHook,
+  rtree,
+  writableTmpDirAsHomeHook,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "geopandas";
-  version = "1.1.3";
+  version = "1.2.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "geopandas";
     repo = "geopandas";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-66FbHNewpSEVZ9RwngK7E4bcELa9Z2OQ9xVP9+fgeHQ=";
+    hash = "sha256-KXFNAsbeDLUupQSFnUSrvnSXqr5b8WUeDYaFbBvj9Xo=";
   };
 
-  build-system = [ setuptools ];
+  build-system = [
+    hatch-vcs
+    hatchling
+  ];
 
   dependencies = [
+    numpy
     packaging
     pandas
     pyogrio
@@ -63,6 +74,7 @@ buildPythonPackage (finalAttrs: {
       matplotlib
       psycopg
       pyarrow
+      scipy
       sqlalchemy
       xyzservices
     ];
@@ -78,6 +90,20 @@ buildPythonPackage (finalAttrs: {
   disabledTests = [
     # Requires network access
     "test_read_file_url"
+
+    # Require geodatasets (circular dependency)
+    "TestAxisLabels"
+    "TestStyleMapping"
+
+    # shapely.__version__ is "0+unknown" in nixpkgs, so pyogrio rejects `mask`:
+    # ValueError: 'mask' parameter requires Shapely >= 2.0
+    "test_read_file_crs_warning_messages"
+    "test_read_file_mask"
+    "test_read_file_multi_layer_with_layer_arg_no_warning"
+
+    # GDAL shares pyarrow's libarrow and leaves a `geoarrow.wkb` extension type registered,
+    # breaking the subsequent test_geoarrow.py tests
+    "test_write_parquet_2_0_gdal_readable"
   ];
 
   enabledTestPaths = [ "geopandas" ];

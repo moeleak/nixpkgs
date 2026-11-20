@@ -6,8 +6,10 @@
   setuptools,
   aiohttp,
   bcrypt,
+  execnet,
   freezegun,
   homeassistant,
+  paho-mqtt,
   pytest-asyncio,
   pytest-socket,
   requests-mock,
@@ -18,7 +20,7 @@
 
 buildPythonPackage rec {
   pname = "pytest-homeassistant-custom-component";
-  version = "0.13.330";
+  version = "0.13.375";
   pyproject = true;
 
   disabled = pythonOlder "3.13";
@@ -27,8 +29,15 @@ buildPythonPackage rec {
     owner = "MatthewFlamm";
     repo = "pytest-homeassistant-custom-component";
     tag = version;
-    hash = "sha256-d+wRZPHdSIjXe6vqC8P85nuThQsiEu/qA3CuIOajsZ0=";
+    hash = "sha256-VicNHxcCL+TxVxjWOMWlHd8MDMd+Ixy/3HiKFNQyCfA=";
   };
+
+  patches = [
+    # e2e tests should write temporary files into a temporary directory instead of into the installation directory aka the nix store
+    ./pytest-homeassistant-custom-component-tmpdir.patch
+
+    ./pytest-homeassistant-custom-component-hass-2026.11-comp.diff
+  ];
 
   build-system = [ setuptools ];
 
@@ -37,8 +46,10 @@ buildPythonPackage rec {
   dependencies = [
     aiohttp
     bcrypt
+    execnet
     freezegun
     homeassistant
+    paho-mqtt
     pytest-asyncio
     pytest-socket
     requests-mock

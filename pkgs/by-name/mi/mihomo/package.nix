@@ -8,16 +8,16 @@
 
 buildGoModule rec {
   pname = "mihomo";
-  version = "1.19.24";
+  version = "1.19.34";
 
   src = fetchFromGitHub {
     owner = "MetaCubeX";
     repo = "mihomo";
     rev = "v${version}";
-    hash = "sha256-RQ6ZnOkIJyIA7n/AhHxOEtWcoXbyusc0GwIHr4VKUxM=";
+    hash = "sha256-5sdl+Zodfvo/qaa5zLlj2PaaFoOf3xFScyRLw5a2Oqo=";
   };
 
-  vendorHash = "sha256-wAd5VKpQT9aE/S3J/6gLlkYs56TqR3b+H0s+peOQ3R4=";
+  vendorHash = "sha256-29dWXUPyrlzHIxhss8aYuVmb8Wx4rPyNxjT2mmUI/LI=";
 
   excludedPackages = [ "./test" ];
 
@@ -42,7 +42,10 @@ buildGoModule rec {
     description = "Rule-based tunnel in Go";
     homepage = "https://github.com/MetaCubeX/mihomo/tree/Alpha";
     license = lib.licenses.gpl3Only;
-    maintainers = with lib.maintainers; [ oluceps ];
+    maintainers = with lib.maintainers; [
+      oluceps
+      levihuayuzhang
+    ];
     mainProgram = "mihomo";
   };
 }

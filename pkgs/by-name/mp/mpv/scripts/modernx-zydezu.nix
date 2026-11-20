@@ -3,36 +3,33 @@
   buildLua,
   fetchFromGitHub,
   installFonts,
-  makeFontsConf,
+  mpvScripts,
   nix-update-script,
 }:
 buildLua (finalAttrs: {
   pname = "modernx-zydezu";
-  version = "0.4.5";
+  version = "0.4.8";
 
   scriptPath = "modernx.lua";
   src = fetchFromGitHub {
     owner = "zydezu";
     repo = "ModernX";
-    rev = finalAttrs.version;
-    hash = "sha256-a+StfEYQwt5NuELvanvZllrD2RQ0g9JBpCznMdSDM5Y=";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-kUqwksdNf8xWmzF+ZRy1VZQ/tQWhEOC7TeyOoyrWsvg=";
   };
 
   nativeBuildInputs = [ installFonts ];
 
-  passthru.extraWrapperArgs = [
-    "--set"
-    "FONTCONFIG_FILE"
-    (toString (makeFontsConf {
-      fontDirectories = [ "${finalAttrs.finalPackage}/share/fonts" ];
-    }))
-  ];
+  passthru.fontDirectories = [ "${finalAttrs.finalPackage}/share/fonts" ];
 
   passthru.updateScript = nix-update-script { };
 
+  # FIXME?: collides with mpvScripts.modernx
+  passthru.dontCollideCheck = lib.hasAttr "modernx" mpvScripts;
+
   meta = {
     description = "Modern OSC UI replacement for MPV that retains the functionality of the default OSC";
-    changelog = "https://github.com/zydezu/ModernX/releases/tag/${finalAttrs.version}";
+    changelog = "https://github.com/zydezu/ModernX/releases/tag/v${finalAttrs.version}";
     homepage = "https://github.com/zydezu/ModernX";
     license = lib.licenses.lgpl21Plus;
     maintainers = with lib.maintainers; [

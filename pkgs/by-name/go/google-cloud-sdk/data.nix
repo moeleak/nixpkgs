@@ -1,27 +1,23 @@
 # DO NOT EDIT! This file is generated automatically by update.sh
 { }:
 {
-  version = "565.0.0";
+  version = "593.0.0";
   googleCloudSdkPkgs = {
     x86_64-linux = {
-      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-565.0.0-linux-x86_64.tar.gz";
-      sha256 = "0pra5cr46bf5k729m30xbs3s1vw8vkix7p33j9h8gvmqhr66fwh9";
-    };
-    x86_64-darwin = {
-      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-565.0.0-darwin-x86_64.tar.gz";
-      sha256 = "1hyrr6kkbaqz6nhn029l1rwyn416jcvvyd41187vgpyr5b2ldd0h";
+      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-593.0.0-linux-x86_64.tar.gz";
+      sha256 = "0n3aa1656bqgdvzmkgklvm4si60g7cnqqd7vs31axpkdbl628vz3";
     };
     aarch64-linux = {
-      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-565.0.0-linux-arm.tar.gz";
-      sha256 = "0jx0h0skicy16g2572rblj59a4f5q3fxbaxhfs03ldqr15fjg647";
+      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-593.0.0-linux-arm.tar.gz";
+      sha256 = "1sfqp02xfb79h4s9fqfbkk9k63l7rc6c5hg7jixvc4vgj1p3b3f9";
     };
     aarch64-darwin = {
-      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-565.0.0-darwin-arm.tar.gz";
-      sha256 = "1b7h0gzp58fkkln5v0dnki2j73akankhjm67205qah9hskaq06cd";
+      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-593.0.0-darwin-arm.tar.gz";
+      sha256 = "1bxnlrcp9y2qdkdg0bssbzaj7c9vzw2523ldagallj915cmsmmki";
     };
     i686-linux = {
-      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-565.0.0-linux-x86.tar.gz";
-      sha256 = "19nba1qp87yf1wr94rabvkgf584i8pkvsp01qqd5la6hhmcpg0zn";
+      url = "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-593.0.0-linux-x86.tar.gz";
+      sha256 = "1hlhm2yz7w6xr2l1cs48wxkd83jphi8b3z6gls2j9pdq97h3c242";
     };
   };
 }

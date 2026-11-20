@@ -24,7 +24,6 @@ let
     mkOption
     mkPackageOption
     optionals
-    optionalString
     recursiveUpdate
     types
     ;
@@ -60,6 +59,24 @@ let
   };
 
   withRedis = cfg.settings.redis.location != null;
+
+  pretixManageWrapper = pkgs.writeShellApplication {
+    name = "pretix-manage";
+    runtimeInputs = with pkgs; [
+      util-linux
+    ];
+    text = ''
+      cd ${cfg.settings.pretix.datadir}
+      export PRETIX_CONFIG_FILE=${configFile}
+      exec runuser ${
+        lib.cli.toCommandLineShellGNU { } {
+          inherit (cfg) user;
+          supp-group = if withRedis then config.services.redis.servers.pretix.group else null;
+          whitelist-environment = "PRETIX_CONFIG_FILE";
+        }
+      } -- ${getExe' pythonEnv "pretix-manage"} "$@"
+    '';
+  };
 in
 {
   meta = {
@@ -396,15 +413,7 @@ in
     # https://docs.pretix.eu/en/latest/admin/installation/index.html
 
     environment.systemPackages = [
-      (pkgs.writeScriptBin "pretix-manage" ''
-        cd ${cfg.settings.pretix.datadir}
-        sudo=exec
-        if [[ "$USER" != ${cfg.user} ]]; then
-          sudo='exec /run/wrappers/bin/sudo -u ${cfg.user} ${optionalString withRedis "-g redis-pretix"} --preserve-env=PRETIX_CONFIG_FILE'
-        fi
-        export PRETIX_CONFIG_FILE=${configFile}
-        $sudo ${getExe' pythonEnv "pretix-manage"} "$@"
-      '')
+      pretixManageWrapper
     ];
 
     services.logrotate.settings.pretix = {
@@ -421,7 +430,6 @@ in
         enable = true;
         recommendedGzipSettings = mkDefault true;
         recommendedOptimisation = mkDefault true;
-        recommendedProxySettings = mkDefault true;
         recommendedTlsSettings = mkDefault true;
         upstreams.pretix.servers."unix:/run/pretix/pretix.sock" = { };
         virtualHosts.${cfg.nginx.domain} = {
@@ -431,7 +439,14 @@ in
             more_set_headers X-Content-Type-Options nosniff;
           '';
           locations = {
-            "/".proxyPass = "http://pretix";
+            "/" = {
+              proxyPass = "http://pretix";
+              extraConfig = ''
+                proxy_set_header Host $host;
+                proxy_set_header X-Forwarded-For $remote_addr;
+                proxy_set_header X-Forwarded-Proto $scheme;
+              '';
+            };
             "/media/" = {
               alias = "${cfg.settings.pretix.datadir}/media/";
               extraConfig = ''
@@ -439,7 +454,7 @@ in
                 expires 7d;
               '';
             };
-            "^~ (/media/(cachedfiles|invoices)|/static/(staticfiles.json|CACHE/manifest.json))" = {
+            "~ ^/(media/(cachedfiles|invoices)|static/(staticfiles\\.json|CACHE/manifest\\.json))" = {
               extraConfig = ''
                 deny all;
                 return 404;

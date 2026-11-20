@@ -12,14 +12,14 @@
 
 buildPythonPackage rec {
   pname = "wolf-comm";
-  version = "0.0.49";
+  version = "0.0.53";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "janrothkegel";
     repo = "wolf-comm";
     tag = version;
-    hash = "sha256-sbW0ZwCNjrFsI8pKWiWEUgQN7toP/OthvsZxTGI5x/I=";
+    hash = "sha256-dyQepyWYN+1R+DjMrGW1mEEBMD9wfI8uGrRoXGeWcEk=";
   };
 
   build-system = [ setuptools ];

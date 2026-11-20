@@ -6,14 +6,14 @@
 
 python3.pkgs.buildPythonApplication (finalAttrs: {
   pname = "search-vulns";
-  version = "1.0.9";
+  version = "1.2.7";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "ra1nb0rn";
     repo = "search_vulns";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-bOyNKDCodPMkIiUP+o/BDy4c+hHTLSwxKnlDDydFucs=";
+    hash = "sha256-WEwVMJFnPUB+8HJTdXI911KsIkicyK9nGS3+J8Y3wls=";
     fetchSubmodules = true;
   };
 
@@ -26,6 +26,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     aiolimiter
     cpe-search
     cvss
+    ijson
     pydantic
     requests
     tqdm
@@ -52,6 +53,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     ];
     mariadb = [ mariadb ];
     web = [
+      apiflask
       flask
       gevent
       gunicorn

@@ -35,6 +35,7 @@
   libxkbfile,
   nixosTests,
   gettext,
+  librsvg,
 }:
 let
   enDictVer = "20121020";
@@ -43,15 +44,15 @@ let
     hash = "sha256-xEpdeEeSXuqeTS0EdI1ELNKN2SmaC1cu99kerE9abOs=";
   };
 in
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "fcitx5";
-  version = "5.1.19";
+  version = "5.1.23";
 
   src = fetchFromGitHub {
     owner = "fcitx";
-    repo = pname;
-    rev = version;
-    hash = "sha256-ZsGRVuUpWIJnsSqcAQcerxvwWIRaGdAO2FM1k3D3g0M=";
+    repo = finalAttrs.pname;
+    tag = finalAttrs.version;
+    hash = "sha256-5RDLAUqIOQiDt8CsMFXof8Y7F79Reyhpv7tcW57uw+Y=";
     fetchSubmodules = true;
   };
 
@@ -61,13 +62,13 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     cmake
-    kdePackages.extra-cmake-modules
     pkg-config
     wayland-scanner
     gettext
   ];
 
   buildInputs = [
+    kdePackages.plasma-wayland-protocols
     kdePackages.extra-cmake-modules
     expat
     isocodes
@@ -94,6 +95,7 @@ stdenv.mkDerivation rec {
     xcb-imdkit
     xkeyboard_config
     libxkbfile
+    librsvg
   ];
 
   cmakeFlags = lib.optionals (!stdenv.buildPlatform.canExecute stdenv.hostPlatform) [
@@ -101,6 +103,7 @@ stdenv.mkDerivation rec {
   ];
 
   strictDeps = true;
+  __structuredAttrs = true;
 
   passthru = {
     updateScript = ./update.py;
@@ -117,4 +120,4 @@ stdenv.mkDerivation rec {
     maintainers = with lib.maintainers; [ poscat ];
     platforms = lib.platforms.linux;
   };
-}
+})

@@ -1,13 +1,17 @@
 {
   lib,
   stdenv,
-  fetchsvn,
+  fetchurl,
   autoreconfHook,
+  cppunit,
   dbus,
+  directoryListingUpdater,
+  fzssh,
   gettext,
   gnutls,
   libfilezilla,
   libidn,
+  makeBinaryWrapper,
   nettle,
   pkg-config,
   pugixml,
@@ -20,30 +24,46 @@
   xdg-utils,
 }:
 
-stdenv.mkDerivation {
+stdenv.mkDerivation (finalAttrs: {
   pname = "filezilla";
-  version = "3.69.6";
+  version = "3.72.1";
+  __structuredAttrs = true;
 
-  src = fetchsvn {
-    url = "https://svn.filezilla-project.org/svn/FileZilla3/trunk";
-    rev = "11365";
-    hash = "sha256-KJI+UxKiwmZfVG0CiS3lDnjz+YNjTy7IoTcOmlGkluk=";
+  src = fetchurl {
+    # Upstream download link was made unstable on purpose
+    # See https://trac.filezilla-project.org/ticket/13186
+    url = "https://sources.archlinux.org/other/filezilla/filezilla-${finalAttrs.version}.tar.xz";
+    hash = "sha256-5xFqeuj20+TJ4zegsEKYS3xbV/ypImZqw9j8r7qBd2Q=";
   };
+
+  # The engine library uses pugixml but doesn't link it, which only works
+  # where the linker allows undefined symbols in shared libraries
+  postPatch = ''
+    substituteInPlace src/engine/Makefile.am \
+      --replace-fail '$(LIBFZSSH_LIBS) $(LIBFILEZILLA_LIBS)' '$(LIBFZSSH_LIBS) $(LIBFILEZILLA_LIBS) $(PUGIXML_LIBS)'
+  '';
 
   configureFlags = [
     "--disable-manualupdatecheck"
     "--disable-autoupdatecheck"
+    "--with-wx-prefix=${wxwidgets_3_2}"
   ];
 
   nativeBuildInputs = [
     autoreconfHook
     pkg-config
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
     wrapGAppsHook3
+    xdg-utils
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    makeBinaryWrapper
   ];
 
   buildInputs = [
     boost
-    dbus
+    fzssh
     gettext
     gnutls
     libfilezilla
@@ -52,12 +72,38 @@ stdenv.mkDerivation {
     pugixml
     sqlite
     tinyxml
-    wxwidgets_3_2
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    dbus
     gtk3
-    xdg-utils
   ];
 
+  strictDeps = true;
+
   enableParallelBuilding = true;
+
+  doCheck = true;
+
+  checkInputs = [ cppunit ];
+
+  # On macOS, FileZilla only looks for its resources inside the app bundle.
+  # Upstream's bundle carries copies of all dylibs in Frameworks, which our
+  # installed binary doesn't use.
+  postInstall = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    mkdir -p $out/Applications
+    cp -r FileZilla.app $out/Applications/
+    rm -r $out/Applications/FileZilla.app/Contents/Frameworks
+    mv $out/bin/filezilla $out/Applications/FileZilla.app/Contents/MacOS/filezilla
+    makeWrapper $out/Applications/FileZilla.app/Contents/MacOS/filezilla $out/bin/filezilla
+  '';
+
+  preFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
+    gappsWrapperArgs+=(
+      --suffix PATH : "${lib.makeBinPath [ xdg-utils ]}"
+    )
+  '';
+
+  passthru.updateScript = directoryListingUpdater { };
 
   meta = {
     homepage = "https://filezilla-project.org/";
@@ -69,10 +115,10 @@ stdenv.mkDerivation {
       provided.
     '';
     license = lib.licenses.gpl2;
-    platforms = lib.platforms.linux;
+    platforms = lib.platforms.unix;
     maintainers = with lib.maintainers; [
       iedame
       pSub
     ];
   };
-}
+})

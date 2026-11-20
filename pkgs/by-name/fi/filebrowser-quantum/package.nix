@@ -1,18 +1,19 @@
 {
   lib,
   fetchFromGitHub,
-  buildGoModule,
+  buildGo127Module,
   buildNpmPackage,
+  nix-update-script,
 }:
 
 let
-  version = "1.2.2-stable";
+  version = "2.0.2-stable";
 
   src = fetchFromGitHub {
     owner = "gtsteffaniak";
     repo = "filebrowser";
     tag = "v${version}";
-    hash = "sha256-MWFBoVr5WRfLhDUGEGS6ntb3v23HcOcm91x3fGriM2A=";
+    hash = "sha256-xzbEB0V+0Yfmc42dAAGMCfSIwPaWoNgwAKYcSFINcmc=";
   };
 
   frontend = buildNpmPackage {
@@ -20,12 +21,12 @@ let
     inherit version src;
 
     sourceRoot = "${src.name}/frontend";
-    npmDepsHash = "sha256-brW5YR/DNBOCPBDMEjSzyk+YTbrP5ppdQ0US/DLbyIs=";
+    npmDepsHash = "sha256-ZJZtHaeNpHV7n3cT0m7YmBuIGM8CObp3IdQWdSiqbKc=";
 
     buildPhase = ''
       runHook preBuild
 
-      npm run build:docker
+      npm run build:docker -- --outDir dist
 
       runHook postBuild
     '';
@@ -41,18 +42,30 @@ let
   };
 
 in
-buildGoModule {
+buildGo127Module {
   pname = "filebrowser-quantum";
   inherit version src;
 
   sourceRoot = "${src.name}/backend";
 
-  vendorHash = "sha256-pU5qtWvhLbMdxzXK6uKxEkvbZdb2oa4ZHKaCPm0bIwU=";
+  excludedPackages = [ "/scripts/" ];
+
+  vendorHash = "sha256-P3H5kESEd1X5tl0EQyIm680fKz/18KegoPBp1jb69vo=";
+
+  # Tests open database fixtures in _docker for writing
+  postUnpack = ''
+    chmod -R u+w ${src.name}/_docker
+  '';
 
   preBuild = ''
-    mkdir -p http/embed
-    cp -r ${frontend}/* http/embed/
+    cp -r ${frontend}/* internal/web/embed/
   '';
+
+  # goModules inherits preBuild, which would make it depend on the frontend;
+  # nix-update then records the npmDepsHash mismatch as vendorHash
+  overrideModAttrs = {
+    preBuild = "";
+  };
 
   postInstall = ''
     mv $out/bin/backend $out/bin/filebrowser-quantum
@@ -61,9 +74,19 @@ buildGoModule {
   ldflags = [
     "-w"
     "-s"
-    "-X github.com/gtsteffaniak/filebrowser/backend/version.CommitSHA=testingCommit"
-    "-X github.com/gtsteffaniak/filebrowser/backend/version.Version=testing"
+    "-X github.com/gtsteffaniak/filebrowser/backend/internal/version.CommitSHA=testingCommit"
+    "-X github.com/gtsteffaniak/filebrowser/backend/internal/version.Version=testing"
   ];
+
+  passthru = {
+    inherit frontend;
+    updateScript = nix-update-script {
+      extraArgs = [
+        "--subpackage"
+        "frontend"
+      ];
+    };
+  };
 
   meta = {
     description = "Access and manage your files from the web";

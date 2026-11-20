@@ -10,16 +10,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "git-credential-keepassxc";
-  version = "0.14.2";
+  version = "0.14.4";
 
   src = fetchFromGitHub {
     owner = "Frederick888";
     repo = "git-credential-keepassxc";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-tA90IM2zLDX9LkIZ6BEW9L+Se3f/cq80f+IwLfq1cjI=";
+    hash = "sha256-xhoi5S0cyHe1S7LWidhOcCKFUAKrz616vsmazYP92vM=";
   };
 
-  cargoHash = "sha256-5aXVvQdiQ+3c3VsGX/nrvclgNlXUO3bs0/De8LEXDek=";
+  cargoHash = "sha256-/LPyvFM394VwSZ3j0VOfXrs4zq5IMdRo02jzQIwkO7o=";
 
   buildFeatures =
     [ ]

@@ -1,12 +1,50 @@
-{ callPackage }:
+{
+  callPackage,
+  runCommand,
+  lib,
+  stdenv,
+}:
 let
   src = callPackage ./src.nix { };
+  inherit (src)
+    packageVersion
+    firefoxVersion
+    firefox
+    source
+    ;
+
+  versionComponents = lib.strings.splitString "-" src.packageVersion;
+  release = builtins.elemAt versionComponents 1;
+
+  localSettingsPrefs = runCommand "local-settings.js" { } ''
+    # Import of `librewolf.cfg` file is already being done manually.
+    substitute ${source}/settings/defaults/pref/local-settings.js $out \
+      --replace-fail 'pref("general.config.filename", "librewolf.cfg");' ""
+  '';
+
+  extraPrefsFiles = [
+    "${source}/settings/librewolf.cfg"
+    localSettingsPrefs
+  ];
+
+  extraPoliciesFiles = [ "${source}/settings/distribution/policies.json" ];
 in
-rec {
+{
+  inherit packageVersion;
 
-  inherit (src) packageVersion firefox source;
+  srcs = [
+    firefox
+    source
+  ];
 
-  extraPatches = [ "${source}/patches/pref-pane/pref-pane-small.patch" ];
+  extraPostUnpack = ''
+    chmod -R u+w -- "${source.name}"
+    # This layout is required for the patch script to work
+    mv firefox-${firefoxVersion} ${source.name}/librewolf-${packageVersion}
+    chmod -R u+w -- "$sourceRoot"
+  '';
+
+  sourceRoot = "${source.name}/librewolf-${packageVersion}";
 
   extraConfigureFlags = [
     "--with-unsigned-addon-scopes=app,system"
@@ -14,54 +52,28 @@ rec {
     # Flags based on discussion in https://github.com/NixOS/nixpkgs/issues/482250
     "--disable-debug"
     "--disable-debug-symbols"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
     "--enable-lto=thin,cross"
   ];
 
-  extraPostPatch = ''
-    while read patch_name; do
-      echo "applying LibreWolf patch: $patch_name"
-      patch -p1 < ${source}/$patch_name
-    done <${source}/assets/patches.txt
-
-    rm toolkit/components/ml/content/backends/OpenAIPipeline.mjs
-    rm -rf toolkit/components/ml/vendor/openai
-
-    cp -r ${source}/themes/browser .
-    cp ${source}/assets/search-config.json services/settings/dumps/main/search-config.json
-    sed -i '/MOZ_SERVICES_HEALTHREPORT/ s/True/False/' browser/moz.configure
-
-    sed -i '/# This must remain last./i gkrust_features += ["glean_disable_upload"]\'$'\n' toolkit/library/rust/gkrust-features.mozbuild
-
-    # Temporary fix used with patches/rust-build.patch
-    sed -i 's/9456ca46168ef86c98399a2536f577ef7be3cdde90c0c51392d8ac48519d3fae/60cd124908737068ab21c7773b3df71d00e186cd605f15bad9977232830aabc0/g' third_party/rust/encoding_rs/.cargo-checksum.json
-    sed -i 's/d7405d2bcf99cf9729075473c45f677630f4c1947c8ba9757db607f2025a7da2/a066ad881d5a74386e666fc844f7fecbbd70021d0330c1b08a2d7a2a67437ccf/g' third_party/rust/encoding_rs/.cargo-checksum.json
-
-    cp ${source}/patches/pref-pane/category-librewolf.svg browser/themes/shared/preferences
-    cp ${source}/patches/pref-pane/librewolf.css browser/themes/shared/preferences
-    cp ${source}/patches/pref-pane/librewolf.inc.xhtml browser/components/preferences
-    cp ${source}/patches/pref-pane/librewolf.js browser/components/preferences
-
-    # override firefox version
-    for fn in browser/config/version.txt browser/config/version_display.txt; do
-      echo "${packageVersion}" > "$fn"
-    done
-
-    echo "patching appstrings.properties"
-    find . -path '*/appstrings.properties' -exec sed -i s/Firefox/LibreWolf/ {} \;
-
-    for fn in $(find "${source}/l10n/en-US/browser" -type f -name '*.inc.*'); do
-      target_fn=$(echo "$fn" | sed "s,${source}/l10n/en-US/browser,browser/locales/en-US," | sed "s,\.inc,,")
-      cat "$fn" >> "$target_fn"
-    done
+  extraPreConfigure = ''
+    export MOZ_TELEMETRY_REPORTING=
+    export MOZ_PKG_VERSION=${packageVersion}
   '';
 
-  extraPrefsFiles = [ "${source}/settings/librewolf.cfg" ];
+  extraPostPatch = ''
+    patchShebangs --build ../scripts
+    SKIP_FETCHING_LOCALES=1 ../scripts/patch.sh ${firefoxVersion} ${release}
+    # We set the parameters in build-mozilla-mach instead
+    rm mozconfig
+  '';
 
-  extraPoliciesFiles = [ "${source}/settings/distribution/policies.json" ];
+  inherit localSettingsPrefs extraPrefsFiles extraPoliciesFiles;
 
   extraPassthru = {
     librewolf = {
-      inherit src extraPatches;
+      inherit src;
     };
     inherit extraPrefsFiles extraPoliciesFiles;
   };

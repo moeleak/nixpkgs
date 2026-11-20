@@ -11,16 +11,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "virter";
-  version = "1.0.0";
+  version = "1.5.0";
 
   src = fetchFromGitHub {
     owner = "LINBIT";
     repo = "virter";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-EL6yBIeZx2WN6Svo8j1tL4VID5eQJcj8OtDrlHhUTbw=";
+    hash = "sha256-S9ttlNCweZ1ax85itmZ9n9m24eFKRO49f6c2xdleJSM=";
   };
 
-  vendorHash = "sha256-fOs+PKSIyCYzjvHOjqL5r3C4IXNsnOAJy2y3crqchHg=";
+  vendorHash = "sha256-xIwDD3S5m3Ucc5pzJi9qOGVU2U4ZKJFd0MSb/eN3efU=";
 
   ldflags = [
     "-s"
@@ -54,7 +54,7 @@ buildGoModule (finalAttrs: {
     description = "Command line tool for simple creation and cloning of virtual machines based on libvirt";
     homepage = "https://github.com/LINBIT/virter";
     license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ dit7ya ];
+    maintainers = [ ];
     mainProgram = "virter";
   };
 })

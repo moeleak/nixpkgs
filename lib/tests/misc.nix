@@ -57,10 +57,13 @@ let
     foldlAttrs
     foldr
     functionArgs
+    genAttrs
     generators
     genList
     getExe
     getExe'
+    getDarwinApp
+    getDarwinApp'
     getLicenseFromSpdxIdOr
     groupBy
     groupBy'
@@ -68,6 +71,7 @@ let
     hasInfix
     id
     ifilter0
+    isFunction
     isStorePath
     join
     lazyDerivation
@@ -154,6 +158,8 @@ let
     builder = "builder";
     system = "system";
   };
+
+  aPathLiteral = ./misc.nix;
 in
 
 runTests {
@@ -925,6 +931,166 @@ runTests {
     expected = "1.2.3";
   };
 
+  testFunctionArgsNestedFunctors =
+    let
+      faOrig = {
+        x = false;
+      };
+      faAlt = {
+        x = false;
+        y = true;
+      };
+      f0 = { x, ... }: x;
+    in
+    {
+      expr = {
+        a = functionArgs {
+          __functor = self: {
+            __functor = self: f0;
+            __functionArgs = faAlt;
+          };
+        };
+        b = functionArgs { __functor = self: { __functor = self: f0; }; };
+        c = functionArgs {
+          __functor = {
+            __functor = self: outer: f0;
+          };
+        };
+        d = functionArgs {
+          __functor = {
+            __functor = self: outer: {
+              __functor = self: f0;
+              __functionArgs = faAlt;
+            };
+          };
+        };
+        e = functionArgs {
+          __functor = {
+            __functor = self: outer: { __functor = self: f0; };
+          };
+        };
+      };
+      expected = {
+        a = faAlt;
+        b = faOrig;
+        c = faOrig;
+        d = faAlt;
+        e = faOrig;
+      };
+    };
+
+  testIsFunctionStr = {
+    expr = isFunction "a";
+    expected = false;
+  };
+  testIsFunctionInt = {
+    expr = isFunction 0;
+    expected = false;
+  };
+  testIsFunctionFloat = {
+    expr = isFunction 0.4;
+    expected = false;
+  };
+  testIsFunctionPath = {
+    expr = isFunction ./.;
+    expected = false;
+  };
+  testIsFunctionList = {
+    expr = isFunction [ ];
+    expected = false;
+  };
+  testIsFunctionAttrs = {
+    expr = isFunction { };
+    expected = false;
+  };
+  testIsFunctionBool = {
+    expr = isFunction false;
+    expected = false;
+  };
+  testIsFunctionDerivation = {
+    expr = isFunction (builtins.derivation { });
+    expected = false;
+  };
+  testIsFunctionNull = {
+    expr = isFunction null;
+    expected = false;
+  };
+  testIsFunctionFunction = {
+    expr = isFunction isFunction;
+    expected = true;
+  };
+  testIsFunctionAttrsWithValidFunctor = {
+    expr = isFunction { __functor = _: _: null; };
+    expected = true;
+  };
+  testIsFunctionDrvWithValidFunctor = {
+    expr = isFunction ((builtins.derivation { }) // { __functor = _: _: null; });
+    expected = true;
+  };
+  testIsFunctionAttrsWithFunctorArity1 = {
+    expr = isFunction { __functor = _: null; };
+    expected = false;
+  };
+  testIsFunctionAttrsWithNonFunctionFunctor = {
+    expr = isFunction { __functor = null; };
+    expected = false;
+  };
+  testIsFunctionAttrsWithNestedFunctors = {
+    expr = {
+      a = isFunction { __functor = self: { __functor = self: x: null; }; };
+      b = isFunction {
+        __functor = {
+          __functor =
+            self: outer: x:
+            null;
+        };
+      };
+      c = isFunction {
+        __functor = {
+          __functor = self: outer: { __functor = self: x: null; };
+        };
+      };
+    };
+    expected = {
+      a = true;
+      b = true;
+      c = true;
+    };
+  };
+  testIsFunctionNestedSetFunctionArgs =
+    let
+      faOrig = {
+        x = false;
+      };
+      fa1 = faOrig // {
+        y1 = true;
+      };
+      fa2 = faOrig // {
+        y2 = true;
+      };
+      fa3 = faOrig // {
+        y3 = true;
+      };
+      fa4 = faOrig // {
+        y4 = true;
+      };
+      f0 = { x, ... }: x;
+      f1 = setFunctionArgs f0 fa1;
+      f2 = setFunctionArgs f1 fa2;
+      f3 = setFunctionArgs f2 fa3;
+      f4 = setFunctionArgs f3 fa4;
+    in
+    {
+      expr = map isFunction [
+        f0
+        f1
+        f2
+        f3
+        f4
+      ];
+      expected = replicate 5 true;
+    };
+
   testIsStorePath = {
     expr =
       let
@@ -988,7 +1154,7 @@ runTests {
           outPath = "/drv";
           foo = "ignored attribute";
         };
-        path = /path;
+        path = aPathLiteral;
         stringable = {
           __toString = _: "hello toString";
           bar = "ignored attribute";
@@ -1002,7 +1168,7 @@ runTests {
       possibly newlines
       ')
       drv=/drv
-      path=/path
+      path=${aPathLiteral}
       stringable='hello toString'
     '';
   };
@@ -1791,6 +1957,42 @@ runTests {
       expected = longList;
     };
 
+  testListCommonPrefixLengthExample1 = {
+    expr = lists.commonPrefixLength [ 1 2 3 4 5 6 ] [ 1 2 4 8 ];
+    expected = 2;
+  };
+  testListCommonPrefixLengthExample2 = {
+    expr = lists.commonPrefixLength [ 1 2 3 ] [ 1 2 3 4 5 ];
+    expected = 3;
+  };
+  testListCommonPrefixLengthExample3 = {
+    expr = lists.commonPrefixLength [ 1 2 3 ] [ 4 5 6 ];
+    expected = 0;
+  };
+  testListCommonPrefixLengthEmpty = {
+    expr = lists.commonPrefixLength [ ] [ 1 2 3 ];
+    expected = 0;
+  };
+  testListCommonPrefixLengthSame = {
+    expr = lists.commonPrefixLength [ 1 2 3 ] [ 1 2 3 ];
+    expected = 3;
+  };
+  testListCommonPrefixLengthLazy = {
+    expr =
+      lists.commonPrefixLength
+        [ 1 ]
+        [ 1 (abort "lib.lists.commonPrefixLength shouldn't evaluate this") ];
+    expected = 1;
+  };
+  testListCommonPrefixLengthLong =
+    let
+      longList = genList (n: n) 100000;
+    in
+    {
+      expr = lists.commonPrefixLength longList longList;
+      expected = 100000;
+    };
+
   testSort = {
     expr = sort builtins.lessThan [
       40
@@ -2161,6 +2363,21 @@ runTests {
       foo = "bar";
       foobar = "baz";
       foobarbaz = "baz";
+    };
+  };
+
+  testConcatMapAttrsDuplicates = {
+    expr =
+      concatMapAttrs
+        (name: value: {
+          final = value;
+        })
+        {
+          a = 1;
+          b = 2;
+        };
+    expected = {
+      final = 2;
     };
   };
 
@@ -4641,6 +4858,31 @@ runTests {
 
   testGetExe'FailureSecondArg = testingThrow (getExe' { type = "derivation"; } "dir/executable");
 
+  testGetDarwinAppOutput = {
+    expr = getDarwinApp {
+      type = "derivation";
+      out = "somelonghash";
+      bin = "somelonghash";
+      meta.mainDarwinApp = "mainDarwinApp.app";
+    };
+    expected = "somelonghash/Applications/mainDarwinApp.app";
+  };
+
+  testGetDarwinApp'Output = {
+    expr = getDarwinApp' {
+      type = "derivation";
+      out = "somelonghash";
+      bin = "somelonghash";
+    } "app.app";
+    expected = "somelonghash/Applications/app.app";
+  };
+
+  testGetDarwinApp'FailureFirstArg = testingThrow (getDarwinApp' "not a derivation" "executable");
+
+  testGetDarwinApp'FailureSecondArg = testingThrow (
+    getDarwinApp' { type = "derivation"; } "dir/executable"
+  );
+
   testGetLicenseFromSpdxIdOrExamples = {
     expr = [
       (getLicenseFromSpdxIdOr "MIT" null)
@@ -4672,7 +4914,7 @@ runTests {
   };
 
   testPlatformMatchNoMatch = {
-    expr = meta.platformMatch { system = "x86_64-darwin"; } "x86_64-linux";
+    expr = meta.platformMatch { system = "x86_64-freebsd"; } "x86_64-linux";
     expected = false;
   };
 
@@ -5113,5 +5355,97 @@ runTests {
       ]
     );
     expected = false;
+  };
+
+  # mapDefinitionValue
+
+  testMapDefinitionValuePlain = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) 5;
+    expected = 6;
+  };
+
+  testMapDefinitionValueMkForce = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (lib.mkForce 5);
+    expected = lib.mkForce 6;
+  };
+
+  testMapDefinitionValueMkDefault = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (lib.mkDefault 5);
+    expected = lib.mkDefault 6;
+  };
+
+  testMapDefinitionValueMkOrder = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (lib.mkOrder 500 5);
+    expected = lib.mkOrder 500 6;
+  };
+
+  testMapDefinitionValueMkOverrideNested = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (lib.mkForce (lib.mkOrder 500 5));
+    expected = lib.mkForce (lib.mkOrder 500 6);
+  };
+
+  testMapDefinitionValueMkIf = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (lib.mkIf true 5);
+    expected = lib.mkIf true 6;
+  };
+
+  testMapDefinitionValueMkMerge = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (
+      lib.mkMerge [
+        5
+        10
+      ]
+    );
+    expected = lib.mkMerge [
+      6
+      11
+    ];
+  };
+
+  testMapDefinitionValueMkDefinition = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (
+      lib.mkDefinition {
+        file = "test";
+        value = 5;
+      }
+    );
+    expected = lib.mkDefinition {
+      file = "test";
+      value = 6;
+    };
+  };
+
+  testMapDefinitionValueDeep = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (lib.mkIf true (lib.mkForce (lib.mkOrder 500 5)));
+    expected = lib.mkIf true (lib.mkForce (lib.mkOrder 500 6));
+  };
+
+  testMapDefinitionValueAllNested = {
+    expr = lib.modules.mapDefinitionValue (x: x + 1) (
+      lib.mkMerge [
+        (lib.mkIf true (
+          lib.mkForce (
+            lib.mkOrder 500 (
+              lib.mkDefinition {
+                file = "test";
+                value = lib.mkBefore 5;
+              }
+            )
+          )
+        ))
+      ]
+    );
+    expected = lib.mkMerge [
+      (lib.mkIf true (
+        lib.mkForce (
+          lib.mkOrder 500 (
+            lib.mkDefinition {
+              file = "test";
+              value = lib.mkBefore 6;
+            }
+          )
+        )
+      ))
+    ];
   };
 }

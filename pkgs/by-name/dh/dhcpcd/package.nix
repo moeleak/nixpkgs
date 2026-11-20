@@ -15,13 +15,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "dhcpcd";
-  version = "10.3.1";
+  version = "10.3.2";
 
   src = fetchFromGitHub {
     owner = "NetworkConfiguration";
     repo = "dhcpcd";
     rev = "v${finalAttrs.version}";
-    sha256 = "sha256-L2rR6/qMHWVth2GR3VAoBZmhA6lmCLddbi0VvEG5r70=";
+    sha256 = "sha256-tJV533j/nQT/PP5KVPJCgTo0Lu8NNMIGnJBvYUG8ufw=";
   };
 
   nativeBuildInputs = [ pkg-config ];
@@ -76,7 +76,7 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://roy.marples.name/projects/dhcpcd";
     platforms = lib.platforms.linux ++ lib.platforms.freebsd ++ lib.platforms.openbsd;
     license = lib.licenses.bsd2;
-    maintainers = [ ];
+    maintainers = [ lib.maintainers.booxter ];
     mainProgram = "dhcpcd";
   };
 })

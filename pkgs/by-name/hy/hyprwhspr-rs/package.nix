@@ -2,6 +2,7 @@
   lib,
   fetchFromGitHub,
   rustPlatform,
+  oniguruma,
   openssl,
   pkg-config,
   alsa-lib,
@@ -16,16 +17,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "hyprwhspr-rs";
-  version = "0.3.27";
+  version = "0.3.34";
 
   src = fetchFromGitHub {
     owner = "better-slop";
     repo = "hyprwhspr-rs";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-+A+AJUMSOXwpOI+bo/g55yfdhQazdSbmHookHXVL9Xk=";
+    hash = "sha256-EYY7ojo4LBct6osLpzI1YY1Ad5RY3svX9MnPzEeHQcg=";
   };
 
-  cargoHash = "sha256-PA7lC6aQTEK566ADOIC+EvsPDYvjZRi8tc14EQ7gihE=";
+  cargoHash = "sha256-pCtPeIuFrT1aqOHjgsCOM4nEbPPPU1a+Uj0igXRSquI=";
 
   nativeBuildInputs = [
     pkg-config
@@ -33,6 +34,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
 
   buildInputs = [
+    oniguruma
     openssl
     alsa-lib
     onnxruntime

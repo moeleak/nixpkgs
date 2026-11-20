@@ -1,7 +1,7 @@
 {
   stdenv,
-  fetchFromGitHub,
   fetchpatch,
+  fetchFromGitHub,
   applyPatches,
   libuuid,
   bc,
@@ -29,18 +29,23 @@ let
       "LOONGARCH64"
     else
       throw "Unsupported architecture";
+
+  # The toolchain definition uses different variables for different architectures.
+  targetPrefixes = lib.genAttrs [ "GCC_BIN" "GCC_${targetArch}_PREFIX" ] (
+    lib.const stdenv.cc.targetPrefix
+  );
 in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "edk2";
-  version = "202602";
+  version = "202608";
 
   srcWithVendoring = fetchFromGitHub {
     owner = "tianocore";
     repo = "edk2";
     tag = "edk2-stable${finalAttrs.version}";
     fetchSubmodules = true;
-    hash = "sha256-TeMGpqVpXYRaeLjjg/aWHjtvfJpEfauA7Xg7dfe3XNg=";
+    hash = "sha256-LRq5SGAcqMl9PlSaV/Q2qE1HLMXHghozwgZP4A3FCts=";
   };
 
   src = applyPatches {
@@ -48,13 +53,12 @@ stdenv.mkDerivation (finalAttrs: {
     src = finalAttrs.srcWithVendoring;
 
     patches = [
-      # pass targetPrefix as an env var
-      (fetchpatch {
-        url = "https://src.fedoraproject.org/rpms/edk2/raw/08f2354cd280b4ce5a7888aa85cf520e042955c3/f/0021-Tweak-the-tools_def-to-support-cross-compiling.patch";
-        hash = "sha256-E1/fiFNVx0aB1kOej2DJ2DlBIs9tAAcxoedym2Zhjxw=";
-      })
-
       ./fix-cross-compilation-antlr-dlg.patch
+      (fetchpatch {
+        url = "https://github.com/tianocore/edk2/pull/13302.patch";
+        name = "GHSA-99cj-7hg9-mp4m_CVE-2026-97631.patch";
+        hash = "sha256-Hec2ei9mFOYXuleeoOYahv7ibbaTOD5LdW2V53lacQc=";
+      })
     ];
 
     postPatch = ''
@@ -82,6 +86,19 @@ stdenv.mkDerivation (finalAttrs: {
       ]}
       )
 
+      # de-vendor brotli
+      local -r path=BaseTools/Source/C/BrotliCompress/brotli
+      rm -r $path
+      cp -r ${buildPackages.brotli.src} $path
+      chmod -R u+w $path
+
+      ${lib.concatMapStringsSep "\n" (
+        patch: "patch -p1 -d $path < ${patch}"
+      ) buildPackages.brotli.patches}
+
+      rm -r MdeModulePkg/Library/BrotliCustomDecompressLib/brotli
+      cp -r $path MdeModulePkg/Library/BrotliCustomDecompressLib/brotli
+
       # enable compilation using Clang
       # https://bugzilla.tianocore.org/show_bug.cgi?id=4620
       substituteInPlace BaseTools/Conf/tools_def.template --replace-fail \
@@ -106,10 +123,8 @@ stdenv.mkDerivation (finalAttrs: {
       + lib.optionalString (stdenv.cc.isGNU) " -Wno-error=stringop-truncation"
       + lib.optionalString (stdenv.hostPlatform.isDarwin) " -Wno-error=macro-redefined";
     PYTHON_COMMAND = lib.getExe pythonEnv;
-    # trick taken from https://src.fedoraproject.org/rpms/edk2/blob/08f2354cd280b4ce5a7888aa85cf520e042955c3/f/edk2.spec#_319
-    ${"GCC5_${targetArch}_PREFIX"} = stdenv.cc.targetPrefix;
-
-  };
+  }
+  // targetPrefixes;
 
   hardeningDisable = [
     "format"
@@ -169,7 +184,7 @@ stdenv.mkDerivation (finalAttrs: {
         finalAttrsInner:
         let
           attrs = lib.toFunction attrsOrFun finalAttrsInner;
-          buildType = attrs.buildType or (if stdenv.hostPlatform.isDarwin then "CLANGPDB" else "GCC5");
+          buildType = attrs.buildType or (if stdenv.hostPlatform.isDarwin then "CLANGPDB" else "GCC");
         in
         {
           inherit (finalAttrs) src;
@@ -212,10 +227,7 @@ stdenv.mkDerivation (finalAttrs: {
           "env"
         ]
         // {
-          env = {
-            ${"GCC5_${targetArch}_PREFIX"} = stdenv.cc.targetPrefix;
-          }
-          // (attrs.env or { });
+          env = targetPrefixes // (attrs.env or { });
         }
       );
   };

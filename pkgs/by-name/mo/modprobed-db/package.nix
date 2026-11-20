@@ -11,13 +11,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "modprobed-db";
-  version = "2.48";
+  version = "2.52";
 
   src = fetchFromGitHub {
     owner = "graysky2";
     repo = "modprobed-db";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-rMkPBRg0QluMmSCAWSvET7rS/A2aUL6H31KKoZ6NTEs=";
+    hash = "sha256-YmFpskEdr/7kg15Ptp7+VCWhccXMrzpOlHh8WjGUtnI=";
   };
 
   strictDeps = true;

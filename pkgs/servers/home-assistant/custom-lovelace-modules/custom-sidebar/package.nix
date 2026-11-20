@@ -12,20 +12,20 @@ let
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "custom-sidebar";
-  version = "14.0.0";
+  version = "17.5.0";
 
   src = fetchFromGitHub {
     owner = "elchininet";
     repo = "custom-sidebar";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-2CQcY5/Cb3IPuI7cL28t7iZCH3kD21equBW5BL6w8TU=";
+    hash = "sha256-TbgGmnSkfXV7ea8/xhnlW4H2ZnVxN1XttZjKkxeuj2M=";
   };
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
     inherit pnpm;
     fetcherVersion = 3;
-    hash = "sha256-gYNCjCeAt6LP4tZE4ufiQu7OG2ujWydm4etcGQxMxcU=";
+    hash = "sha256-AIVotQ5BaWL3V4JAHCy/izYCljkMKK7FHz2q2dqS1Yk=";
   };
 
   nativeBuildInputs = [

@@ -2,7 +2,6 @@
   lib,
   buildPythonPackage,
   fetchFromGitHub,
-  pythonOlder,
 
   # build-system
   hatch-vcs,
@@ -10,11 +9,10 @@
 
   # dependencies
   anndata,
-  certifi,
+  array-api-compat,
   fast-array-utils,
   h5py,
   joblib,
-  legacy-api-wrap,
   matplotlib,
   natsort,
   networkx,
@@ -26,13 +24,13 @@
   pynndescent,
   scikit-learn,
   scipy,
+  scverse-misc,
   seaborn,
   session-info2,
   statsmodels,
   tqdm,
   umap-learn,
-  # python<3.13 only:
-  typing-extensions,
+  zarr,
 
   # optional-attrs
   # dask
@@ -49,7 +47,9 @@
 
   # tests
   dependency-groups,
+  jax,
   jinja2,
+  pooch,
   pytest-cov-stub,
   pytest-mock,
   pytest-randomly,
@@ -58,29 +58,37 @@
   pytestCheckHook,
   tuna,
   writableTmpDirAsHomeHook,
-  zarr,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "scanpy";
-  version = "1.12.1";
+  version = "1.13.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "scverse";
     repo = "scanpy";
     tag = finalAttrs.version;
-    hash = "sha256-r8kicjCFyEKLxQtFYuZg0NKK7gRBoaLSSFGWqcQtBqM=";
+    hash = "sha256-S4PDxQbp/XQ4UCkW548syT1QE6PTmXCpx/UGpILXfHM=";
   };
 
-  # Otherwise, several tests fail to be collected:
-  # AssertionError: scanpy is already imported, this will mess up test coverage
-  postPatch = ''
-    substituteInPlace src/testing/scanpy/_pytest/__init__.py \
-      --replace-fail \
-        'assert "scanpy" not in sys.modules,' \
-        'assert True,'
-  '';
+  postPatch =
+    # Otherwise, several tests fail to be collected:
+    # AssertionError: scanpy is already imported, this will mess up test coverage
+    ''
+      substituteInPlace src/testing/scanpy/_pytest/__init__.py \
+        --replace-fail \
+          'assert "scanpy" not in sys.modules,' \
+          'assert True,'
+    ''
+    # pytest_ignore_collect is firstresult: returning False (instead of None) overrides
+    # pytest's own --ignore/--ignore-glob handling, making disabledTestPaths ineffective
+    + ''
+      substituteInPlace src/testing/scanpy/_pytest/__init__.py \
+        --replace-fail \
+          'return "_v2" in collection_path.parts and not bool(find_spec("holoviews"))' \
+          'return ("_v2" in collection_path.parts and not bool(find_spec("holoviews"))) or None'
+    '';
 
   build-system = [
     hatch-vcs
@@ -89,11 +97,10 @@ buildPythonPackage (finalAttrs: {
 
   dependencies = [
     anndata
-    certifi
+    array-api-compat
     fast-array-utils
     h5py
     joblib
-    legacy-api-wrap
     matplotlib
     natsort
     networkx
@@ -105,17 +112,18 @@ buildPythonPackage (finalAttrs: {
     pynndescent
     scikit-learn
     scipy
+    scverse-misc
     seaborn
     session-info2
     statsmodels
     tqdm
     umap-learn
+    zarr
   ]
   ++ fast-array-utils.optional-dependencies.accel
   ++ fast-array-utils.optional-dependencies.sparse
-  ++ lib.optionals (pythonOlder "3.13") [
-    typing-extensions
-  ];
+  ++ scverse-misc.optional-dependencies.datasets
+  ++ scverse-misc.optional-dependencies.settings;
 
   optional-dependencies = {
     # commented attributes are due to some dependencies not being in Nixpkgs
@@ -129,9 +137,6 @@ buildPythonPackage (finalAttrs: {
     dask-ml = [
       dask-ml
     ];
-    #harmony = [
-    #  harmonypy
-    #];
     leiden = [
       igraph
       leidenalg
@@ -143,13 +148,14 @@ buildPythonPackage (finalAttrs: {
     #magic = [
     #  magic-impute
     #];
+    #networkit = [
+    #  networkit
+    #];
     paga = [
       igraph
     ];
-    #rapids = [
-    #  cudf
-    #  cugraph
-    #  cuml
+    #plotting = [
+    #  colour-science
     #];
     #scanorama = [
     #  scanorama
@@ -164,7 +170,9 @@ buildPythonPackage (finalAttrs: {
 
   nativeCheckInputs = [
     dependency-groups
+    jax
     jinja2
+    pooch
     pytest-cov-stub
     pytest-mock
     pytest-randomly
@@ -173,7 +181,6 @@ buildPythonPackage (finalAttrs: {
     pytestCheckHook
     tuna
     writableTmpDirAsHomeHook
-    zarr
   ];
 
   preCheck = ''
@@ -181,22 +188,25 @@ buildPythonPackage (finalAttrs: {
   '';
 
   pytestFlags = [
-    # UserWarning: 'where' used without 'out', expect unitialized memory in output.
+    # UserWarning: 'where' used without 'out', expect uninitialized memory in output.
     # If this is intentional, use out=None.
     "-Wignore::UserWarning"
   ];
 
   disabledTestPaths = [
     # try to download data:
+    "tests/plotting/legacy/test_plotting.py"
     "tests/test_aggregated.py"
     "tests/test_highly_variable_genes.py"
     "tests/test_normalization.py"
     "tests/test_pca.py"
-    "tests/test_plotting.py"
-    "tests/test_plotting_embedded/"
 
     # fixture 'backed_adata' not found
     "tests/test_backed.py"
+
+    # Need `docs/`, which is resolved relatively to the installed package:
+    #   FileNotFoundError: .../docs/_static/img/Scanpy_Logo_RGB.png
+    "tests/plotting/legacy/embedded/"
   ];
 
   disabledTests = [
@@ -206,8 +216,13 @@ buildPythonPackage (finalAttrs: {
     "test_burczynski06"
     "test_clip"
     "test_doc_shape"
+    "test_download_atomic"
     "test_download_failure"
     "test_ebi_expression_atlas"
+    "test_harmony2_ircolitis_reference"
+    "test_harmony2_multikey_default_seeding"
+    "test_harmony2_multikey_reference"
+    "test_harmony_integrate_reference"
     "test_mean_var"
     "test_paul15"
     "test_pbmc3k"
@@ -235,6 +250,10 @@ buildPythonPackage (finalAttrs: {
     # 'write/test.h5ad', errno = 2, error message = 'No such file or directory', flags = 13, o_flags
     # = 242)
     "test_write"
+
+    # numba thread-count assertions that depend on the host's thread settings
+    "test_numba_thread_limit_restores_previous_value"
+    "test_set_numba_threads_from_settings"
 
     # Snapshot tests failing because of warnings in output
     "scanpy.datasets._datasets.krumsiek11"

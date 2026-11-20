@@ -6,13 +6,13 @@
 }:
 buildGoModule {
   pname = "starlark";
-  version = "0-unstable-2026-03-26";
+  version = "0-unstable-2026-10-21";
 
   src = fetchFromGitHub {
     owner = "google";
     repo = "starlark-go";
-    rev = "fadfc96def35ea95e7f2bd9952256d4db1d80d91";
-    hash = "sha256-t+7QUORMlRCA1lLhekPrR3ag7hmX++DrSOBQunTMLFM=";
+    rev = "4f4267fb140d1e8b91c9bce55cee2f809e8840dd";
+    hash = "sha256-O+37V+/3kmnkpOM2nMznpyBALoBg6fn6XLKMi2NS/hI=";
   };
 
   vendorHash = "sha256-Ejw5f5ulEcLHm4WYKatwA7FZ9lfdqZTOE3SdkaK6jYE=";

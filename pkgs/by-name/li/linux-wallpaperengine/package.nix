@@ -10,9 +10,11 @@
   SDL2,
   SDL2_mixer,
   cef-binary,
+  dbus,
   egl-wayland,
   ffmpeg,
   fftw,
+  freetype,
   glew,
   glfw,
   glm,
@@ -30,6 +32,7 @@
   libpulseaudio,
   lz4,
   mpv,
+  pulseaudio,
   wayland,
   wayland-protocols,
   wayland-scanner,
@@ -39,7 +42,7 @@
 
 let
   cef = cef-binary.override {
-    version = "135.0.17"; # follow upstream. https://github.com/Almamu/linux-wallpaperengine/blob/7067d6ff9fd34e36eeccf44e15f86ad604244f26/CMakeLists.txt#L47
+    version = "135.0.17"; # follow upstream. https://github.com/Almamu/linux-wallpaperengine/blob/a8ce9b6aa14cc10f0396bbb74a16ca12ed3990dc/CMakeLists.txt#L47
     gitRevision = "cbc1c5b";
     chromiumVersion = "135.0.7049.52";
 
@@ -51,14 +54,14 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "linux-wallpaperengine";
-  version = "0-unstable-2026-03-01";
+  version = "0.0.1-unstable-2026-10-30";
 
   src = fetchFromGitHub {
     owner = "Almamu";
     repo = "linux-wallpaperengine";
-    rev = "7067d6ff9fd34e36eeccf44e15f86ad604244f26";
+    rev = "a0ddce586e9ff12e9d31ca6b103f6036cc1b68fe";
     fetchSubmodules = true;
-    hash = "sha256-NjEcrytgD5KVpB4kS4Cwa2SpxSRL4Tgt2yz6Ygd2p5A=";
+    hash = "sha256-4m+YUvVCN3VzL4/338qW/o4k0la0IJeAUCefHRkHHJk=";
   };
 
   nativeBuildInputs = [
@@ -72,9 +75,11 @@ stdenv.mkDerivation (finalAttrs: {
   buildInputs = [
     SDL2
     SDL2_mixer
+    dbus
     egl-wayland
     ffmpeg
     fftw
+    freetype
     glew
     glfw
     glm
@@ -92,6 +97,7 @@ stdenv.mkDerivation (finalAttrs: {
     libpulseaudio
     lz4
     mpv
+    pulseaudio
     wayland
     wayland-protocols
     wayland-scanner
@@ -123,7 +129,7 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://github.com/Almamu/linux-wallpaperengine";
     license = lib.licenses.gpl3Plus;
     mainProgram = "linux-wallpaperengine";
-    maintainers = [ ];
+    maintainers = [ lib.maintainers.tadomika_ari ];
     platforms = [
       "x86_64-linux"
       "aarch64-linux"

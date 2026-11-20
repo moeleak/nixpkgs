@@ -1,5 +1,7 @@
 {
   lib,
+  libgit2,
+  pkg-config,
   rustPlatform,
   fetchFromGitHub,
   versionCheckHook,
@@ -8,16 +10,20 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "rsonpath";
-  version = "0.10.0";
+  version = "0.10.1";
 
   src = fetchFromGitHub {
     owner = "rsonquery";
     repo = "rsonpath";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Lh58U5A4EeD+tQ3CZNE7YabwGIJ14Cv5dqbJ64JYNDk=";
+    hash = "sha256-pgKqVDDaJ8vcDOp0FuuuBkShQDFP3x6BVS7x8ZZawAY=";
   };
 
-  cargoHash = "sha256-w1AODL95+O0jhzXvNrL9I+i2+jcZX3SvJDKrLWkI7c8=";
+  cargoHash = "sha256-PC35k3vwKP55VKZt1txKVajhfrJpFiEgJYA4lNe/U7U=";
+
+  nativeBuildInputs = [ pkg-config ];
+
+  buildInputs = [ libgit2 ];
 
   cargoBuildFlags = [ "-p=rsonpath" ];
   cargoTestFlags = finalAttrs.cargoBuildFlags;

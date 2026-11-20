@@ -12,6 +12,7 @@
   libvaSupport ? stdenv.hostPlatform.isLinux,
   libva,
   fetchpatch,
+  zstd,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
@@ -34,7 +35,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       ln -s ${./package-lock.json} package-lock.json
     '';
 
-    npmDepsHash = "sha256-fVcx5K4r5P/pokmW31IobHSYsshB7PJOHsk6BP5dA1Q=";
+    npmDepsHash = "sha256-sWP7blhtuuRRxVfLMhAAXPgyaGVpf/7OCynF3PaGA9M=";
 
     installPhase = ''
       runHook preInstall
@@ -84,7 +85,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
     git
   ];
 
-  buildInputs = [ sqlite ] ++ lib.optional libvaSupport libva;
+  buildInputs = [
+    sqlite
+    zstd
+  ]
+  ++ lib.optional libvaSupport libva;
 
   buildFeatures = lib.optional libvaSupport "vaapi";
 

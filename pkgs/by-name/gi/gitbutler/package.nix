@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  aws-lc,
   cacert,
   cargo-tauri,
   cmake,
@@ -15,6 +16,7 @@
   moreutils,
   nix-update-script,
   nodejs,
+  oniguruma,
   openssl,
   pkg-config,
   fetchPnpmDeps,
@@ -22,6 +24,7 @@
   pnpm_10,
   rust,
   rustPlatform,
+  sqlite,
   turbo,
   webkitgtk_4_1,
   wrapGAppsHook4,
@@ -32,13 +35,13 @@ let
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "gitbutler";
-  version = "0.19.7";
+  version = "0.22.3";
 
   src = fetchFromGitHub {
     owner = "gitbutlerapp";
     repo = "gitbutler";
     tag = "release/${finalAttrs.version}";
-    hash = "sha256-ppl1noikPwTvG/XT7iYG41+9ZZO8i0x2L+odeEzRP1s=";
+    hash = "sha256-nW3yCbpbIhawLQVV+DptzGYiFBSKcyAP89NtDWHJM+0=";
   };
 
   # Let Tauri know what version we're building and deactivate the built-in updater
@@ -49,20 +52,29 @@ rustPlatform.buildRustPackage (finalAttrs: {
     jq '.
         | (.version = "${finalAttrs.version}")
         | (.bundle.createUpdaterArtifacts = false)
-        | (.bundle.externalBin = ["gitbutler-git-setsid", "gitbutler-git-askpass"])
+        | (.bundle.externalBin = ["gitbutler-git-askpass"])
       ' "$tauriConfRelease" | sponge "$tauriConfRelease"
 
     substituteInPlace apps/desktop/src/lib/backend/tauri.ts \
       --replace-fail 'checkUpdate = tauriCheck;' 'checkUpdate = () => null;'
+
+    # Test-generated installers keep a portable /usr/bin/env shebang, but
+    # the Nix build sandbox has no /usr/bin/env. Invoke them through bash.
+    substituteInPlace crates/but-debug/tests/debug/dump.rs \
+      --replace-fail 'Command::new(&installer)' 'Command::new("bash").arg(&installer)'
+
+    # gix-testtools executes these fixtures directly in the build sandbox.
+    mapfile -d "" fixtureScripts < <(find crates -path '*/tests/fixtures/*' -name '*.sh' -print0)
+    patchShebangs "''${fixtureScripts[@]}"
   '';
 
-  cargoHash = "sha256-xW/eO+AQQUBN2MrixNx3LKhwMookkKuX5LF4DSWQKKY=";
+  cargoHash = "sha256-XRc2yok9K7f/vRAqgO78JUq/U36XSiUeOINupfOOSjw=";
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
     inherit pnpm;
-    fetcherVersion = 3;
-    hash = "sha256-eRiFA5lXpPHQwlyFmKMx1zmHH2zLCHB+3s708g6srg4=";
+    fetcherVersion = 4;
+    hash = "sha256-aqz9IbpvG0zOz7cQWpRzEtqLAgI250dN2bBTp1wBhkE=";
   };
 
   nativeBuildInputs = [
@@ -83,8 +95,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ++ lib.optional stdenv.hostPlatform.isDarwin makeBinaryWrapper;
 
   buildInputs = [
-    libgit2
+    aws-lc
+    (libgit2.override { withExperimentalSha256 = true; })
+    oniguruma
     openssl
+    sqlite
   ]
   ++ lib.optional stdenv.hostPlatform.isDarwin curl
   ++ lib.optionals stdenv.hostPlatform.isLinux [
@@ -113,10 +128,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
     # `Expecting driver to be located at "../../target/debug/gitbutler-cli" - we also assume a certain crate location`
     # We're not (usually) building in debug mode and always have a different target directory, so...
     "gitbutler-branch-actions"
-    "gitbutler-stack"
     "gitbutler-edit-mode"
-    "but-cherry-apply"
-    "but-worktrees"
+    "gitbutler-operating-modes"
+    "gitbutler-project"
   ]
   ++ [
     "--"
@@ -144,6 +158,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "new_from_project_handle_keeps_repo_cached"
     # darwin: Error: timeout waiting for matching event
     "track_directory_changes_after_rename"
+    # Git's graph rendering differs from the expected snapshot.
+    "init::with_workspace::remote_trailing_local_stack"
+    # TUI snapshots depend on the system's desktop file associations.
+    "command::legacy::status::tui::tests::open_tests::"
+    # These tests require builtin programs gated on debug_assertions.
+    "command::open::"
   ];
 
   env = {

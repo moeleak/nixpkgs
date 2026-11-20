@@ -9,13 +9,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "radsecproxy";
-  version = "1.11.2";
+  version = "1.11.5";
 
   src = fetchFromGitHub {
     owner = "radsecproxy";
     repo = "radsecproxy";
     tag = finalAttrs.version;
-    hash = "sha256-E7nU6NgCmwRzX5j1Zyx/LTztjLqYJKv+3VU6UE0HhZA=";
+    hash = "sha256-jDqBFLllqI3qIFtBI6IjdzdzEAsf7AvI0ViAtHR6poA=";
   };
 
   nativeBuildInputs = [ autoreconfHook ];

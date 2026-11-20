@@ -1,28 +1,33 @@
 {
   lib,
   stdenv,
-  buildGo126Module,
+  buildGoModule,
   fetchFromGitHub,
+  gitMinimal,
   installShellFiles,
   testers,
   nix-update-script,
+  writableTmpDirAsHomeHook,
   ghq,
 }:
 
-buildGo126Module (finalAttrs: {
+buildGoModule (finalAttrs: {
   pname = "ghq";
-  version = "1.9.4";
+  version = "1.12.0";
 
   src = fetchFromGitHub {
     owner = "x-motemen";
     repo = "ghq";
     tag = "v${finalAttrs.version}";
-    sha256 = "sha256-z7tLCSThR4EFLk8GnyrB8H6d/9t5AKegVEdzlleCS94=";
+    sha256 = "sha256-UrxfWZw9TBQUuTfhp2IVfVxnFvGF1GIRfP87mkND/1Q=";
   };
 
-  vendorHash = "sha256-/uk1hf5eXpNULKm7UeVgQ7Lc7YOU+eV9Yd/4lYorz/8=";
+  vendorHash = "sha256-FvMqeUfX4c2Vm+L2GIDGoxN3w+7UyNI0VRada0zSvcc=";
 
-  doCheck = false;
+  nativeCheckInputs = [
+    gitMinimal
+    writableTmpDirAsHomeHook
+  ];
 
   ldflags = [
     "-X=main.Version=${finalAttrs.version}"

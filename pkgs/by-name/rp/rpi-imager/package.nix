@@ -7,6 +7,7 @@
   gnutls,
   libarchive,
   libtasn1,
+  libusb1,
   liburing,
   nix-update-script,
   pkg-config,
@@ -22,13 +23,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "rpi-imager";
-  version = "2.0.6";
+  version = "2.0.12";
 
   src = fetchFromGitHub {
     owner = "raspberrypi";
     repo = "rpi-imager";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-YbPGxc6EWE3B+7MWgtwTDRdjin9FM7KpWfw38FqKXYA=";
+    hash = "sha256-oIq7+NxTh/IQH78xSfXLZeKx7uMJ3T7THychdb3QcZg=";
   };
 
   patches = [ ./remove-vendoring.patch ];
@@ -72,6 +73,7 @@ stdenv.mkDerivation (finalAttrs: {
     gnutls
     libarchive
     libtasn1
+    libusb1
     qt6.qtbase
     qt6.qtdeclarative
     qt6.qtsvg
@@ -95,8 +97,11 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   qtWrapperArgs = [
-    "--unset QT_QPA_PLATFORMTHEME"
-    "--unset QT_STYLE_OVERRIDE"
+    "--unset"
+    "QT_QPA_PLATFORMTHEME"
+
+    "--unset"
+    "QT_STYLE_OVERRIDE"
   ];
 
   dontWrapGApps = true;
@@ -124,6 +129,7 @@ stdenv.mkDerivation (finalAttrs: {
     mainProgram = "rpi-imager";
     maintainers = with lib.maintainers; [
       anthonyroussel
+      agustinmista
     ];
     platforms = lib.platforms.linux ++ lib.platforms.darwin;
     # could not find xz

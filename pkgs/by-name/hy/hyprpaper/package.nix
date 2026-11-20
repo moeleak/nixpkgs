@@ -1,24 +1,18 @@
 {
   lib,
-  gcc15Stdenv,
+  gcc16Stdenv,
   fetchFromGitHub,
   cmake,
   hyprwayland-scanner,
   hyprwire,
   pkg-config,
   wayland-scanner,
-  aquamarine,
-  cairo,
   expat,
   file,
   fribidi,
-  hyprgraphics,
   hyprlang,
-  hyprutils,
   hyprtoolkit,
-  libGL,
   libdatrie,
-  libdrm,
   libjpeg,
   libjxl,
   libselinux,
@@ -26,24 +20,21 @@
   libthai,
   libwebp,
   libxdmcp,
-  pango,
-  pcre,
   pcre2,
-  wayland,
   wayland-protocols,
   util-linux,
   versionCheckHook,
 }:
 
-gcc15Stdenv.mkDerivation (finalAttrs: {
+gcc16Stdenv.mkDerivation (finalAttrs: {
   pname = "hyprpaper";
-  version = "0.8.4";
+  version = "0.8.5";
 
   src = fetchFromGitHub {
     owner = "hyprwm";
     repo = "hyprpaper";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-/4eWbt5XtOHzw3C9U0XPtoy8io03GxrEBd9znWMacbY=";
+    hash = "sha256-lvfZGHZYGof4SoPjFs1Cv6xy/Km9/UyDeZn6mmedbzI=";
   };
 
   prePatch = ''
@@ -60,18 +51,12 @@ gcc15Stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    aquamarine
-    cairo
     expat
     file
     fribidi
-    hyprgraphics
     hyprlang
-    hyprutils
     hyprtoolkit
-    libGL
     libdatrie
-    libdrm
     libjpeg
     libjxl
     libselinux
@@ -79,10 +64,7 @@ gcc15Stdenv.mkDerivation (finalAttrs: {
     libthai
     libwebp
     libxdmcp
-    pango
-    pcre
     pcre2
-    wayland
     wayland-protocols
     util-linux
   ];
@@ -90,13 +72,16 @@ gcc15Stdenv.mkDerivation (finalAttrs: {
   doInstallCheck = true;
   nativeInstallCheckInputs = [ versionCheckHook ];
 
+  cmakeBuildType = "RelWithDebInfo";
+  separateDebugInfo = true;
+
   meta = {
     inherit (finalAttrs.src.meta) homepage;
     description = "Blazing fast wayland wallpaper utility";
     license = lib.licenses.bsd3;
     teams = [ lib.teams.hyprland ];
-    inherit (wayland.meta) platforms;
-    broken = gcc15Stdenv.hostPlatform.isDarwin;
+    inherit (hyprtoolkit.meta) platforms;
+    broken = gcc16Stdenv.hostPlatform.isDarwin;
     mainProgram = "hyprpaper";
   };
 })

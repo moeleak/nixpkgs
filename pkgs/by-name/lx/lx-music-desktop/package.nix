@@ -10,22 +10,22 @@
   makeWrapper,
   makeDesktopItem,
 
-  electron_40,
+  electron_44,
   commandLineArgs ? "",
 }:
 
 let
-  electron = electron_40;
+  electron = electron_44;
 in
 buildNpmPackage (finalAttrs: {
   pname = "lx-music-desktop";
-  version = "2.12.2";
+  version = "2.12.6";
 
   src = fetchFromGitHub {
     owner = "lyswhut";
     repo = "lx-music-desktop";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-0hUm7BfjI4x22DsAPX/VZo+IKInSl6hhylTK0awPhYo=";
+    hash = "sha256-CrQ6kdOY/NqJv8AQ7MuHDUHzY37cRb2bWSVruxjVdJk=";
   };
 
   desktopItems = [
@@ -51,6 +51,10 @@ buildNpmPackage (finalAttrs: {
   ];
 
   patches = [
+    # the upstream use an EOL electron version
+    ./electron-version.patch
+    # clipboard APIs are async since electron 44
+    ./electron-44-clipboard.patch
     # set electron version and dist dir
     # disable before-pack: it would copy prebuilt libraries
     (replaceVars ./electron-builder.patch {
@@ -63,7 +67,7 @@ buildNpmPackage (finalAttrs: {
     copyDesktopItems
   ];
 
-  npmDepsHash = "sha256-iIymnYIAE8rFEa8I2nVt2JrMyRiZL5nBS+HfNoDN1Hk=";
+  npmDepsHash = "sha256-LF/E7JJZQQzEHTEQeFiYa1eMeV+OrqK+8ktwhTmRY30=";
 
   makeCacheWritable = true;
 
@@ -76,6 +80,11 @@ buildNpmPackage (finalAttrs: {
   preBuild = ''
     # delete prebuilt libs
     rm -r build-config/lib
+    rm -r node_modules/better-sqlite3/prebuilds
+
+    # prevent copying previously deleted libs to node_modules
+    substituteInPlace build-config/postinstall.js \
+      --replace-fail 'copyLib()' ""
 
     # don't spam the build logs
     substituteInPlace build-config/pack.js \
@@ -118,6 +127,13 @@ buildNpmPackage (finalAttrs: {
   meta = {
     broken = stdenv.hostPlatform.isDarwin;
     description = "Music software based on Electron and Vue";
+    longDescription = ''
+      Some functionalities (e.g. lyrics window) are broken when lx-music-desktop
+      runs using a Wayland ozone platform due to Electron's lack of support
+      for Wayland. If you do need these features, please consider unsetting
+      `NIXOS_OZONE_WL` and passing `--ozone-platform=x11` from the command line
+      to restore the expected behavior.
+    '';
     homepage = "https://github.com/lyswhut/lx-music-desktop";
     changelog = "https://github.com/lyswhut/lx-music-desktop/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.asl20;

@@ -10,23 +10,23 @@
   writableTmpDirAsHomeHook,
   versionCheckHook,
   nix-update-script,
-  enableSound ? false,
+  enableSound ? true,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "timr-tui";
-  version = "1.8.1";
+  version = "1.12.0";
 
   src = fetchFromGitHub {
     owner = "sectore";
     repo = "timr-tui";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-9HaKBrW0MkNzDErEIINztLyGpN4mkGF5RpmXohgbK6A=";
+    hash = "sha256-01Agrh8A15ykdaws2hYJDma8zNG91HXu77tCEc1wx6Q=";
   };
 
-  cargoHash = "sha256-J6Zi8oEAsbxMQe+oCk9T6Ic1hPdNXI9iFmn4Z0d0lFE=";
+  cargoHash = "sha256-d/lp5hxWjTCq2gTwsBWowC1+ntoctLyTDdi9hhdBcIM=";
 
-  # Enable upstream "sound" feature when requested
-  buildFeatures = lib.optionals enableSound [ "sound" ];
+  # `sound` is a default feature since v1.12.0
+  buildNoDefaultFeatures = !enableSound;
 
   nativeBuildInputs = lib.optionals (enableSound && stdenv.hostPlatform.isLinux) [ pkg-config ];
 
@@ -55,7 +55,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   passthru.updateScript = nix-update-script { };
 
   meta = {
-    description = "TUI to organize your time: Pomodoro, Countdown, Timer, Event";
+    description = "TUI to organize your time: Pomodoro, Tabata, Countdown, Timer, Event";
     homepage = "https://github.com/sectore/timr-tui";
     changelog = "https://github.com/sectore/timr-tui/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.mit;

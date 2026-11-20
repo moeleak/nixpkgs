@@ -8,13 +8,13 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "memtailor";
-  version = "1.3";
+  version = "1.5";
 
   src = fetchFromGitHub {
     owner = "Macaulay2";
     repo = "memtailor";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-x6z/BzU78od21l72ZAnX37UHHdyMHfJ6cjwJwNYOIcY=";
+    hash = "sha256-efFsGy0ezQrNHWn7VX1hNJ7oln+aLu/JFjUEtyakEyY=";
   };
 
   nativeBuildInputs = [
@@ -30,7 +30,7 @@ stdenv.mkDerivation (finalAttrs: {
   strictDeps = true;
 
   configureFlags = [
-    (lib.withFeature finalAttrs.doCheck "gtest")
+    (lib.withFeature finalAttrs.finalPackage.doCheck "gtest")
   ];
 
   enableParallelBuilding = true;
@@ -51,5 +51,6 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://github.com/Macaulay2/memtailor";
     license = lib.licenses.bsd3;
     maintainers = with lib.maintainers; [ coolcuber ];
+    platforms = lib.platforms.unix;
   };
 })

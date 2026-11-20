@@ -2497,11 +2497,6 @@ let
   networkdOptions = {
     networkConfig = mkOption {
       default = { };
-      defaultText = lib.literalExpression ''
-        {
-          IPv6PrivacyExtensions = true;
-        }
-      '';
       example = {
         SpeedMeter = true;
         ManageForeignRoutingPolicyRules = false;
@@ -4001,10 +3996,7 @@ let
       };
 
       config = {
-        networkConfig = {
-          IPv6PrivacyExtensions = lib.mkOptionDefault true;
-        }
-        // optionalAttrs (config.routeTables != { }) {
+        networkConfig = optionalAttrs (config.routeTables != { }) {
           RouteTable = mapAttrsToList (name: number: "${name}:${toString number}") config.routeTables;
         };
       };
@@ -4231,8 +4223,10 @@ let
           "systemd-networkd-wait-online@.service"
           "systemd-networkd.service"
           "systemd-networkd.socket"
-          "systemd-networkd-persistent-storage.service"
+          "systemd-networkd-resolve-hook.socket"
           "systemd-networkd-varlink-metrics.socket"
+          "systemd-networkd-varlink.socket"
+          "systemd-networkd-persistent-storage.service"
         ];
 
         systemd.sockets.systemd-networkd-varlink-metrics.wantedBy = [ "sockets.target" ];
@@ -4314,6 +4308,9 @@ let
         systemd.additionalUpstreamUnits = [
           "systemd-networkd-wait-online.service"
           "systemd-networkd.service"
+          "systemd-networkd-resolve-hook.socket"
+          "systemd-networkd-varlink-metrics.socket"
+          "systemd-networkd-varlink.socket"
           "systemd-networkd.socket"
           "systemd-network-generator.service"
           "network-online.target"
@@ -4360,18 +4357,7 @@ in
 
   config = mkMerge [
     stage2Config
-    (mkIf config.boot.initrd.systemd.enable {
-      assertions = [
-        {
-          assertion =
-            !config.boot.initrd.network.udhcpc.enable && config.boot.initrd.network.udhcpc.extraArgs == [ ];
-          message = ''
-            systemd stage 1 networking does not support 'boot.initrd.network.udhcpc'. Configure
-            DHCP with 'networking.*' options or with 'boot.initrd.systemd.network' options.
-          '';
-        }
-      ];
-
+    (mkIf config.boot.initrd.enable {
       boot.initrd = stage1Config;
     })
   ];

@@ -5,20 +5,19 @@
 # See `python3Packages.jax.passthru` for CUDA tests.
 
 {
-  absl-py,
   autoPatchelfHook,
   buildPythonPackage,
   fetchPypi,
-  flatbuffers,
   lib,
   ml-dtypes,
+  numpy,
   python,
   scipy,
   stdenv,
 }:
 
 let
-  version = "0.10.0";
+  version = "0.12.0.1";
   inherit (python) pythonVersion;
 
   # As of 2023-06-06, google/jax upstream is no longer publishing CPU-only wheels to their GCS bucket. Instead the
@@ -40,74 +39,57 @@ let
             ;
           pname = "jaxlib";
           format = "wheel";
-          # See the `disabled` attr comment below.
           python = dist;
           abi = dist;
         };
     in
     {
-      "3.11-x86_64-linux" = getSrcFromPypi {
-        platform = "manylinux_2_27_x86_64";
-        dist = "cp311";
-        hash = "sha256-m+IpmTpB5bK4TyNOzBml3gLzXt2xGVzwJ71TnhYB4V0=";
-      };
-      "3.11-aarch64-linux" = getSrcFromPypi {
-        platform = "manylinux_2_27_aarch64";
-        dist = "cp311";
-        hash = "sha256-PblOvIWTddlV3jUEGCrdfOFzPOPTDBXg7wMWAstRpVk=";
-      };
-      "3.11-aarch64-darwin" = getSrcFromPypi {
-        platform = "macosx_11_0_arm64";
-        dist = "cp311";
-        hash = "sha256-J3Ay6fB0w/1f/R4MsD1P5m4nLeRyZnzbxBitmbIbZGo=";
-      };
-
       "3.12-x86_64-linux" = getSrcFromPypi {
         platform = "manylinux_2_27_x86_64";
         dist = "cp312";
-        hash = "sha256-sL+4ZaB98ubXQYwLDCkt0pS1UAUjsd1YcrGA2yqkgNQ=";
+        hash = "sha256-eDGOmseckpcvgcdwkPVXvbSlpJghdRxu4/apxmqUiEI=";
       };
       "3.12-aarch64-linux" = getSrcFromPypi {
         platform = "manylinux_2_27_aarch64";
         dist = "cp312";
-        hash = "sha256-qh1w8aTifrQDZU5x4vso1XhtPpt3/BhH6MU4mICSfKQ=";
+        hash = "sha256-QIEiAcO81MsQS4j3H1j+xMvQwyupDlySs/qPQIGfZ3Q=";
       };
       "3.12-aarch64-darwin" = getSrcFromPypi {
         platform = "macosx_11_0_arm64";
         dist = "cp312";
-        hash = "sha256-fB2bRjMnx6IzPyEBFOywTyj+/FG6gjOoWiKAzOdb20I=";
+        hash = "sha256-2yzIWE19DRZik+8kdbcmmIoQ9vm1qOO443EkFeVXA4A=";
       };
 
       "3.13-x86_64-linux" = getSrcFromPypi {
         platform = "manylinux_2_27_x86_64";
         dist = "cp313";
-        hash = "sha256-0wPcMbZei3k9VgD4GxWDvgPcm4dqTBCz4lm2YJocvjs=";
+        hash = "sha256-/cVpmbppC9kV9wKWEyaYSOqvhdIx7Iq8RmENO4QMGJw=";
       };
       "3.13-aarch64-linux" = getSrcFromPypi {
         platform = "manylinux_2_27_aarch64";
         dist = "cp313";
-        hash = "sha256-bY14twcLNOTFu6X34Qkn5/Sqybab4X6bCliYVTpDOPM=";
+        hash = "sha256-yN4crTgnExFPZX9AY4PtxT7p/aRnnbTisJ0d/v4cTkU=";
       };
       "3.13-aarch64-darwin" = getSrcFromPypi {
         platform = "macosx_11_0_arm64";
         dist = "cp313";
-        hash = "sha256-OEY1//VYmaKVu8gu5sb3c6MA54fcRyypK755q/qsg2k=";
+        hash = "sha256-i+FgsLhHvFcWjkMFcTdW9toNC7omcV5k+dL0bAp6a0I=";
       };
 
       "3.14-x86_64-linux" = getSrcFromPypi {
         platform = "manylinux_2_27_x86_64";
         dist = "cp314";
-        hash = "sha256-KkLPBMD4i8A7FQoX+n3bsvQOCWZn7IobhA7YeRPm5zU=";
+        hash = "sha256-tgeadmnWJOvULRVxM5Vm5iz+ciX0taILjhZ3PqmoNXo=";
       };
       "3.14-aarch64-linux" = getSrcFromPypi {
         platform = "manylinux_2_27_aarch64";
         dist = "cp314";
-        hash = "sha256-rUfgckMJeewhY3qkh9TcRkAouOm+JyaPN95pU2x240E=";
+        hash = "sha256-YJ3v+uo4jR7Z0cUQTY9gQXkfAHca3DBfcxa3QvUC/Ws=";
       };
       "3.14-aarch64-darwin" = getSrcFromPypi {
         platform = "macosx_11_0_arm64";
         dist = "cp314";
-        hash = "sha256-mLJmcpQ2cnQoc/ZbwDIWgZ/FUyXJnxRlkNAHwBcr/zA=";
+        hash = "sha256-k7jaGD8CNWA8RgtTDajNbrI+p/HGrcT4KkOmA1SX1GY=";
       };
     };
 in
@@ -115,8 +97,6 @@ buildPythonPackage {
   pname = "jaxlib";
   inherit version;
   format = "wheel";
-
-  __structuredAttrs = true;
 
   # See https://discourse.nixos.org/t/ofborg-does-not-respect-meta-platforms/27019/6.
   src = (
@@ -131,9 +111,8 @@ buildPythonPackage {
   buildInputs = [ (lib.getLib stdenv.cc.cc) ];
 
   dependencies = [
-    absl-py
-    flatbuffers
     ml-dtypes
+    numpy
     scipy
   ];
 
@@ -141,16 +120,15 @@ buildPythonPackage {
 
   meta = {
     description = "Prebuilt jaxlib backend from PyPi";
-    homepage = "https://github.com/google/jax";
+    homepage = "https://github.com/jax-ml/jax";
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ samuela ];
-    badPlatforms = [
-      # Fails at pythonImportsCheckPhase:
-      # ...-python-imports-check-hook.sh/nix-support/setup-hook: line 10: 28017 Illegal instruction: 4
-      # /nix/store/5qpssbvkzfh73xih07xgmpkj5r565975-python3-3.11.9/bin/python3.11 -c
-      # 'import os; import importlib; list(map(lambda mod: importlib.import_module(mod), os.environ["pythonImportsCheck"].split()))'
-      "x86_64-darwin"
+    # Keep in sync with `srcs` above
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+      "aarch64-darwin"
     ];
   };
 }

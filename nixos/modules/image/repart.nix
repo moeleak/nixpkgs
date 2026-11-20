@@ -58,7 +58,7 @@ let
           example = lib.literalExpression ''
             {
               "/EFI/BOOT/BOOTX64.EFI".source =
-                "''${pkgs.systemd}/lib/systemd/boot/efi/systemd-bootx64.efi";
+                "''${config.systemd.package}/lib/systemd/boot/efi/systemd-bootx64.efi";
 
               "/loader/entries/nixos.conf".source = systemdBootEntry;
             }
@@ -131,6 +131,7 @@ in
   ];
 
   options.image.repart = {
+    enable = lib.mkEnableOption "systemd-repart boot image";
 
     name = lib.mkOption {
       type = lib.types.str;
@@ -227,7 +228,7 @@ in
           "10-esp" = {
             contents = {
               "/EFI/BOOT/BOOTX64.EFI".source =
-                "''${pkgs.systemd}/lib/systemd/boot/efi/systemd-bootx64.efi";
+                "''${config.systemd.package}/lib/systemd/boot/efi/systemd-bootx64.efi";
             };
             repartConfig = {
               Type = "esp";
@@ -313,13 +314,13 @@ in
 
   };
 
-  config = {
+  config = lib.mkIf cfg.enable {
     image.baseName =
       let
         version = config.image.repart.version;
         versionInfix = if version != null then "_${version}" else "";
       in
-      cfg.name + versionInfix;
+      lib.mkDefault (cfg.name + versionInfix);
     image.extension =
       let
         compressionSuffix =
@@ -332,7 +333,7 @@ in
             ."${cfg.compression.algorithm}";
 
       in
-      "raw" + compressionSuffix;
+      lib.mkDefault ("raw" + compressionSuffix);
 
     image.repart =
       let
@@ -441,7 +442,7 @@ in
         );
       };
 
-    system.build.image = cfg.image;
+    system.build.image = lib.mkDefault cfg.image;
   };
 
   meta.maintainers = with lib.maintainers; [

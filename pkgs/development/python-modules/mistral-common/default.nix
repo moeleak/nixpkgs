@@ -9,52 +9,59 @@
   # dependencies
   jsonschema,
   numpy,
-  opencv-python-headless,
   pillow,
   pydantic,
   pydantic-extra-types,
   requests,
-  sentencepiece,
   tiktoken,
   typing-extensions,
 
-  # tests
+  # optional-dependencies
   click,
   fastapi,
   huggingface-hub,
-  openai,
-  pycountry,
+  jinja2,
+  llguidance,
+  opencv-python-headless,
   pydantic-settings,
+  pytest-xdist,
   pytestCheckHook,
+  sentencepiece,
   soundfile,
   soxr,
+  uvloop,
+
+  # tests
+  openai,
+  pycountry,
   uvicorn,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "mistral-common";
-  version = "1.8.8";
+  version = "1.13.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "mistralai";
     repo = "mistral-common";
-    tag = "v${version}";
-    hash = "sha256-rvW2idAqdCZi7+DsHJXczJKbfceZQ4lQyHScLOqxFIc=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-BUX9ZkitJnqaFipMozFPOYvxhuxj9eOmemYyrYUD+Hg=";
   };
 
-  build-system = [ setuptools ];
+  build-system = [
+    setuptools
+  ];
 
   dependencies = [
     jsonschema
     numpy
-    opencv-python-headless
     pillow
     pydantic
     pydantic-extra-types
     requests
-    sentencepiece
     tiktoken
+    # Dropped from pyproject.toml but still imported by mistral_common.guidance
     typing-extensions
   ];
 
@@ -73,6 +80,10 @@ buildPythonPackage rec {
     ];
     audio = self.soundfile ++ self.soxr;
     image = self.opencv;
+    guidance = [
+      jinja2
+      llguidance
+    ];
     hf-hub = [
       huggingface-hub
     ];
@@ -80,6 +91,7 @@ buildPythonPackage rec {
       click
       fastapi
       pydantic-settings
+      uvloop
     ]
     ++ fastapi.optional-dependencies.standard;
   });
@@ -87,36 +99,24 @@ buildPythonPackage rec {
   pythonImportsCheck = [ "mistral_common" ];
 
   nativeCheckInputs = [
-    click
-    fastapi
-    huggingface-hub
     openai
     pycountry
-    pydantic-settings
+    pytest-xdist
     pytestCheckHook
-    soundfile
-    soxr
     uvicorn
-  ];
+  ]
+  ++ lib.concatAttrValues finalAttrs.passthru.optional-dependencies;
 
   disabledTests = [
-    # Require internet
-    "test_download_gated_image"
-    "test_image_encoder_formats"
-    "test_image_processing"
-
-    # AssertionError: Regex pattern did not match.
-    "test_from_url"
-
-    # AssertionError, Extra items in the right set
-    "test_openai_chat_fields"
+    # AssertionError: assert 0.028677442591911916 < 0.005
+    "test_audio_base64"
   ];
 
   meta = {
     description = "Tools to help you work with Mistral models";
     homepage = "https://github.com/mistralai/mistral-common";
-    changelog = "https://github.com/mistralai/mistral-common/releases/tag/v${version}";
+    changelog = "https://github.com/mistralai/mistral-common/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ bgamari ];
   };
-}
+})

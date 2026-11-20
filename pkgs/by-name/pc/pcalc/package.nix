@@ -17,6 +17,11 @@ stdenv.mkDerivation {
     sha256 = "sha256-m4xdsEJGKxLgp/d5ipxQ+cKG3z7rlvpPL6hELnDu6Hk=";
   };
 
+  # bison generates pcalc.h together with pcalc.c, but the Makefile doesn't say which objects need it
+  postPatch = ''
+    echo 'symbol.o pcalcl.o: pcalc.c' >> Makefile
+  '';
+
   # Since C23, coercing functions with different parameter lists to a function pointer with no
   # parameter specified triggers a hard error: `symbol.c:92:22: error: initialization of
   # 'int (*)(void)' from incompatible pointer type 'int (*)(double)' [-Wincompatible-pointer-types]`
@@ -35,7 +40,7 @@ stdenv.mkDerivation {
     description = "Programmer's calculator";
     mainProgram = "pcalc";
     license = lib.licenses.gpl2Plus;
-    maintainers = with lib.maintainers; [ ftrvxmtrx ];
+    maintainers = [ ];
     platforms = lib.platforms.unix;
   };
 }

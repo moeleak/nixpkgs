@@ -13,12 +13,13 @@
   libei,
   libepoxy,
   libdrm,
+  libkrb5,
   libva,
   vulkan-loader,
   shaderc,
   nv-codec-headers-11,
   pipewire,
-  systemd,
+  systemdLibs,
   libsecret,
   libnotify,
   libopus,
@@ -34,11 +35,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "gnome-remote-desktop";
-  version = "49.2";
+  version = "51.0";
 
   src = fetchurl {
     url = "mirror://gnome/sources/gnome-remote-desktop/${lib.versions.major finalAttrs.version}/gnome-remote-desktop-${finalAttrs.version}.tar.xz";
-    hash = "sha256-c9ROHnR04WIVgP9WEs3+HZxIr8+rRUjOkh1cpuLZFq0=";
+    hash = "sha256-x5VLNNpXZiiOoZtWAmQhycH+LCPvN55X7CCdwM8T3ys=";
   };
 
   nativeBuildInputs = [
@@ -62,6 +63,7 @@ stdenv.mkDerivation (finalAttrs: {
     libei
     libepoxy
     libdrm
+    libkrb5
     libva
     vulkan-loader
     nv-codec-headers-11
@@ -70,7 +72,7 @@ stdenv.mkDerivation (finalAttrs: {
     libsecret
     libxkbcommon
     pipewire
-    systemd
+    systemdLibs
     polkit # For polkit-gobject
   ];
 

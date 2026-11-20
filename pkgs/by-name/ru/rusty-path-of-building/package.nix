@@ -1,7 +1,6 @@
 {
   lib,
   rustPlatform,
-  fetchurl,
   fetchFromGitHub,
   copyDesktopItems,
   makeDesktopItem,
@@ -9,26 +8,28 @@
   pkg-config,
   icoutils,
   luajit,
-  zlib,
+  openssl,
   libxkbcommon,
   vulkan-loader,
   wayland,
+  aws-lc,
+  zstd,
   libxi,
   libxcursor,
   libx11,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "rusty-path-of-building";
-  version = "0.2.16";
+  version = "0.3.4";
 
   src = fetchFromGitHub {
     owner = "meehl";
     repo = "rusty-path-of-building";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-2pXT9Wyn49sGHDqjlmlCRUyIIAEERAKNK6cDTUwwjGM=";
+    hash = "sha256-2FpiOX7JROAWbdPFwa1HaZxW+yMU8wM/Qu6ld3CDwHM=";
   };
 
-  cargoHash = "sha256-VZfwk6Yf4JPkjC9XY93t1jXTJCrwwfkRFFgqNYWx8HE=";
+  cargoHash = "sha256-HvKvkwZyd7MQ81Ru9rl67F8zL4kW6O8QoupLk1KjjKg=";
 
   nativeBuildInputs = [
     pkg-config
@@ -39,22 +40,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   buildInputs = [
     luajit
-    luajit.pkgs.lua-curl
-    luajit.pkgs.luautf8
-    luajit.pkgs.luasocket
-
-    # this is weird and vendored and should probably stay that way
-    (luajit.pkgs.buildLuaPackage {
-      pname = "lzip";
-      inherit (finalAttrs) version;
-      src = "${finalAttrs.src}/lua/libs/lzip";
-
-      nativeBuildInputs = [ pkg-config ];
-      buildInputs = [ zlib ];
-      installFlags = [ "LUA_CMOD=$(out)/lib/lua/${luajit.luaversion}" ];
-    })
-
+    openssl
     wayland
+    aws-lc
+    zstd
   ];
 
   postInstall = ''
@@ -84,7 +73,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       name = "rusty-path-of-building-1";
       desktopName = "Path of Building";
       comment = "Offline build planner for Path of Exile";
-      exec = "rusty-path-of-building poe1";
+      exec = "rusty-path-of-building poe1 %u";
       terminal = false;
       type = "Application";
       icon = "path-of-building";
@@ -96,12 +85,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
         "path"
         "exile"
       ];
+      mimeTypes = [ "x-scheme-handler/pob" ];
     })
     (makeDesktopItem {
       name = "rusty-path-of-building-2";
       desktopName = "Path of Building 2";
       comment = "Offline build planner for Path of Exile 2";
-      exec = "rusty-path-of-building poe2";
+      exec = "rusty-path-of-building poe2 %u";
       terminal = false;
       type = "Application";
       icon = "path-of-building";
@@ -113,6 +103,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
         "path"
         "exile"
       ];
+      mimeTypes = [ "x-scheme-handler/pob2" ];
     })
   ];
 

@@ -14,6 +14,14 @@
   glibcLocalesUtf8,
 }:
 
+let
+  inherit (lib) head optionals warn;
+  unzipBuildInputs = [
+    unzip
+    glibcLocalesUtf8
+  ];
+in
+
 lib.extendMkDerivation {
   constructDrv = fetchurl;
 
@@ -30,7 +38,7 @@ lib.extendMkDerivation {
     {
       url ? "",
       urls ? [ ],
-      name ? repoRevToNameMaybe (if url != "" then url else builtins.head urls) null "unpacked",
+      name ? repoRevToNameMaybe (if url != "" then url else head urls) null "unpacked",
       nativeBuildInputs ? [ ],
       postFetch ? "",
       extraPostFetch ? "",
@@ -56,7 +64,7 @@ lib.extendMkDerivation {
         if finalAttrs.extension != null then
           "download.${finalAttrs.extension}"
         else
-          baseNameOf (if url != "" then url else builtins.head urls);
+          baseNameOf (if url != "" then url else head urls);
     in
 
     {
@@ -68,12 +76,7 @@ lib.extendMkDerivation {
       # Have to pull in glibcLocalesUtf8 for unzip in setup-hook.sh to handle
       # UTF-8 aware locale:
       #   https://github.com/NixOS/nixpkgs/issues/176225#issuecomment-1146617263
-      nativeBuildInputs =
-        lib.optionals withUnzip [
-          unzip
-          glibcLocalesUtf8
-        ]
-        ++ nativeBuildInputs;
+      nativeBuildInputs = optionals withUnzip unzipBuildInputs ++ nativeBuildInputs;
 
       postFetch = ''
         unpackDir="$TMPDIR/unpack"
@@ -106,9 +109,11 @@ lib.extendMkDerivation {
       )
       + ''
         ${postFetch}
-        ${lib.warnIf (extraPostFetch != "")
-          "use 'postFetch' instead of 'extraPostFetch' with 'fetchzip' and 'fetchFromGitHub' or 'fetchFromGitLab'."
-          extraPostFetch
+        ${
+          if extraPostFetch != "" then
+            warn "use 'postFetch' instead of 'extraPostFetch' with 'fetchzip' and 'fetchFromGitHub' or 'fetchFromGitLab'." extraPostFetch
+          else
+            extraPostFetch
         }
         chmod 755 "$out"
       '';

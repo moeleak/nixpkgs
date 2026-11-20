@@ -1,5 +1,5 @@
 {
-  "version": "8.0.2",
-  "x86_64-linux": "sha256-6noMPfe0x6kx/whyd66qcmk7WhEivx3xK5q58Se9Ij0=",
-  "aarch64-linux": "sha256-wfY+OCx9OyLCmiA29RjnYzcg/pApMIXWT5UrcdcyRYM="
+  "version": "8.1.0",
+  "x86_64-linux": "sha256-zS5P2eyTHZY7cBW8mQ2Q6M0lXcx9VZZTtpG3Bb6u7IQ=",
+  "aarch64-linux": "sha256-l0km/Ye6w1oL/j2ruC6oHMJc4uwSNqoMe9MkAEIwqhI="
 }

@@ -6,7 +6,7 @@
   nix-update-script,
 }:
 let
-  version = "0.32.2";
+  version = "0.35.0";
 in
 rustPlatform.buildRustPackage {
   pname = "tinty";
@@ -16,10 +16,10 @@ rustPlatform.buildRustPackage {
     owner = "tinted-theming";
     repo = "tinty";
     tag = "v${version}";
-    hash = "sha256-+13iS99bwvIZDy96x1fgOtDyvbu59ieY4nUZk91mK4s=";
+    hash = "sha256-5K3U3FaE9naZTGQ7GuLddQwyjNCIAW/xPgt1Ym7H+IE=";
   };
 
-  cargoHash = "sha256-gShC4+uzdJVi3KuLc6ImJRvEWvIY4vgKcYT8Aykm0Xc=";
+  cargoHash = "sha256-6Lkesm1qwNlMeAxErJqdYAgyOK3wRTvMHNxIGk8+91Q=";
 
   # Pretty much all tests require internet access
   doCheck = false;
@@ -33,7 +33,7 @@ rustPlatform.buildRustPackage {
     description = "Base16 and base24 color scheme manager";
     homepage = "https://github.com/tinted-theming/tinty";
     changelog = "https://github.com/tinted-theming/tinty/blob/refs/tags/v${version}/CHANGELOG.md";
-    license = with lib.licenses; [ mit ];
+    license = lib.licenses.gpl3Only;
     platforms = lib.platforms.unix;
     maintainers = with lib.maintainers; [
       pluiedev

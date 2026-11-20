@@ -6,25 +6,35 @@
   pkg-config,
   sqlite,
   gitMinimal,
+  curl,
+  jq,
+  coreutils,
   writableTmpDirAsHomeHook,
   versionCheckHook,
+  nix-update-script,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "rtk";
-  version = "0.38.0";
+  version = "1.2.0";
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "rtk-ai";
     repo = "rtk";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-eINYlatbjpsqe46LNZIXvIrZEBf+QC3+2EjY7Ei7VZI=";
+    hash = "sha256-dkMae+wh/W0qytr5AyRbibmrGMtIous88Asq13FLnjI=";
   };
 
-  strictDeps = true;
-  __structuredAttrs = true;
+  cargoHash = "sha256-0VUc3Se3MdmffCkbCw2esLnmht9ZhwnmVCqxjudElfA=";
 
-  cargoHash = "sha256-qTDj7xTBM8dOOE7XLTewtHVwHtxVDcvCLs0ebtT2uSI=";
+  postPatch = ''
+    substituteInPlace tests/run_shell_test.rs \
+      --replace-fail /usr/bin/printf ${lib.getExe' coreutils "printf"} \
+      --replace-fail /bin/echo ${lib.getExe' coreutils "echo"} \
+      --replace-fail /bin/true ${lib.getExe' coreutils "true"} \
+      --replace-fail /bin/false ${lib.getExe' coreutils "false"}
+  '';
 
   nativeBuildInputs = [
     makeWrapper
@@ -35,6 +45,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     sqlite
   ];
 
+  env.LIBSQLITE3_SYS_USE_PKG_CONFIG = "1";
   postInstall = ''
     wrapProgram $out/bin/rtk \
       --prefix PATH : ${
@@ -45,20 +56,40 @@ rustPlatform.buildRustPackage (finalAttrs: {
   '';
 
   nativeCheckInputs = [
+    curl
     gitMinimal
+    jq
     writableTmpDirAsHomeHook
   ];
+
+  checkFlags = [
+    # Waits on a shim subprocess that never gets scheduled inside the build sandbox, so it only ever
+    # fails on its own 60s timeout.
+    "--skip=signalled_run_still_prints_captured_output"
+  ];
+
+  __darwinAllowLocalNetworking = true;
 
   nativeInstallCheckInputs = [
     versionCheckHook
   ];
   doInstallCheck = true;
 
+  passthru.updateScript = nix-update-script {
+    # Upstream also publishes `dev-<version>-rc.<n>` prerelease tags.
+    extraArgs = [
+      "--version-regex"
+      "^v([0-9.]+)$"
+    ];
+  };
+
   meta = {
     description = "CLI proxy that reduces LLM token consumption by 60-90% on common dev commands";
     homepage = "https://github.com/rtk-ai/rtk";
     changelog = "https://github.com/rtk-ai/rtk/blob/${finalAttrs.src.tag}/CHANGELOG.md";
-    license = lib.licenses.mit;
+    license = with lib.licenses; [
+      asl20
+    ];
     maintainers = with lib.maintainers; [ GaetanLepage ];
     mainProgram = "rtk";
   };

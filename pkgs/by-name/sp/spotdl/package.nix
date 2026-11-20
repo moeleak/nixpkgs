@@ -8,14 +8,14 @@
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "spotdl";
-  version = "4.4.4";
+  version = "4.6.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "spotDL";
     repo = "spotify-downloader";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-GKkkYA1Z6YsthIKE8Hf/vKRHU7kPCKabOh28i/JSSOc=";
+    hash = "sha256-6qFLvwnvOUaT7NE+lkiat39yjVLySr5hDiFgSWKLXho=";
   };
 
   build-system = with python3Packages; [ hatchling ];
@@ -35,23 +35,26 @@ python3Packages.buildPythonApplication (finalAttrs: {
       pykakasi
       python-multipart
       python-slugify
-      pytube
       rapidfuzz
       requests
       rich
       soundcloud-v2
       spotipy
+      spotipyfree
       syncedlyrics
       uvicorn
       websockets
       yt-dlp
       ytmusicapi
     ]
-    ++ python-slugify.optional-dependencies.unidecode;
+    ++ python-slugify.optional-dependencies.unidecode
+    ++ yt-dlp.optional-dependencies.default;
 
   nativeCheckInputs = with python3Packages; [
     pyfakefs
+    pytest-asyncio
     pytest-mock
+    pytest-recording
     pytest-subprocess
     pytestCheckHook
     vcrpy

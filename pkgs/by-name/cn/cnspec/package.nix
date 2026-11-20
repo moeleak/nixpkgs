@@ -1,31 +1,45 @@
 {
   lib,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
+  getent,
+  versionCheckHook,
+  writableTmpDirAsHomeHook,
 }:
 
-buildGoModule (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "cnspec";
-  version = "13.8.2";
+  version = "14.12.0";
 
   src = fetchFromGitHub {
     owner = "mondoohq";
     repo = "cnspec";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-z7Peg7UQnMhWHazDrHabDQ0Y2QlyTjA7XzuwVA8fdak=";
+    hash = "sha256-bhD80XAcdyxTUnVe+W5QPKuqV2CI3WKa0eHg2Ls4HJ4=";
   };
 
   proxyVendor = true;
 
-  vendorHash = "sha256-F6EpksIF8aNcQEchp08DBa5ZwUFU3YusTkNBT1VjfFw=";
+  vendorHash = "sha256-9BT6COqAPT8Lo25WZeYg5DD0/PP5qCGAiWCTLw80bQo=";
 
   subPackages = [ "apps/cnspec" ];
 
+  nativeInstallCheckInputs = [
+    getent
+    writableTmpDirAsHomeHook
+    versionCheckHook
+  ];
+
   ldflags = [
     "-s"
-    "-w"
     "-X=go.mondoo.com/cnspec.Version=${finalAttrs.version}"
   ];
+
+  doInstallCheck = true;
+
+  versionCheckKeepEnvironment = "HOME PATH";
+
+  versionCheckProgramArg = [ "version" ];
 
   meta = {
     description = "Open source, cloud-native security and policy project";
@@ -36,5 +50,6 @@ buildGoModule (finalAttrs: {
       fab
       mariuskimmina
     ];
+    mainProgram = "cnspec";
   };
 })

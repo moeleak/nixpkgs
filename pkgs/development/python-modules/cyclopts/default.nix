@@ -1,36 +1,44 @@
 {
   lib,
+  stdenv,
   attrs,
   buildPythonPackage,
   docstring-parser,
   fetchFromGitHub,
+  bash,
+  fish,
   hatch-vcs,
   hatchling,
   markdown,
   mkdocs,
+  pexpect,
   pydantic,
   pymdown-extensions,
+  pytest-cov-stub,
   pytest-mock,
   pytestCheckHook,
   pyyaml,
-  rich-rst,
   rich,
+  rich-rst,
   sphinx,
   syrupy,
   trio,
+  zsh,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "cyclopts";
-  version = "4.10.2";
+  version = "5.4.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "BrianPugh";
     repo = "cyclopts";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-vlsjhBfI08QMQ8FzM+BogAXbukHhnr4aD8ZmZVicCv0=";
+    hash = "sha256-cVgere0TZsRS0wl3YR3rz7APTx6mW/znjAJHeaPXeyU=";
   };
+
+  pythonRelaxDeps = [ "rich-rst" ];
 
   build-system = [
     hatchling
@@ -47,7 +55,6 @@ buildPythonPackage (finalAttrs: {
   optional-dependencies = {
     trio = [ trio ];
     yaml = [ pyyaml ];
-    docs = [ sphinx ];
     mkdocs = [
       mkdocs
       markdown
@@ -56,25 +63,41 @@ buildPythonPackage (finalAttrs: {
   };
 
   nativeCheckInputs = [
+    pexpect
     pydantic
+    pytest-cov-stub
     pytest-mock
     pytestCheckHook
     syrupy
+
+    # integrations
+    sphinx
+    bash
+    fish
+    zsh
   ]
   ++ lib.flatten (builtins.attrValues finalAttrs.passthru.optional-dependencies);
 
   pythonImportsCheck = [ "cyclopts" ];
 
   disabledTests = [
-    # Test requires bash
-    "test_positional_not_treated_as_command"
     # Building docs
     "build_succeeds"
-  ];
-
-  disabledTestPaths = [
-    # Tests requires sphinx
-    "tests/test_sphinx_ext.py"
+    # timeouts under heavy concurrency
+    "test_behavior[zsh-root-subcommands]"
+    "test_behavior[zsh-subcommand-prefix]"
+    "test_path_completion_action"
+    "test_requires_equals_eq_form_value_completion"
+    # zsh completion in the build sandbox returns the completion cancel
+    # character instead of the candidates
+    "test_e2e_option_value[zsh"
+    "test_e2e_option_value_prefix[zsh"
+    "test_e2e_descriptions[zsh"
+    "test_e2e_subcommand_named_like_path_executable[zsh"
+    "test_e2e_eq_form_option_value[zsh"
+    "test_e2e_dependent_completion[zsh"
+    "test_e2e_wire_protocol_forward_compat[zsh"
+    "test_e2e_default_completer_positional_with_subcommands[zsh"
   ];
 
   meta = {
@@ -82,6 +105,9 @@ buildPythonPackage (finalAttrs: {
     homepage = "https://github.com/BrianPugh/cyclopts";
     changelog = "https://github.com/BrianPugh/cyclopts/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ fab ];
+    maintainers = with lib.maintainers; [
+      fab
+      PerchunPak
+    ];
   };
 })

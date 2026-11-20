@@ -4,16 +4,16 @@
   buildHomeAssistantComponent,
 }:
 
-buildHomeAssistantComponent rec {
+buildHomeAssistantComponent (finalAttrs: {
   owner = "nielsfaber";
   domain = "alarmo";
-  version = "1.10.17";
+  version = "1.10.19";
 
   src = fetchFromGitHub {
     owner = "nielsfaber";
     repo = "alarmo";
-    tag = "v${version}";
-    hash = "sha256-LVTwqJsuFvAGUgZDq6lkUUI/Ch0Ex+ApNxsyuUbDz14=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-YhxEhzQ8g38fMU3ntdES1scmBZuhC15nxoHEmbPHmIo=";
   };
 
   postPatch = ''
@@ -21,10 +21,10 @@ buildHomeAssistantComponent rec {
   '';
 
   meta = {
-    changelog = "https://github.com/nielsfaber/alarmo/releases/tag/v${version}";
+    changelog = "https://github.com/nielsfaber/alarmo/releases/tag/${finalAttrs.src.tag}";
     description = "Alarm System for Home Assistant";
     homepage = "https://github.com/nielsfaber/alarmo";
     maintainers = with lib.maintainers; [ mindstorms6 ];
     license = lib.licenses.asl20;
   };
-}
+})

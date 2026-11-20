@@ -1,23 +1,23 @@
 {
   lib,
   stdenv,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
   installShellFiles,
 }:
 
-buildGoModule rec {
+buildGo127Module rec {
   pname = "omnictl";
-  version = "1.7.1";
+  version = "1.13.3";
 
   src = fetchFromGitHub {
     owner = "siderolabs";
     repo = "omni";
     rev = "v${version}";
-    hash = "sha256-3nqyhJnJgOyegLtJchqoo6BtGbvvRaGxwo28Ef1gb4k=";
+    hash = "sha256-k12lSyeWgAdV3mX2k940rka+6u6zWQDi2OZsLxdTfAY=";
   };
 
-  vendorHash = "sha256-6Yy/qEcZb4nheCplXmYo65NUJzImEQpRW/+g0rA3VW4=";
+  vendorHash = "sha256-asrwEH62Shfb8PrdpeKhMyeWfmMlkmORZwqfuWtuy/A=";
 
   ldflags = [
     "-s"

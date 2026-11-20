@@ -4,6 +4,7 @@
   rustPlatform,
   autoPatchelfHook,
   pkg-config,
+  aws-lc,
   libxkbcommon,
   libGL,
   pipewire,
@@ -11,19 +12,20 @@
   wayland,
   udev,
   vulkan-loader,
+  nix-update-script,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "ashell";
-  version = "0.8.0";
+  version = "0.11.0";
 
   src = fetchFromGitHub {
     owner = "MalpenZibo";
     repo = "ashell";
     tag = finalAttrs.version;
-    hash = "sha256-X9TU866PAzaf52qKsCpeJvwE0suu1lJndHNQdPg51HM=";
+    hash = "sha256-mBbKWTA/mN5yJy6AUoJ3AzNYVvjSKuM7bS81B3RcMLY=";
   };
 
-  cargoHash = "sha256-nhYbehlgB8pzMoj39G0BHRca9mIT+0QjUaebCx+DDE0=";
+  cargoHash = "sha256-vc1aV7NOwfRrb1RUnpGyMJ6KXjcYicM4QyrBd5Q9P1A=";
 
   nativeBuildInputs = [
     pkg-config
@@ -42,15 +44,22 @@ rustPlatform.buildRustPackage (finalAttrs: {
     libxkbcommon
     pipewire
     udev
+    aws-lc
   ]
   ++ finalAttrs.runtimeDependencies;
+
+  passthru.updateScript = nix-update-script {
+    extraArgs = [ "--use-github-releases" ];
+  };
 
   meta = {
     description = "Ready to go Wayland status bar for Hyprland";
     homepage = "https://github.com/MalpenZibo/ashell";
-    license = lib.licenses.mit;
+    license = lib.licenses.gpl3Plus;
     mainProgram = "ashell";
-    maintainers = with lib.maintainers; [ justdeeevin ];
+    maintainers = with lib.maintainers; [
+      mBornand
+    ];
     platforms = lib.platforms.linux;
   };
 })

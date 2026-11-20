@@ -2,7 +2,7 @@
   lib,
   stdenv,
   fetchFromGitHub,
-  glibmm,
+  glibmm_2_4,
   gtk4-layer-shell,
   gtkmm4,
   libevdev,
@@ -14,13 +14,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "syshud";
-  version = "0-unstable-2026-05-11";
+  version = "0-unstable-2026-09-07";
 
   src = fetchFromGitHub {
     owner = "System64fumo";
     repo = "syshud";
-    rev = "5781eb0feb081a5fe8f1f364c4f29b9b403f89d4";
-    hash = "sha256-fpJmxz4+Gk1x4KWT5Fc/g3ypu6i0LZEqBrMpJ8GIgKs=";
+    rev = "ef3fb52ea37f57170a5e91b266ed9a449de9d2e9";
+    hash = "sha256-tTY4DP9F3Mi5fylnaAPsipnOhMj/9MBbg4/+qZ+AGFo=";
   };
 
   postPatch = ''
@@ -36,7 +36,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    glibmm
+    glibmm_2_4
     gtk4-layer-shell
     gtkmm4
     libevdev
@@ -76,7 +76,7 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Simple heads up display written in gtkmm 4";
     mainProgram = "syshud";
     homepage = "https://github.com/System64fumo/syshud";
-    license = lib.licenses.wtfpl;
+    license = lib.licenses.gpl3Only;
     platforms = lib.platforms.linux;
     maintainers = with lib.maintainers; [ colinsane ];
   };

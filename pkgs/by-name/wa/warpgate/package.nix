@@ -1,26 +1,35 @@
 {
   lib,
   replaceVars,
-  fetchurl,
   fetchFromGitHub,
   rustPlatform,
+  aws-lc,
   buildNpmPackage,
   openapi-generator-cli,
   nixosTests,
+  nix-update-script,
+  openssl,
+  perl,
+  pkg-config,
+  sqlite,
+  zstd,
+  withRDPLegacyTLSBackend ? false,
 }:
 rustPlatform.buildRustPackage (
   finalAttrs:
   let
-    warpgate-web = buildNpmPackage {
-      pname = "${finalAttrs.pname}-web";
+    webUi = buildNpmPackage {
+      pname = "warpgate-web";
       version = finalAttrs.version;
 
       src = finalAttrs.src;
       sourceRoot = "${finalAttrs.src.name}/warpgate-web";
 
-      patches = [ ./web-ui-package-json.patch ];
+      patches = [
+        ./web-ui-package-json.patch
+      ];
 
-      npmDepsHash = "sha256-JW3nibMIETj5PQcaNRS5UVZgguSvGd9Bw8uGD3kb5uM=";
+      npmDepsHash = "sha256-jeNoQ884pv3mfigZ7srLSVMFbvE04zXd/2XxqN5t0LI=";
 
       nativeBuildInputs = [ openapi-generator-cli ];
 
@@ -35,45 +44,68 @@ rustPlatform.buildRustPackage (
   in
   {
     pname = "warpgate";
-    version = "0.23.4";
+    version = "0.30.4";
 
     src = fetchFromGitHub {
       owner = "warp-tech";
       repo = "warpgate";
       tag = "v${finalAttrs.version}";
-      hash = "sha256-/IhnDBQq7Ed5vaGiCHNTcE7Uu9b9VrBN1ipCd2Tai1o=";
+      hash = "sha256-pj2nGp/7QK7es45RKhJAFBdyUQFS/8C58Kag5n7wHNg=";
     };
 
-    cargoHash = "sha256-PRR+bzvmWcWUVdV1HqDqD08SwvDCvGXMvkIVoFEnaQI=";
+    cargoHash = "sha256-zq3HwcJZ6PiC716Qdc0aq+yu5XfV09dPXlt415v0xI8=";
 
     patches = [
       (replaceVars ./hardcode-version.patch { inherit (finalAttrs) version; })
-      ./remove-nightly-rustflags.patch
     ];
 
-    env.RUSTFLAGS = "--cfg tokio_unstable";
+    env = {
+      # uses nightly feature: gethostname, once_cell_try
+      RUSTC_BOOTSTRAP = true;
+      RUSTFLAGS = "--cfg tokio_unstable";
+    };
+
+    nativeBuildInputs = [
+      pkg-config
+    ]
+    ++ lib.optional withRDPLegacyTLSBackend perl;
+
+    buildInputs = [
+      aws-lc
+      sqlite
+      zstd
+    ]
+    ++ lib.optional withRDPLegacyTLSBackend openssl;
 
     buildFeatures = [
       "postgres"
       "mysql"
       "sqlite"
-    ];
+    ]
+    ++ lib.optional withRDPLegacyTLSBackend "rdp-openssl-tls";
 
     preBuild = ''
-      rm -r .cargo/
-      ln -rs "${warpgate-web}" warpgate-web/dist
+      rm -rf .cargo/
+      ln -rs "${webUi}" warpgate-web/dist
     '';
 
     # skip check, project included tests require python stuff and docker
     doCheck = false;
 
-    passthru.tests = {
-      inherit (nixosTests) warpgate;
+    passthru = {
+      inherit webUi;
+      tests = {
+        inherit (nixosTests) warpgate;
+      };
+      updateScript = nix-update-script {
+        extraArgs = [ "--subpackage=webUi" ];
+      };
     };
 
     meta = {
       description = "Smart SSH, HTTPS, MySQL and Postgres bastion that requires no additional client-side software";
       homepage = "https://warpgate.null.page";
+      changelog = "https://github.com/warp-tech/warpgate/releases/tag/v${finalAttrs.version}";
       license = lib.licenses.asl20;
       platforms = lib.platforms.linux ++ lib.platforms.darwin;
       mainProgram = "warpgate";

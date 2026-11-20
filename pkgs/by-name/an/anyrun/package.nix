@@ -5,6 +5,7 @@
   pkg-config,
   wrapGAppsHook4,
   anyrun-provider,
+  aws-lc,
   cairo,
   gdk-pixbuf,
   glib,
@@ -17,18 +18,17 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "anyrun";
-  version = "25.12.0";
+  version = "26.10.0";
 
   src = fetchFromGitHub {
     owner = "anyrun-org";
     repo = "anyrun";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-KEEJLERvo04AsPo/SWHFJUmHaGGOVjUoGwA9e8GVIQQ=";
+    hash = "sha256-D1keVdbuuX6qM/tH8XRDPGv610oEvPKo9OhaHFluCFQ=";
   };
 
-  cargoHash = "sha256-IDrDgmksDdKw5JYY/kw+CCEIDJ6S2KARxUDSul713pw=";
+  cargoHash = "sha256-O37p+CCba7b29QDdXvkUQD2Nt3dsv+sv3waZMHpPMYY=";
 
-  strictDeps = true;
   enableParallelBuilding = true;
   doCheck = true;
 
@@ -38,6 +38,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
 
   buildInputs = [
+    aws-lc
     cairo
     gdk-pixbuf
     glib

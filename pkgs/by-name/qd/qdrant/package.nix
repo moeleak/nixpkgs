@@ -10,20 +10,21 @@
   rust-jemalloc-sys-unprefixed,
   versionCheckHook,
   nix-update-script,
+  zstd,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "qdrant";
-  version = "1.17.1";
+  version = "1.18.2";
 
   src = fetchFromGitHub {
     owner = "qdrant";
     repo = "qdrant";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-EGk1BM8/SjH4LO25fG5GGtRXTnhA9prmGR5MxyzJNd4=";
+    hash = "sha256-HLISCnfYM07jJ1jfER6i+zMlzYxWq+DJ2FVgpjkTytg=";
   };
 
-  cargoHash = "sha256-8+tMZQUsyouNbxlvykfQ66/THd9PMPnVUbWaXwMtVCM=";
+  cargoHash = "sha256-QG4HMADZmOu5ilFZBqogdrwBaBegoqNP9GvsDddUYbs=";
 
   nativeBuildInputs = [
     protobuf
@@ -35,6 +36,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     openssl
     rust-jemalloc-sys
     rust-jemalloc-sys-unprefixed
+    zstd
   ];
 
   # Needed to get openssl-sys to use pkg-config.
@@ -69,7 +71,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     homepage = "https://github.com/qdrant/qdrant";
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [
-      dit7ya
       miniharinn
     ];
   };

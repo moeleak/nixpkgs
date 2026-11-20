@@ -4,7 +4,8 @@
   aioresponses,
   buildPythonPackage,
   fetchFromGitHub,
-  incremental,
+  packaging,
+  pyprojectVersionPatchHook,
   pytest-asyncio,
   pytestCheckHook,
   setuptools,
@@ -12,24 +13,33 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "aiolyric";
-  version = "2.1.0";
+  version = "2.2.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "timmo001";
     repo = "aiolyric";
     tag = finalAttrs.version;
-    hash = "sha256-kLsq1pBRWz49DZgX47k132OipDcfn+kby6/GYDL3pPc=";
+    hash = "sha256-F9mFpwvJrjKEtOIqd481feUVzZdHoC86PALc79FZMYg=";
   };
 
-  build-system = [
-    incremental
-    setuptools
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "setuptools==84.0.0" "setuptools"
+  '';
+
+  pythonRelaxDeps = [
+    "aiohttp"
+    "packaging"
   ];
+
+  build-system = [ setuptools ];
+
+  nativeBuildInputs = [ pyprojectVersionPatchHook ];
 
   dependencies = [
     aiohttp
-    incremental
+    packaging
   ];
 
   nativeCheckInputs = [
@@ -39,11 +49,6 @@ buildPythonPackage (finalAttrs: {
   ];
 
   pythonImportsCheck = [ "aiolyric" ];
-
-  disabledTestPaths = [
-    # _version file is no shipped
-    "tests/test__version.py"
-  ];
 
   meta = {
     description = "Python module for the Honeywell Lyric Platform";

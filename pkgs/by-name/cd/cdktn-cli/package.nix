@@ -4,33 +4,42 @@
   buildGoModule,
   faketty,
   fetchFromGitHub,
-  fetchYarnDeps,
-  fixup-yarn-lock,
+  fetchPnpmDeps,
   go,
   makeWrapper,
-  nodejs_22,
+  nodejs,
   nix-update-script,
   patchelf,
+  pnpm_10,
+  pnpmConfigHook,
   removeReferencesTo,
-  testers,
-  yarn,
   versionCheckHook,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "cdktn-cli";
-  version = "0.22.1";
+  version = "0.25.0";
 
   src = fetchFromGitHub {
     owner = "open-constructs";
     repo = "cdk-terrain";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-yBCLxp7w/M2y7vDEI1ceAAJbyYpPT4mN4hZ3FKpaiJ0=";
+    hash = "sha256-TgLhIiv6v4jH8afqX907sOtejXD0TH1InOThNPCum1o=";
   };
 
-  offlineCache = fetchYarnDeps {
-    yarnLock = "${finalAttrs.src}/yarn.lock";
-    hash = "sha256-c5WQXZLbOuvy6Jj6TchV00HThFIePMdsGW1rWAUKnvo=";
+  pnpmWorkspaces = [ "cdktn-cli..." ];
+
+  pnpmDeps = fetchPnpmDeps {
+    inherit (finalAttrs)
+      pname
+      version
+      src
+      pnpmInstallFlags
+      pnpmWorkspaces
+      ;
+    fetcherVersion = 3;
+    hash = "sha256-zo5zwdxRXKbFSeiOBBekie/ky1qyAk9UugPWB5j5S40=";
+    pnpm = pnpm_10;
   };
 
   hcl2json-go-modules =
@@ -55,26 +64,23 @@ stdenv.mkDerivation (finalAttrs: {
       env.GOWORK = "off";
     }).goModules;
 
+  pnpmInstallFlags = [ "--shamefully-hoist" ];
   strictDeps = true;
   disallowedReferences = [ go ];
 
   nativeBuildInputs = [
     faketty
-    fixup-yarn-lock
     go
     makeWrapper
-    nodejs_22
+    nodejs
     patchelf
+    pnpm_10
+    pnpmConfigHook
     removeReferencesTo
-    yarn
   ];
 
   postPatch = ''
-    # wasm_exec has moved to lib in newer versions of Go
-    substituteInPlace packages/@cdktn/hcl-tools/prebuild.sh \
-      --replace-fail "misc/wasm/wasm_exec.js" "lib/wasm/wasm_exec.js"
-    substituteInPlace packages/@cdktn/hcl2json/prebuild.sh \
-      --replace-fail "misc/wasm/wasm_exec.js" "lib/wasm/wasm_exec.js"
+    patchShebangs packages
   '';
 
   preConfigure = ''
@@ -87,36 +93,29 @@ stdenv.mkDerivation (finalAttrs: {
     export CHECKPOINT_DISABLE=1
   '';
 
-  configurePhase = ''
-    runHook preConfigure
-
-    export HOME=$(mktemp -d)
-    yarn config --offline set yarn-offline-mirror $offlineCache
-    fixup-yarn-lock yarn.lock
-    yarn --offline --frozen-lockfile --ignore-platform --ignore-scripts --no-progress --non-interactive install
-    patchShebangs node_modules packages
-
-    runHook postConfigure
-  '';
-
   buildPhase = ''
     runHook preBuild
 
-    bash ./tools/align-version.sh
+    node tools/align-version.mjs
 
-    faketty yarn --offline build
+    faketty pnpm --filter "cdktn-cli..." run build
 
     runHook postBuild
   '';
 
   doCheck = true;
+  __darwinAllowLocalNetworking = true;
   checkPhase = ''
     runHook preCheck
 
-    # Skip tests that require terraform (unfree)
-    yarn --offline workspace cdktn-cli test -- \
+    # The tests use this variable, rather than $HOME, so we can't use writableTmpDirAsHomeHook here
+    export CDKTF_HOME=$(mktemp -d)
+
+    # Skip tests that require terraform (unfree). At least two workers are required for the tests to work
+    pnpm --filter cdktn-cli exec jest \
+      --maxWorkers=$(( NIX_BUILD_CORES > 2 ? NIX_BUILD_CORES : 2 )) \
       --testPathIgnorePatterns \
-       "src/test/cmds/(convert|init).test.ts"
+       "src/test/cmds/convert.test.ts"
 
     runHook postCheck
   '';
@@ -124,14 +123,18 @@ stdenv.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    yarn --offline --production install
+    # pnpm prune breaks the application, so remove node_modules and reinstall prod deps from the lockfile, as recommended
+    # for monorepos in the docs (https://pnpm.io/10.x/cli/prune)
+    find . -name node_modules -type d -prune -exec rm -rf {} +
+    pnpm install --frozen-lockfile --offline --production --ignore-scripts --shamefully-hoist --filter "cdktn-cli..."
 
-    mkdir -p "$out/lib/node_modules/cdktn-cli"
-    cp -rL node_modules packages/cdktn-cli/bundle packages/cdktn-cli/package.json "$out/lib/node_modules/cdktn-cli/"
+    mkdir -p "$out/lib/cdktn"
+    cp -r node_modules packages package.json "$out/lib/cdktn/"
 
-    makeWrapper "${lib.getExe nodejs_22}" "$out/bin/cdktn" \
+    makeWrapper "${lib.getExe nodejs}" "$out/bin/cdktn" \
+      --set-default CHECKPOINT_DISABLE 1 \
       --add-flags "--no-warnings=DEP0040" \
-      --add-flags "$out/lib/node_modules/cdktn-cli/bundle/bin/cdktn.js"
+      --add-flags "$out/lib/cdktn/packages/cdktn-cli/bundle/bin/cdktn.js"
 
     runHook postInstall
   '';
@@ -139,8 +142,8 @@ stdenv.mkDerivation (finalAttrs: {
   postInstall = ''
     # Go isn't needed at runtime, so remove these to decrease the closure size
     remove-references-to -t ${go} \
-      "$out/lib/node_modules/cdktn-cli/node_modules/@cdktn/hcl-tools/main.wasm" \
-      "$out/lib/node_modules/cdktn-cli/node_modules/@cdktn/hcl2json/main.wasm"
+      "$out/lib/cdktn/packages/@cdktn/hcl-tools/main.wasm" \
+      "$out/lib/cdktn/packages/@cdktn/hcl2json/main.wasm"
   '';
 
   nativeInstallCheckInputs = [
@@ -151,7 +154,13 @@ stdenv.mkDerivation (finalAttrs: {
   # even with writableTmpDirAsHomeHook and CHECKPOINT_DISABLE=1
   doInstallCheck = stdenv.hostPlatform.isLinux;
 
-  passthru.updateScript = nix-update-script { };
+  passthru.updateScript = nix-update-script {
+    # Skip pre-releases
+    extraArgs = [
+      "--version-regex"
+      "^v([\\d.]+)$"
+    ];
+  };
 
   meta = {
     description = "CDK for Terraform CLI";
@@ -161,7 +170,5 @@ stdenv.mkDerivation (finalAttrs: {
     mainProgram = "cdktn";
     maintainers = with lib.maintainers; [ deejayem ];
     platforms = lib.platforms.unix;
-    # Uses @cdktf/node-pty-prebuilt-multiarch which is not yet available for node 22 on aarch64-linux
-    broken = stdenv.hostPlatform.system == "aarch64-linux";
   };
 })

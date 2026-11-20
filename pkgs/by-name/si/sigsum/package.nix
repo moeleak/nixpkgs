@@ -1,14 +1,14 @@
 {
   lib,
-  buildGo125Module,
+  buildGo127Module,
   fetchFromGitLab,
   versionCheckHook,
   nix-update-script,
 }:
 
-buildGo125Module (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "sigsum";
-  version = "0.14.0";
+  version = "1.0.0";
 
   src = fetchFromGitLab {
     domain = "git.glasklar.is";
@@ -16,7 +16,7 @@ buildGo125Module (finalAttrs: {
     owner = "core";
     repo = "sigsum-go";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-+opDvVUG2OVJ/V1lHPXl2rxk4CCaXxc+4xBguvGqO1o=";
+    hash = "sha256-fmjYDhFchKCYND8h3rNlAg9CyN/rqzWcDXWPW6+Gak4=";
   };
 
   postPatch = ''
@@ -24,7 +24,7 @@ buildGo125Module (finalAttrs: {
       --replace-fail "info.Main.Version" '"${finalAttrs.version}"'
   '';
 
-  vendorHash = "sha256-s5IUDGA/8Qv6XhvqJG396EZt7HTaG/BMknPj8uYhVZc=";
+  vendorHash = "sha256-f3vuVsGyHMjcUUAqoor6ue0axs4FkiMZcuPiwX3DpFI=";
 
   ldflags = [
     "-s"

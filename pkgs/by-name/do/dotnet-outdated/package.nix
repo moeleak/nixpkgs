@@ -6,11 +6,11 @@
 buildDotnetGlobalTool rec {
   pname = "dotnet-outdated";
   nugetName = "dotnet-outdated-tool";
-  version = "4.7.1";
+  version = "4.9.0";
 
   dotnet-sdk = dotnetCorePackages.sdk_10_0;
 
-  nugetHash = "sha256-EoH9TFAtnex+9uYaKUZMqQDSofQaZJDe0Va37PiO4OU=";
+  nugetHash = "sha256-NnOJmBB/Qq0RS8CQ7dRS4pCarYUW8FZYBmvplDigyJQ=";
 
   meta = {
     description = ".NET Core global tool to display and update outdated NuGet packages in a project";

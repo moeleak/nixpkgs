@@ -13,11 +13,13 @@
   docbook-xsl-nons,
   fontconfig,
   gdk-pixbuf,
+  gdm,
   gettext,
   glib,
   glib-networking,
   gcr_4,
   glibc,
+  glibcLocalesUtf8,
   gnome-bluetooth,
   gnome-color-manager,
   gnome-desktop,
@@ -68,6 +70,7 @@
   upower,
   wayland-scanner,
   libepoxy,
+  gmobile,
   gnome-user-share,
   gnome-remote-desktop,
   wrapGAppsHook4,
@@ -76,11 +79,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "gnome-control-center";
-  version = "49.5";
+  version = "51.1";
 
   src = fetchurl {
     url = "mirror://gnome/sources/gnome-control-center/${lib.versions.major finalAttrs.version}/gnome-control-center-${finalAttrs.version}.tar.xz";
-    hash = "sha256-wlPcn2awFets6E+PFXWkZ97tCs2fV1AecFIMpJSqxDA=";
+    hash = "sha256-EFSXbC8Zd/dwuhNLhy9UfInbcAXkQi8JqW1SE3nAg8s=";
   };
 
   patches = [
@@ -113,9 +116,11 @@ stdenv.mkDerivation (finalAttrs: {
     cups
     fontconfig
     gdk-pixbuf
+    gdm # org.gnome.login-screen schema, gates the fingerprint row in the Users panel
     glib
     glib-networking
     gcr_4
+    gmobile
     gnome-bluetooth
     gnome-desktop
     gnome-online-accounts
@@ -162,6 +167,7 @@ stdenv.mkDerivation (finalAttrs: {
     python3.pkgs.python-dbusmock
     setxkbmap
     xorg-server # for Xvfb
+    glibcLocalesUtf8
   ];
 
   doCheck = true;

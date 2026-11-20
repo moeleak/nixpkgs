@@ -11,22 +11,22 @@
   nixosTests,
   nodejs_24,
   nodejs-slim_24,
-  remarshal_0_17,
+  remarshal,
   nix-update-script,
   settings ? { },
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "dashy-ui";
-  version = "4.0.7";
+  version = "4.9.16";
   src = fetchFromGitHub {
     owner = "lissy93";
     repo = "dashy";
     tag = finalAttrs.version;
-    hash = "sha256-PWuynBFOp4A/0AC5Lc5zAkb5Y5DWJgdZHtDc/douYQc=";
+    hash = "sha256-zEALkMEzbOd5gv4X4qYE6gXHKa+2FQ0sjwwrMdoKK74=";
   };
   yarnOfflineCache = fetchYarnDeps {
     yarnLock = finalAttrs.src + "/yarn.lock";
-    hash = "sha256-jU/XnX6i6P1CWWWyUeVXt2q2PXMExDvmPTiLBOEuHcE=";
+    hash = "sha256-YDjyUtdHVTIH+oMkTFiSOiTZ8l5u/kMyuLxFF532DX0=";
   };
 
   passthru = {
@@ -40,7 +40,7 @@ stdenv.mkDerivation (finalAttrs: {
   # the way the client parses things
   # - Instead, we use `remarshal` to convert it to yaml
   # Config validation needs to happen after yarnConfigHook, since it's what sets the yarn offline cache
-  preBuild = lib.optional (settings != { }) ''
+  preBuild = lib.optionalString (settings != { }) ''
     echo "Writing settings override..."
     json2yaml '${builtins.toFile "conf.json" (builtins.toJSON settings)}' user-data/conf.yml
     yarn validate-config --offline
@@ -68,7 +68,7 @@ stdenv.mkDerivation (finalAttrs: {
     yarnBuildHook
     nodejs_24
     # For yaml conversion
-    remarshal_0_17
+    remarshal
   ];
   doDist = false;
   meta = {

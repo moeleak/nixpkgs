@@ -2,30 +2,38 @@
   lib,
   stdenv,
   home-assistant,
+  writableTmpDirAsHomeHook,
 }:
 
 let
-  getComponentDeps = component: home-assistant.getPackages component home-assistant.python.pkgs;
+  getComponentDeps = component: home-assistant.getPackages component home-assistant.python3Packages;
+  inherit (lib) concatMap;
 
   # some components' tests have additional dependencies
-  extraCheckInputs = with home-assistant.python.pkgs; {
-    alexa = map getComponentDeps [
+  extraCheckInputs = with home-assistant.python3Packages; {
+    alexa = concatMap getComponentDeps [
       "cloud"
       "frontend"
       "stream"
     ];
+    analytics = getComponentDeps "homeassistant_hardware";
     anthropic = getComponentDeps "ai_task" ++ getComponentDeps "openai_conversation";
     assist_pipeline = getComponentDeps "frontend";
     automation = getComponentDeps "frontend" ++ getComponentDeps "mobile_app";
     axis = getComponentDeps "deconz";
+    backup = getComponentDeps "homeassistant_hardware";
     bluetooth = getComponentDeps "switchbot";
     braviatv = getComponentDeps "ssdp";
-    bthome = getComponentDeps "frontend";
+    bthome = getComponentDeps "frontend" ++ getComponentDeps "switchbot";
     camera = getComponentDeps "stream";
     deconz = getComponentDeps "frontend";
     elkm1 = getComponentDeps "frontend";
     emulated_hue = [
       defusedxml
+    ];
+    esphome = concatMap getComponentDeps [
+      "homeassistant_hardware"
+      "zwave_js"
     ];
     gardena_bluetooth = getComponentDeps "husqvarna_automower_ble";
     go2rtc = [
@@ -43,19 +51,28 @@ let
     homeassistant_sky_connect = getComponentDeps "zha";
     homeassistant_yellow = getComponentDeps "zha";
     homekit = getComponentDeps "frontend";
-    http = getComponentDeps "cloud" ++ getComponentDeps "frontend";
+    http = concatMap getComponentDeps [
+      "cloud"
+      "frontend"
+      "homeassistant_hardware"
+    ];
+    influxdb = getComponentDeps "isal";
     intelliclima = getComponentDeps "intellifire";
     logbook = getComponentDeps "alexa";
     lovelace = getComponentDeps "frontend" ++ [
       pychromecast
     ];
     lutron_caseta = getComponentDeps "frontend";
-    mastodon = map getComponentDeps [
+    mastodon = concatMap getComponentDeps [
       "stream"
     ];
+    matter = getComponentDeps "homeassistant_hardware";
+    mcp_server = getComponentDeps "frontend";
     miele = getComponentDeps "cloud";
     mobile_app = getComponentDeps "frontend";
     mopeka = getComponentDeps "switchbot";
+    mqtt = getComponentDeps "homeassistant_hardware";
+    music_assistant = getComponentDeps "homeassistant_hardware";
     nest = [
       av
     ];
@@ -64,8 +81,14 @@ let
       pymetno
       radios
       rpi-bad-power
-    ];
+    ]
+    ++ getComponentDeps "homeassistant_hardware"
+    ++ getComponentDeps "usb";
     open_router = getComponentDeps "ai_task";
+    osoenergy = [
+      # loguru wants to write into HOME
+      writableTmpDirAsHomeHook
+    ];
     raspberry_pi = [
       rpi-bad-power
     ];
@@ -90,22 +113,19 @@ let
     yolink = getComponentDeps "cloud";
     zeroconf = getComponentDeps "shelly";
     zha = getComponentDeps "deconz" ++ getComponentDeps "frontend";
-    zwave_js = getComponentDeps "frontend";
+    zwave_js = getComponentDeps "frontend" ++ getComponentDeps "homeassistant_hardware";
   };
 
   extraDisabledTestPaths = {
-    influxdb = [
-      # These tests fail because they check for the number of warnings in the
-      # logs and there is an extra warning in the logs:
-      # `WARNING:aiohttp_fast_zlib:zlib_ng and isal are not available, falling back to zlib, performance will be degraded.`
-      "tests/components/influxdb/test_sensor.py::test_state_for_no_results"
-      "tests/components/influxdb/test_sensor.py::test_state_matches_first_query_result_for_multiple_return"
-    ];
     jellyfin = [
       # AssertionError: assert 'audio/x-flac' == 'audio/flac'
       "tests/components/jellyfin/test_media_source.py::test_resolve"
       "tests/components/jellyfin/test_media_source.py::test_audio_codec_resolve"
       "tests/components/jellyfin/test_media_source.py::test_music_library"
+    ];
+    mastodon = [
+      # [2026.11.0] Our MIME database is more complete and recognises the midi extension
+      "tests/components/mastodon/test_services.py::test_service_post_media_source_errors[payload4-media_type_unknown]"
     ];
     minecraft_server = [
       # FileNotFoundError: [Errno 2] No such file or directory: '/etc/resolv.conf'
@@ -113,6 +133,10 @@ let
       "tests/components/minecraft_server/test_diagnostics.py"
       "tests/components/minecraft_server/test_init.py"
       "tests/components/minecraft_server/test_sensor.py"
+    ];
+    reolink = [
+      # [2026.11.0] fixture wants a bare path to ffmpeg
+      "tests/components/reolink/test_services.py::test_snapshot_past_service"
     ];
     systemmonitor = [
       # sandbox doesn't grant access to /sys/class/power_supply
@@ -125,17 +149,9 @@ let
       # intent fixture mismatch on aarch64
       "test_error_no_device_on_floor"
     ];
-    ecovacs = [
-      # Translation not found for vacuum
-      "test_raise_segment_changed_issue"
-    ];
-    homeassistant_sky_connect = [
-      # 2026.5.0: after reload device is in loaded state instead of retry state
-      "test_usb_device_reactivity"
-    ];
-    homeassistant_connect_zbt2 = [
-      # 2026.5.0: after reload device is in loaded state instead of retry state
-      "test_usb_device_reactivity"
+    homeassistant = [
+      # disabled via nixos-was-never-supported.patch
+      "test_deprecated_installation_issue_core"
     ];
     zeroconf = [
       # multicast socket bind, not possible in the sandbox
@@ -143,36 +159,32 @@ let
     ];
   };
 in
-lib.listToAttrs (
-  map (
-    component:
-    lib.nameValuePair component (
-      home-assistant.overridePythonAttrs (old: {
-        pname = "homeassistant-test-${component}";
-        pyproject = false;
+lib.genAttrs home-assistant.supportedComponentsWithTests (
+  component:
+  home-assistant.overridePythonAttrs (old: {
+    pname = "homeassistant-test-${component}";
+    pyproject = false;
 
-        dontBuild = true;
-        dontInstall = true;
+    dontBuild = true;
+    dontInstall = true;
 
-        nativeCheckInputs =
-          old.requirementsTest
-          ++ home-assistant.getPackages component home-assistant.python.pkgs
-          ++ extraCheckInputs.${component} or [ ];
+    nativeCheckInputs =
+      old.requirementsTest
+      ++ home-assistant.getPackages component home-assistant.python3Packages
+      ++ extraCheckInputs.${component} or [ ];
 
-        disabledTests = extraDisabledTests.${component} or [ ];
-        disabledTestPaths = extraDisabledTestPaths.${component} or [ ];
+    disabledTests = extraDisabledTests.${component} or [ ];
+    disabledTestPaths = extraDisabledTestPaths.${component} or [ ];
 
-        # components are more often racy than the core
-        dontUsePytestXdist = true;
+    # components are more often racy than the core
+    dontUsePytestXdist = true;
 
-        enabledTestPaths = [ "tests/components/${component}" ];
+    enabledTestPaths = [ "tests/components/${component}" ];
 
-        meta = old.meta // {
-          broken = lib.elem component [ ];
-          # upstream only tests on Linux, so do we.
-          platforms = lib.platforms.linux;
-        };
-      })
-    )
-  ) home-assistant.supportedComponentsWithTests
+    meta = old.meta // {
+      broken = lib.elem component [ ];
+      # upstream only tests on Linux, so do we.
+      platforms = lib.platforms.linux;
+    };
+  })
 )

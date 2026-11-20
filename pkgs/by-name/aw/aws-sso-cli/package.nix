@@ -6,19 +6,20 @@
   lib,
   makeWrapper,
   stdenv,
+  writableTmpDirAsHomeHook,
   xdg-utils,
 }:
 buildGoModule (finalAttrs: {
   pname = "aws-sso-cli";
-  version = "2.1.0";
+  version = "2.3.4";
 
   src = fetchFromGitHub {
     owner = "synfinatic";
     repo = "aws-sso-cli";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-MomH4Zcc6iyVmLfA0PPsWgEqMBAAaPd+21NX4GdnFk0=";
+    hash = "sha256-q9O1EVMY9yM4uyfRVBfDUa9Sw0RziM1OhBOvP5PfnaM=";
   };
-  vendorHash = "sha256-Le5BOD/iBIMQwTNmb7JcW8xJS7WG5isf4HXpJxyvez0=";
+  vendorHash = "sha256-lpp3Fji/EChMukRpypN98h9c5iN5z2S9RyrghFpxLbk=";
 
   nativeBuildInputs = [
     makeWrapper
@@ -41,18 +42,30 @@ buildGoModule (finalAttrs: {
       --zsh <($out/bin/aws-sso setup completions --source --shell=zsh)
   '';
 
-  nativeCheckInputs = [ getent ];
+  nativeCheckInputs = [
+    writableTmpDirAsHomeHook
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ getent ];
+
+  preCheck = ''
+    mkdir -p "$HOME/.config/aws-sso"
+  '';
 
   checkFlags =
     let
       skippedTests = [
-        "TestAWSConsoleUrl"
         "TestAWSFederatedUrl"
-        "TestServerWithSSL" # https://github.com/synfinatic/aws-sso-cli/issues/1030 -- remove when version >= 2.x
+        "TestAWSConsoleUrlChina"
+        "TestAWSConsoleUrlEU"
+        "TestAWSConsoleUrlUSEast"
+        "TestAWSConsoleUrlUSGov"
+        "TestGetScriptsAutoDetect"
       ]
       ++ lib.optionals stdenv.hostPlatform.isDarwin [ "TestDetectShellBash" ];
     in
     [ "-skip=^${builtins.concatStringsSep "$|^" skippedTests}$" ];
+
+  __darwinAllowLocalNetworking = true;
 
   meta = {
     homepage = "https://github.com/synfinatic/aws-sso-cli";

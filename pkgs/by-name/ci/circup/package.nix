@@ -2,18 +2,19 @@
   lib,
   fetchFromGitHub,
   python3,
+  writableTmpDirAsHomeHook,
 }:
 
 python3.pkgs.buildPythonApplication (finalAttrs: {
   pname = "circup";
-  version = "3.0.1";
+  version = "3.1.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "adafruit";
     repo = "circup";
     tag = finalAttrs.version;
-    hash = "sha256-vxgMdH9Tz1VOA3ccey5/arw3zeqvgCJJu7IlVoi1OIQ=";
+    hash = "sha256-+/1lL5mVeVPFFLitLYIGzSxmnoizNxjb6+MYWreSijw=";
   };
 
   pythonRelaxDeps = [ "semver" ];
@@ -33,9 +34,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
 
   nativeCheckInputs = with python3.pkgs; [ pytestCheckHook ];
 
-  postBuild = ''
-    export HOME=$(mktemp -d);
-  '';
+  nativeBuildInputs = [ writableTmpDirAsHomeHook ];
 
   pythonImportsCheck = [ "circup" ];
 

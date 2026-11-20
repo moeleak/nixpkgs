@@ -10,15 +10,15 @@
 
 buildGoModule (finalAttrs: {
   pname = "gitsign";
-  version = "0.16.0";
+  version = "0.18.0";
 
   src = fetchFromGitHub {
     owner = "sigstore";
     repo = "gitsign";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-XFeKU956FIfQhaca2M/OtYgCF8qErzPcyMBEGvzPAcc=";
+    hash = "sha256-CglJBB8YaeWtqCmKPTHg4YozJJGiff3LpsE+6ua+5vU=";
   };
-  vendorHash = "sha256-fjrdQZVXgBvdKQFnmjtLShBHsKNIp5Y/uW7aU2cP1aY=";
+  vendorHash = "sha256-PImOVmwPDSkAtJYus5i1lXsP+wt1TLDmSSgCm9M7/ks=";
 
   subPackages = [
     "."
@@ -33,6 +33,8 @@ buildGoModule (finalAttrs: {
     "-w"
     "-X github.com/sigstore/gitsign/pkg/version.gitVersion=${finalAttrs.version}"
   ];
+
+  __darwinAllowLocalNetworking = true;
 
   preCheck = ''
     # test all paths

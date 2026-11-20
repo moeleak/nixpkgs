@@ -3,7 +3,6 @@
   stdenv,
   buildPythonPackage,
   fetchFromGitHub,
-  fetchpatch,
   gitUpdater,
   pythonAtLeast,
   isPyPy,
@@ -13,9 +12,12 @@
   setuptools,
   types-psutil,
   types-setuptools,
+  ast-serialize,
+
+  # nativeBuildInputs + propagates
+  librt,
 
   # propagates
-  librt,
   mypy-extensions,
   tomli,
   typing-extensions,
@@ -34,7 +36,7 @@
 
 buildPythonPackage rec {
   pname = "mypy";
-  version = "1.19.1";
+  version = "2.3.1";
   pyproject = true;
 
   # relies on several CPython internals
@@ -44,12 +46,16 @@ buildPythonPackage rec {
     owner = "python";
     repo = "mypy";
     tag = "v${version}";
-    hash = "sha256-REUJgYd00qr36hoHevkJEWK/+2hE/caymjD/asqa6eI=";
+    hash = "sha256-EkZVBWlT8l3oIC9UuDEJua6dxFDIL0o9k/3FJJFqMB4=";
   };
 
   passthru.updateScript = gitUpdater {
     rev-prefix = "v";
   };
+
+  nativeBuildInputs = [
+    librt
+  ];
 
   build-system = [
     mypy-extensions
@@ -58,9 +64,11 @@ buildPythonPackage rec {
     types-psutil
     types-setuptools
     typing-extensions
+    ast-serialize
   ];
 
   dependencies = [
+    ast-serialize
     librt
     mypy-extensions
     pathspec
@@ -104,9 +112,15 @@ buildPythonPackage rec {
   ++ lib.concatAttrValues optional-dependencies;
 
   disabledTests = [
-    # fails with typing-extensions>=4.10
-    # https://github.com/python/mypy/issues/17005
-    "test_runtime_typing_objects"
+    # A change to the base64 decoder in CPython 3.13.13 and 3.14.4 causes this
+    # test to fail. At the time of writing, upstream skips the test.
+    # Upstream issue: https://github.com/python/mypy/issues/21120
+    # CPython issue: https://github.com/python/cpython/issues/145264
+    "testAllBase64Features_librt_experimental"
+    # https://github.com/python/mypy/issues/21120
+    "testAllBase64Features_librt"
+    # fails to import librt
+    "test_diff_cache_produces_valid_json"
   ]
   ++ lib.optionals (pythonAtLeast "3.12") [
     # requires distutils
@@ -114,7 +128,9 @@ buildPythonPackage rec {
   ];
 
   disabledTestPaths = [
-    # fails to find tyoing_extensions
+    # circular dependency on distutils
+    "mypyc/test/test_external.py"
+    # fails to find typing_extensions
     "mypy/test/testcmdline.py"
     "mypy/test/testdaemon.py"
     # fails to find setuptools
@@ -139,6 +155,6 @@ buildPythonPackage rec {
     downloadPage = "https://github.com/python/mypy";
     license = lib.licenses.mit;
     mainProgram = "mypy";
-    maintainers = with lib.maintainers; [ lnl7 ];
+    maintainers = with lib.maintainers; [ BrockoliniMorgan ];
   };
 }

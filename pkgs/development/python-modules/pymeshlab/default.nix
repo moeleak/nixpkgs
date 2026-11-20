@@ -17,6 +17,7 @@
 
   # buildInputs
   libsForQt5,
+  libsm,
   llvmPackages,
   glew,
   vcg,
@@ -60,6 +61,7 @@ buildPythonPackage {
   buildInputs = [
     glew
     libsForQt5.qtbase
+    libsm
     vcg
   ]
   ++ lib.optionals stdenv.cc.isClang [

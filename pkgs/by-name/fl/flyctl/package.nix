@@ -12,7 +12,7 @@
 
 buildGoModule rec {
   pname = "flyctl";
-  version = "0.4.49";
+  version = "0.5.5";
 
   src = fetchFromGitHub {
     owner = "superfly";
@@ -22,11 +22,11 @@ buildGoModule rec {
       cd "$out"
       git rev-parse HEAD > COMMIT
     '';
-    hash = "sha256-WOk4zIWZbf3s4jPzeHANxHAOZvnnm3ENdGluSuM90WM=";
+    hash = "sha256-8s34PK0GgaxuYpC42XFhjerH5DCxl1ncnwzDUAPGjco=";
   };
 
   proxyVendor = true;
-  vendorHash = "sha256-395vcBQYvc3LUQSPGtJ1x6RIhUmkR6Y/wGFCD3vrMcE=";
+  vendorHash = "sha256-uX2Nas7YHa+toWuCdW72XHMF41oSdrIYLm9+OP3Y+s8=";
 
   subPackages = [ "." ];
 

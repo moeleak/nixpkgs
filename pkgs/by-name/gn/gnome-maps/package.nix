@@ -2,6 +2,7 @@
   stdenv,
   lib,
   fetchurl,
+  blueprint-compiler,
   meson,
   ninja,
   gettext,
@@ -11,7 +12,7 @@
   gtk4,
   gobject-introspection,
   gdk-pixbuf,
-  librest_1_0,
+  librest,
   libgweather,
   geoclue2,
   wrapGAppsHook4,
@@ -26,20 +27,24 @@
   geocode-glib_2,
   tzdata,
   writeText,
+  sqlite,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "gnome-maps";
-  version = "49.4";
+  version = "51.2";
+
+  strictDeps = true;
 
   src = fetchurl {
     url = "mirror://gnome/sources/gnome-maps/${lib.versions.major finalAttrs.version}/gnome-maps-${finalAttrs.version}.tar.xz";
-    hash = "sha256-hvqvWNQNauDy9fN8nA3TEsPuKqTlElsfSjHv5Kn4BLA=";
+    hash = "sha256-gQOIgqBXcCutCZGrn6ouLw1iH777IvSQE3EEJf84/Vo=";
   };
 
   doCheck = !stdenv.hostPlatform.isDarwin;
 
   nativeBuildInputs = [
+    blueprint-compiler
     gettext
     meson
     ninja
@@ -64,9 +69,10 @@ stdenv.mkDerivation (finalAttrs: {
     libshumate
     libgweather
     libadwaita
-    librest_1_0
+    librest
     libsecret
     libsoup_3
+    sqlite
   ];
 
   mesonFlags = [

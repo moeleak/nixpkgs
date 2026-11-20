@@ -9,14 +9,14 @@
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "ansible-doctor";
-  version = "8.3.1";
+  version = "8.4.4";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "thegeeklab";
     repo = "ansible-doctor";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-wv5iSY5p/PZUwgxwknoZgB4f5ERvsvA3hrUbdSAYwxQ=";
+    hash = "sha256-iM53oerzV7F+pSGSITpkm5fD/YcyBA2p8ekZVgZLrto=";
   };
 
   build-system = with python3Packages; [
@@ -57,7 +57,7 @@ python3Packages.buildPythonApplication (finalAttrs: {
     mainProgram = "ansible-doctor";
     homepage = "https://github.com/thegeeklab/ansible-doctor";
     changelog = "https://github.com/thegeeklab/ansible-doctor/releases/tag/${finalAttrs.src.tag}";
-    license = lib.licenses.lgpl3Only;
+    license = lib.licenses.gpl3Only;
     maintainers = with lib.maintainers; [ tboerger ];
   };
 })

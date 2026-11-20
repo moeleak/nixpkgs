@@ -7,9 +7,9 @@
   doc8,
   docutils,
   pygments,
-  subunit,
+  python-subunit,
   oslotest,
-  stestr,
+  stestrCheckHook,
   testscenarios,
 }:
 
@@ -29,17 +29,9 @@ buildPythonPackage {
     doc8
     docutils
     pygments
-    subunit
+    python-subunit
     oslotest
-    stestr
+    stestrCheckHook
     testscenarios
   ];
-
-  checkPhase = ''
-    runHook preCheck
-
-    stestr run
-
-    runHook postCheck
-  '';
 }

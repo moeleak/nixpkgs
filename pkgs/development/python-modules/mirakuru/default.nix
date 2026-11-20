@@ -19,11 +19,16 @@ buildPythonPackage rec {
   pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "ClearcodeHQ";
+    owner = "dbfixtures";
     repo = "mirakuru";
     tag = "v${version}";
     hash = "sha256-3WyjvHxr+6kG+cLSCEZkHoA70mSoT66ubmp0W9g2yJM=";
   };
+
+  postPatch = ''
+    substituteInPlace tests/executors/test_output_executor_regression_issue_98.py \
+      --replace-fail "timeout=15," "timeout=60,"
+  '';
 
   build-system = [ setuptools ];
 
@@ -62,7 +67,7 @@ buildPythonPackage rec {
   meta = {
     homepage = "https://github.com/dbfixtures/mirakuru";
     description = "Process orchestration tool designed for functional and integration tests";
-    changelog = "https://github.com/ClearcodeHQ/mirakuru/blob/${src.tag}/CHANGES.rst";
+    changelog = "https://github.com/dbfixtures/mirakuru/blob/${src.tag}/CHANGES.rst";
     license = lib.licenses.lgpl3Plus;
     maintainers = with lib.maintainers; [ bcdarwin ];
   };

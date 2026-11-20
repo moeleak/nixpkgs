@@ -11,6 +11,7 @@
   ml-dtypes,
   numpy,
   onnx,
+  packaging,
   sympy,
   typing-extensions,
 
@@ -25,15 +26,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "onnx-ir";
-  version = "0.2.1";
+  version = "1.1.0";
   pyproject = true;
-  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "onnx";
     repo = "ir-py";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-vdo8BiE7m9Qr3JktgcPGDZfykjcf/VYY39tfhtzOrpA=";
+    hash = "sha256-nsObjSOql27xzyyXupL7SCa6fjUQuPjGbBzKJRO+nTQ=";
   };
 
   build-system = [
@@ -44,6 +44,7 @@ buildPythonPackage (finalAttrs: {
     ml-dtypes
     numpy
     onnx
+    packaging
     sympy
     typing-extensions
   ];
@@ -70,6 +71,11 @@ buildPythonPackage (finalAttrs: {
 
     # Circular dependency with onnxscript
     "test_correct_module_name"
+
+    # AssertionError: BufferError not raised
+    # ml-dtypes>=0.7.0 registers its types with NumPy's DLPack support
+    "test_tensor_proto_tensor_bfloat16"
+    "test_tensor_proto_tensor_float8"
   ];
 
   disabledTestPaths = [

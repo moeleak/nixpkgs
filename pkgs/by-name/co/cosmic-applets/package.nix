@@ -13,6 +13,7 @@
   pulseaudio,
   pipewire,
   udev,
+  lsof,
   xkeyboard_config,
   nix-update-script,
   nixosTests,
@@ -20,17 +21,17 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "cosmic-applets";
-  version = "1.0.13";
+  version = "1.11.0";
 
   # nixpkgs-update: no auto update
   src = fetchFromGitHub {
     owner = "pop-os";
     repo = "cosmic-applets";
     tag = "epoch-${finalAttrs.version}";
-    hash = "sha256-JeV29myWGiLagaFOGAtK1MAIJVxYINe5TuNiArfBq54=";
+    hash = "sha256-wEVchAWTg91cKbNUTJSoGi6Wp+lmUASoyr9DKAlKsxc=";
   };
 
-  cargoHash = "sha256-gA+dpodk6u8dv9VaKNi/xzI8ys39iztQdia+eGkzXs4=";
+  cargoHash = "sha256-/+ozs3YJEMdPdvOJumufX6/jGCq9N5W8H01Ridn5hfU=";
 
   separateDebugInfo = true;
   __structuredAttrs = true;
@@ -50,6 +51,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     pulseaudio
     pipewire
     udev
+    lsof
   ];
 
   dontUseJustBuild = true;

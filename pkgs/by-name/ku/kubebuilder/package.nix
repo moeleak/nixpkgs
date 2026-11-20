@@ -8,20 +8,21 @@
   gnumake,
   installShellFiles,
   testers,
+  nix-update-script,
 }:
 
 buildGoModule (finalAttrs: {
   pname = "kubebuilder";
-  version = "4.13.1";
+  version = "4.15.0";
 
   src = fetchFromGitHub {
     owner = "kubernetes-sigs";
     repo = "kubebuilder";
-    rev = "v${finalAttrs.version}";
-    hash = "sha256-WOqrQb2haoEp57OHFo1Y1fon0lJedI/hEYKE4xrIbpM=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-iTC5HY4E54YG+isSgW2515Kz83+khzANAml78z8EG88=";
   };
 
-  vendorHash = "sha256-1lbf1hXJfhdTu6Gm7dcbJlB3beITxBD83gMltZgg7Pg=";
+  vendorHash = "sha256-7rXunagWkUWGL5v+xkmyLELwrIEuRVGPk4SK8/lotio=";
 
   subPackages = [
     "internal/cli/cmd"
@@ -57,10 +58,13 @@ buildGoModule (finalAttrs: {
       --zsh <($out/bin/kubebuilder completion zsh)
   '';
 
-  passthru.tests.version = testers.testVersion {
-    command = "${finalAttrs.finalPackage}/bin/kubebuilder version";
-    package = finalAttrs.finalPackage;
-    version = "v${finalAttrs.version}";
+  passthru = {
+    tests.version = testers.testVersion {
+      command = "${finalAttrs.finalPackage}/bin/kubebuilder version";
+      package = finalAttrs.finalPackage;
+      version = "v${finalAttrs.version}";
+    };
+    updateScript = nix-update-script { };
   };
 
   meta = {
@@ -69,6 +73,10 @@ buildGoModule (finalAttrs: {
     homepage = "https://github.com/kubernetes-sigs/kubebuilder";
     changelog = "https://github.com/kubernetes-sigs/kubebuilder/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ cmars ];
+    maintainers = with lib.maintainers; [
+      hythera
+      anthr76
+      ddymko
+    ];
   };
 })

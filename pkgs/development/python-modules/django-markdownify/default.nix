@@ -12,14 +12,14 @@
 }:
 buildPythonPackage (finalAttrs: {
   pname = "django-markdownify";
-  version = "0.9.6";
+  version = "0.9.7";
   pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "erwinmatijsen";
+    owner = "django-markdownify";
     repo = "django-markdownify";
     tag = finalAttrs.version;
-    hash = "sha256-L/N0jjxBz7aQletOg+qairgq4utifPz4oqjT9AcljLI=";
+    hash = "sha256-Zl6t/ja/VAYrVOM6xkjcayn+vCss6JLQr+vBGsGGp+k=";
   };
 
   build-system = [ setuptools ];
@@ -50,8 +50,8 @@ buildPythonPackage (finalAttrs: {
 
   meta = {
     description = "Markdown template filter for Django";
-    homepage = "https://github.com/erwinmatijsen/django-markdownify";
-    changelog = "https://github.com/erwinmatijsen/django-markdownify/releases/tag/${finalAttrs.src.tag}";
+    homepage = "https://github.com/django-markdownify/django-markdownify";
+    changelog = "https://github.com/django-markdownify/django-markdownify/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ kurogeek ];
   };

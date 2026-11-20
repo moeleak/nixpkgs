@@ -6,13 +6,13 @@
 }:
 buildGoModule rec {
   pname = "imapgoose";
-  version = "0.5.3";
+  version = "0.5.5";
 
   src = fetchFromSourcehut {
     owner = "~whynothugo";
     repo = "ImapGoose";
     tag = "v${version}";
-    hash = "sha256-koNf75sK3jd/gkUWm+pgbORuZGYBjsNCvQikjLAOvnU=";
+    hash = "sha256-/Z5kPEcrnhl2s5yertbMszlV9CcHjydrBz4Ru/N3BoU=";
   };
 
   vendorHash = "sha256-PY6m92/8bzbYjkGvbNtL1W9sMayjPOyWVvJPwKAnLc8=";
@@ -27,6 +27,8 @@ buildGoModule rec {
   postInstall = ''
     installManPage imapgoose.1
     installManPage imapgoose.conf.5
+
+    installShellCompletion --zsh contrib/_imapgoose
   '';
 
   meta = {

@@ -1,5 +1,6 @@
 {
   lib,
+  stdenv,
   buildPythonPackage,
   fetchFromGitHub,
   cyclopts,
@@ -7,6 +8,8 @@
   numpy,
   pillow,
   pooch,
+  pyobjc-framework-Cocoa,
+  pyvista-validation,
   scooby,
   setuptools,
   typing-extensions,
@@ -15,14 +18,14 @@
 
 buildPythonPackage rec {
   pname = "pyvista";
-  version = "0.48.2";
+  version = "0.49.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "pyvista";
     repo = "pyvista";
     tag = "v${version}";
-    hash = "sha256-tXTDZ1htOGTrdiqbCyMiCQz44lHN5ruqW6bWkc3G2CI=";
+    hash = "sha256-Ex+mKhqj1qM4x9r7wpmVMt2XxAiKtvyakIgxJJ8TrIU=";
   };
 
   build-system = [ setuptools ];
@@ -33,9 +36,13 @@ buildPythonPackage rec {
     numpy
     pillow
     pooch
+    pyvista-validation
     scooby
     typing-extensions
     vtk
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    pyobjc-framework-Cocoa
   ];
 
   # Fatal Python error: Aborted

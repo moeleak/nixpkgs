@@ -23,8 +23,7 @@
   dbus,
   cups,
   libexif,
-  ffmpeg,
-  systemd,
+  systemdLibs,
   libva,
   libGL,
   freetype,
@@ -67,7 +66,7 @@
 
 stdenv.mkDerivation rec {
   pname = "vivaldi";
-  version = "7.9.3970.64";
+  version = "8.3.4191.44";
 
   suffix =
     {
@@ -80,8 +79,8 @@ stdenv.mkDerivation rec {
     url = "https://downloads.vivaldi.com/stable/vivaldi-stable_${version}-1_${suffix}.deb";
     hash =
       {
-        aarch64-linux = "sha256-51Lsbs1Vv8Qy9aBUxPzfadpKia+PHnBjptHY4LSN1Mo=";
-        x86_64-linux = "sha256-WJn7vmIPJ7/e0UG2uoNedji/Vd0QTY2LNJMBNqTF9Po=";
+        aarch64-linux = "sha256-+KnN3SWpORI8a1cK9f+aoTNIP8FkJCPN7ijfwd0wIvI=";
+        x86_64-linux = "sha256-Z+3S0Udjl+xTfPjyv81IK7pH5i60ONd+twT5MUrc0ss=";
       }
       .${stdenv.hostPlatform.system} or (throw "Unsupported system: ${stdenv.hostPlatform.system}");
   };
@@ -103,7 +102,6 @@ stdenv.mkDerivation rec {
 
   buildInputs = [
     stdenv.cc.cc
-    stdenv.cc.libc
     zlib
     libx11
     libxt
@@ -131,8 +129,7 @@ stdenv.mkDerivation rec {
     gtk3
     gdk-pixbuf
     libexif
-    ffmpeg
-    systemd
+    systemdLibs
     libva
     qt6.qtbase
     qt6.qtwayland
@@ -163,7 +160,7 @@ stdenv.mkDerivation rec {
     + lib.optionalString (stdenv.hostPlatform.is64bit) (
       ":" + lib.makeSearchPathOutput "lib" "lib64" buildInputs
     )
-    + ":$out/opt/vivaldi/lib";
+    + ":$out/opt/vivaldi";
 
   buildPhase = ''
     runHook preBuild
@@ -173,10 +170,6 @@ stdenv.mkDerivation rec {
         --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" \
         --set-rpath "${libPath}" \
         opt/vivaldi/$f
-    done
-
-    for f in libGLESv2.so libqt5_shim.so libqt6_shim.so; do
-      patchelf --set-rpath "${libPath}" opt/vivaldi/$f
     done
   ''
   + lib.optionalString proprietaryCodecs ''
@@ -199,9 +192,7 @@ stdenv.mkDerivation rec {
     mkdir -p "$out/share"
     cp -r usr/share/{applications,xfce4} "$out"/share
     substituteInPlace "$out"/share/applications/*.desktop \
-      --replace-fail /usr/bin/vivaldi "$out"/bin/vivaldi
-    substituteInPlace "$out"/share/applications/*.desktop \
-      --replace-fail vivaldi-stable vivaldi
+      --replace-fail /usr/bin/vivaldi-stable vivaldi
     local d
     for d in 16 24 32 48 64 128 256; do
       mkdir -p "$out"/share/icons/hicolor/''${d}x''${d}/apps
@@ -239,6 +230,7 @@ stdenv.mkDerivation rec {
       marcusramberg
       max06
       wineee
+      brw
     ];
     platforms = [
       "x86_64-linux"

@@ -3,6 +3,7 @@
   stdenv,
   buildPythonPackage,
   fetchFromGitHub,
+  pythonOlder,
 
   # build-system
   cython,
@@ -11,10 +12,12 @@
   # dependencies
   aiohappyeyeballs,
   async-interrupt,
+  backports-zstd,
   chacha20poly1305-reuseable,
   cryptography,
   noiseprotocol,
   protobuf,
+  tzdata,
   tzlocal,
   zeroconf,
 
@@ -26,19 +29,19 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "aioesphomeapi";
-  version = "44.23.0";
+  version = "46.27.0"; # must track the major version that home-assistant pins
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "esphome";
     repo = "aioesphomeapi";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-mKk4NO44mVTV5Fe8oDhQYcNp8V1OLsPt4xk+kztXwrM=";
+    hash = "sha256-IRV6yZqP56+3JiY84BQHFsuyj+gOO9gCOvj63uzo+IE=";
   };
 
   postPatch = ''
     substituteInPlace pyproject.toml \
-      --replace-fail "setuptools>=82.0.1" setuptools
+      --replace-fail 'setuptools>=84.2.0' setuptools
   '';
 
   build-system = [
@@ -46,7 +49,10 @@ buildPythonPackage (finalAttrs: {
     cython
   ];
 
-  pythonRelaxDeps = [ "cryptography" ];
+  pythonRelaxDeps = [
+    "aiohappyeyeballs"
+    "cryptography"
+  ];
 
   dependencies = [
     aiohappyeyeballs
@@ -55,8 +61,12 @@ buildPythonPackage (finalAttrs: {
     cryptography
     noiseprotocol
     protobuf
+    tzdata
     tzlocal
     zeroconf
+  ]
+  ++ lib.optionals (pythonOlder "3.14") [
+    backports-zstd
   ];
 
   nativeCheckInputs = [
@@ -66,7 +76,7 @@ buildPythonPackage (finalAttrs: {
   ];
 
   # Lack of network sandboxing leads to conflicting listeners when testing
-  # this package e.g. in nixpkgs-review on the two suppoted python package sets.
+  # this package e.g. in nixpkgs-review on the two supported python package sets.
   doCheck = !stdenv.hostPlatform.isDarwin;
 
   disabledTestPaths = [

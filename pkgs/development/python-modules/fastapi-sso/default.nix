@@ -1,6 +1,7 @@
 {
   lib,
   buildPythonPackage,
+  cryptography,
   email-validator,
   fastapi,
   fetchFromGitHub,
@@ -17,14 +18,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "fastapi-sso";
-  version = "0.21.0";
+  version = "0.23.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "tomasvotava";
     repo = "fastapi-sso";
     tag = finalAttrs.version;
-    hash = "sha256-5CtblFFKf1b7ja5zF6oTtdKvUdWR9cQypiK4XzMVA5s=";
+    hash = "sha256-9XAT9dL2zsnaB3QHORgcmxUSk3+QUbnu3I8z5Ry+X+g=";
   };
 
   build-system = [ poetry-core ];
@@ -39,6 +40,7 @@ buildPythonPackage (finalAttrs: {
   ++ pydantic.optional-dependencies.email;
 
   nativeCheckInputs = [
+    cryptography
     email-validator
     pytest-asyncio
     pytest-cov-stub

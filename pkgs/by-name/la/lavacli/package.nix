@@ -1,26 +1,27 @@
 {
   lib,
   fetchFromGitLab,
-  python3,
+  python3Packages,
+  versionCheckHook,
 }:
 
-python3.pkgs.buildPythonApplication (finalAttrs: {
+python3Packages.buildPythonApplication (finalAttrs: {
   pname = "lavacli";
-  version = "2.8";
+  version = "3.1.0";
   pyproject = true;
 
   src = fetchFromGitLab {
     owner = "lava";
     repo = "lavacli";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-oIB5BLLwyaDkV5mQ8vndlQQv4R1lCEATHO9JqJDYv7s=";
+    hash = "sha256-llvJGiUWeXuwia7KkeQgGBunFMNuNughYAEj7KTlIjM=";
   };
 
-  build-system = with python3.pkgs; [
+  build-system = with python3Packages; [
     setuptools
   ];
 
-  dependencies = with python3.pkgs; [
+  dependencies = with python3Packages; [
     aiohttp
     jinja2
     requests
@@ -28,9 +29,10 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     voluptuous
   ];
 
-  nativeCheckInputs = with python3.pkgs; [
+  nativeCheckInputs = with python3Packages; [
     pytestCheckHook
     pyzmq
+    versionCheckHook
   ];
 
   meta = {

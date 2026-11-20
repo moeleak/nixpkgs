@@ -8,16 +8,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "okms-cli";
-  version = "0.4.2";
+  version = "0.6.0";
 
   src = fetchFromGitHub {
     owner = "ovh";
     repo = "okms-cli";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-S0X+kWUqihJpgnmy5ut2i1CgQhSKojxNa5O/+GdHCj0=";
+    hash = "sha256-y07W8XuPrQ+47PdKddUhuk9S1bsAfxAfPXQCAl8mXak=";
   };
 
-  vendorHash = "sha256-784O0m7NOQ+R8+oVO3xrxPJ2qyaZ35/VtdVDhkIj+J0=";
+  vendorHash = "sha256-TjFmFdDAZ5TfIcPyCnMMJNwlStSrOfBMUPAbuorE08Q=";
 
   ldflags = [
     "-s"
@@ -35,9 +35,11 @@ buildGoModule (finalAttrs: {
     updateScript = nix-update-script { };
   };
 
+  __darwinAllowLocalNetworking = true;
+
   meta = {
     homepage = "https://github.com/ovh/okms-cli";
-    changelog = "https://github.com/ovh/okms-cli/releases/tag/v${finalAttrs.version}";
+    changelog = "https://github.com/ovh/okms-cli/releases/tag/${finalAttrs.src.tag}";
     description = "Command Line Interface to interact with your OVHcloud KMS services";
     mainProgram = "okms";
     license = lib.licenses.asl20;

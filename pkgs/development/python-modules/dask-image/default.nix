@@ -11,7 +11,6 @@
   dask,
   numpy,
   scipy,
-  pandas,
   pims,
 
   # tests
@@ -20,24 +19,21 @@
   scikit-image,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "dask-image";
-  version = "2025.11.0";
+  version = "2026.5.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "dask";
     repo = "dask-image";
-    tag = "v${version}";
-    hash = "sha256-+nzYthnobcemunMcAWwRpHOQy6yFtjdib/7VZqWEiqc=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-SEbabXZx4u+C4IjzfVf81Y/gopxt6m0Jp0ZCN9hx5G8=";
   };
 
   postPatch = ''
-    sed -i "/--flake8/d" pyproject.toml
-
-    # https://numpy.org/doc/stable//release/2.4.0-notes.html#removed-numpy-in1d
-    substituteInPlace tests/test_dask_image/test_ndmeasure/test_core.py \
-      --replace-fail "np.in1d" "np.isin"
+    substituteInPlace pyproject.toml \
+      --replace-fail "--flake8" ""
   '';
 
   build-system = [
@@ -48,9 +44,8 @@ buildPythonPackage rec {
   dependencies = [
     dask
     numpy
-    scipy
-    pandas
     pims
+    scipy
   ];
 
   nativeCheckInputs = [
@@ -80,8 +75,8 @@ buildPythonPackage rec {
   meta = {
     description = "Distributed image processing";
     homepage = "https://github.com/dask/dask-image";
-    changelog = "https://github.com/dask/dask-image/releases/tag/v${version}";
-    license = lib.licenses.bsdOriginal;
+    changelog = "https://github.com/dask/dask-image/releases/tag/${finalAttrs.src.tag}";
+    license = lib.licenses.bsd3;
     maintainers = with lib.maintainers; [ GaetanLepage ];
   };
-}
+})

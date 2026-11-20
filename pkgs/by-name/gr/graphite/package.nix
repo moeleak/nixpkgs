@@ -12,10 +12,9 @@
   lld,
   pkg-config,
   binaryen,
-  wasm-pack,
   cargo-about,
   nodejs,
-  wasm-bindgen-cli_0_2_100,
+  wasm-bindgen-cli_0_2_121,
   xz,
   removeReferencesTo,
   cef-binary,
@@ -30,16 +29,16 @@
 }:
 
 let
-  version = "0-unstable-2026-05-02";
-  rev = "ab7f59ca61004a1b11f9ae4b1c511cefc7a0f404";
+  version = "0-unstable-2026-10-05";
+  rev = "e38fab22455c45068fcd1eb976afb0c088fa222d";
 
-  srcHash = "sha256-DV3/1dgtUiTmGkOm4z3GVJcWzvCjO/crzc/l8ovW0XA=";
-  shaderHash = "sha256-76hOCx1fpFBI5nVmIAIGd2StCRzhbCgs+GHMvxbflLc=";
-  cargoHash = "sha256-ZesLyXKjz2CSrAWUT5Hq6w97pR55I+C79qPwF0dqXXI=";
-  npmHash = "sha256-AX5Jqk2E+WyQJyHbgvvq74MRsYmWUju4bOkabhYoeig=";
+  srcHash = "sha256-lKNJwRJRrtLh/0cQNFnBss2DYZp8UkoP0pkI1pQEB0Y=";
+  shaderHash = "sha256-SBJt5iEBvHM4cirnrBVUHtC0bnw8ZUQW9oEs6P02AKc=";
+  cargoHash = "sha256-5WhnrB+8eZSQ1dPJlG+pFffR3VF12NUkCn0AAoDByYM=";
+  npmHash = "sha256-VUNW+YfBvJc3EyigULBdv4Uqb+vKgTjrDMOAVk1DCvI=";
 
-  brandingRev = "1939ca82f3341427059e15bfa205f7c22aaf867a";
-  brandingHash = "sha256-SDnCpLuppHVE7cUVidevH2O/2ma0S2tuQDhFkS/JLvA=";
+  brandingRev = "6687dc6d3d8552948458d00d35e2bee3a40ab66b";
+  brandingHash = "sha256-yD4O50gz2mtby1h4o+9PqjMfYmTbBOX6XDc5Ez5fgnY=";
 
   src = fetchFromGitHub {
     owner = "GraphiteEditor";
@@ -96,8 +95,7 @@ stdenv.mkDerivation (finalAttrs: {
     pkg-config
     npmHooks.npmConfigHook
     binaryen
-    wasm-bindgen-cli_0_2_100
-    wasm-pack
+    wasm-bindgen-cli_0_2_121
     nodejs
     cargo-about
     removeReferencesTo
@@ -187,12 +185,13 @@ stdenv.mkDerivation (finalAttrs: {
     # which are licensed under the separate Graphite Branding License.
     license = with lib.licenses; [
       asl20
-      {
+      (mkLicense {
+        shortName = "graphite";
         fullName = "Graphite Branding License";
         url = "https://graphite.art/license/#branding";
         free = false;
         redistributable = true;
-      }
+      })
     ];
     platforms = lib.platforms.linux;
     maintainers = with lib.maintainers; [ timon ];

@@ -20,7 +20,7 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "libgsf";
-  version = "1.14.55";
+  version = "1.14.60";
 
   outputs = [
     "out"
@@ -32,7 +32,7 @@ stdenv.mkDerivation (finalAttrs: {
     owner = "GNOME";
     repo = "libgsf";
     tag = "LIBGSF_${lib.replaceString "." "_" finalAttrs.version}";
-    hash = "sha256-lx/FgF4X0aLtUFRaX69gX9J7w9ZlO0A1xoVg9Fgvtfo=";
+    hash = "sha256-URMXRIcsRn7Hi+ZhCqY+thBdLG6k4wPynuJR325Q0+Q=";
   };
 
   postPatch = ''
@@ -83,6 +83,12 @@ stdenv.mkDerivation (finalAttrs: {
     patchShebangs ./tests/
   '';
 
+  postInstall = ''
+    substituteInPlace $out/share/thumbnailers/gsf-office.thumbnailer \
+      --replace-fail "TryExec=gsf-office-thumbnailer" "TryExec=$out/bin/gsf-office-thumbnailer" \
+      --replace-fail "Exec=gsf-office-thumbnailer" "Exec=$out/bin/gsf-office-thumbnailer"
+  '';
+
   passthru = {
     updateScript = gnome.updateScript {
       packageName = finalAttrs.pname;
@@ -95,7 +101,7 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://gitlab.gnome.org/GNOME/libgsf";
     changelog = "https://gitlab.gnome.org/GNOME/libgsf/-/blob/${finalAttrs.src.tag}/ChangeLog";
     license = lib.licenses.lgpl21Only;
-    maintainers = [ ];
+    teams = [ lib.teams.gnome ];
     platforms = lib.platforms.unix;
 
     longDescription = ''

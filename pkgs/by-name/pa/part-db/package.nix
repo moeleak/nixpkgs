@@ -11,10 +11,12 @@
   envLocalPath ? "/var/lib/part-db/env.local",
   cachePath ? "/var/cache/part-db/",
   logPath ? "/var/log/part-db/",
+  mediaPath ? "/var/lib/part-db/public/media/",
+  uploadsPath ? "/var/lib/part-db/uploads/",
 }:
 let
   pname = "part-db";
-  version = "2.4.0";
+  version = "2.20.4";
 
   srcWithVendor = php.buildComposerProject2 {
     inherit pname version;
@@ -23,7 +25,7 @@ let
       owner = "Part-DB";
       repo = "Part-DB-server";
       tag = "v${version}";
-      hash = "sha256-z/bvFFzKVMN6lr9RnrBc/hTrZ9a/mjgpkDYslUFHM50=";
+      hash = "sha256-jy78fZPXIoXHTrN3a17GOfEjGlzks0c5sSDYBK+NJ14=";
     };
 
     php = php.buildEnv {
@@ -36,7 +38,7 @@ let
       );
     };
 
-    vendorHash = "sha256-gt5HBi+vV5WhaEXNFFIO8xcbX1Z60SICvxXWGNzsn5o=";
+    vendorHash = "sha256-k6qQZ7SnqeS0LkZBLS3SllXhLGXeI9bf+hdJjr5+5y8=";
 
     # Upstream composer.json file is missing the description field
     composerStrictValidation = false;
@@ -65,7 +67,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   yarnOfflineCache = fetchYarnDeps {
     yarnLock = finalAttrs.src + "/yarn.lock";
-    hash = "sha256-F9kZ8nAIghkg+xUkglvRZXOSadv2lbKTP0gNfLD4LYE=";
+    hash = "sha256-z0bwuL9FwqE5kDRdBh12yofhQ3eaMX0HrLxlK6xQIVc=";
   };
 
   nativeBuildInputs = [
@@ -79,10 +81,12 @@ stdenv.mkDerivation (finalAttrs: {
     mkdir $out
     mv * .* $out/
 
-    rm -rf $out/var/{cache,log}
+    rm -rf $out/var/{cache,log} $out/public/media $out/uploads
     ln -s ${envLocalPath} $out/.env.local
     ln -s ${logPath} $out/var/log
     ln -s ${cachePath} $out/var/cache
+    ln -s ${mediaPath} $out/public/media
+    ln -s ${uploadsPath} $out/uploads
   '';
 
   passthru.tests = { inherit (nixosTests) part-db; };

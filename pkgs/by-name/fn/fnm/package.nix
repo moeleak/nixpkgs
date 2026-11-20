@@ -4,22 +4,29 @@
   fetchFromGitHub,
   rustPlatform,
   installShellFiles,
+  pkg-config,
+  zstd,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fnm";
-  version = "1.38.1";
+  version = "1.39.0";
 
   src = fetchFromGitHub {
     owner = "Schniz";
     repo = "fnm";
     rev = "v${finalAttrs.version}";
-    sha256 = "sha256-WW+jWaClDn78Fw/xj6WvnEUlBI99HA5hQFUpwsYKmbI=";
+    sha256 = "sha256-sCPrHy1+hdv6schBxOP1+Y1hpag4/hdKPhG/PZhqKQA=";
   };
 
-  nativeBuildInputs = [ installShellFiles ];
+  nativeBuildInputs = [
+    installShellFiles
+    pkg-config
+  ];
 
-  cargoHash = "sha256-mxYTV3kNetIHB8XcvFdqp7t78E9EzMdMgD4ENIAYyec=";
+  buildInputs = [ zstd ];
+
+  cargoHash = "sha256-AVSphRupcncOmlIh4GXcPab2ePhS1jgaQLBKv2sRwuo=";
 
   doCheck = false;
 

@@ -5,44 +5,55 @@
   buildPythonPackage,
   datasets,
   fetchFromGitHub,
-  # geom-median,
   hf-transfer,
   huggingface-hub,
   imageio,
+  immutabledict,
   kernels,
+  langdetect,
+  lm-eval,
   matplotlib,
   numpy,
   optuna,
-  # pacmap,
   peft,
   psutil,
+  py-cpuinfo,
   pydantic-settings,
   questionary,
   rich,
   scikit-learn,
+  tomli-w,
+  torchvision,
   transformers,
   uv-build,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "heretic-llm";
-  version = "1.2.0";
+  version = "2.1.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "p-e-w";
     repo = "heretic";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-KmqbOAOII1SP7wpdvGxtzQJt5NmlnF/o99NuZ21vO0s=";
+    hash = "sha256-dWrvkB/+rvZGPK4s61xN0t1su7uNR6NN8HBOl8Pl6I8=";
   };
 
   postPatch = ''
     substituteInPlace pyproject.toml \
-      --replace-fail "uv_build>=0.8.11,<0.9.0" "uv_build"
+      --replace-fail "uv_build>=0.12.21,<0.13.0" "uv_build"
   '';
 
   pythonRelaxDeps = [
+    "accelerate"
+    "bitsandbytes"
+    "datasets"
     "huggingface-hub"
+    "optuna"
+    "peft"
+    "pydantic-settings"
+    "rich"
     "transformers"
   ];
 
@@ -54,13 +65,19 @@ buildPythonPackage (finalAttrs: {
     datasets
     hf-transfer
     huggingface-hub
+    immutabledict
     kernels
+    langdetect
+    lm-eval
     optuna
     peft
     psutil
+    py-cpuinfo
     pydantic-settings
     questionary
     rich
+    tomli-w
+    torchvision
     transformers
   ];
 

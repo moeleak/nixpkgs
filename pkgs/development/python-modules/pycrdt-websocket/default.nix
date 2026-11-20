@@ -10,7 +10,6 @@
   anyio,
   pycrdt,
   pycrdt-store,
-  sqlite-anyio,
 
   # optional-dependencies
   channels,
@@ -27,15 +26,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "pycrdt-websocket";
-  version = "0.16.1";
+  version = "0.16.9";
   pyproject = true;
-  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "y-crdt";
     repo = "pycrdt-websocket";
     tag = finalAttrs.version;
-    hash = "sha256-OZ3LaXFwZY0gcLVHSkNKRrFZuCbggD9EeQNXYIVOSZ0=";
+    hash = "sha256-g0m6uwWY9QDGDkued1GAlskmwaLHAYB+66UsKl5AZFg=";
   };
 
   build-system = [ hatchling ];
@@ -44,7 +42,6 @@ buildPythonPackage (finalAttrs: {
     anyio
     pycrdt
     pycrdt-store
-    sqlite-anyio
   ];
 
   optional-dependencies = {

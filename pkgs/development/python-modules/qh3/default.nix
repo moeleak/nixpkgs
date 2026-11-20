@@ -1,10 +1,12 @@
 {
+  aws-lc,
   buildPythonPackage,
   cmake,
   cryptography,
   dnspython,
   fetchFromGitHub,
   lib,
+  pkg-config,
   pytest-asyncio,
   pytest-mock,
   pytestCheckHook,
@@ -12,31 +14,36 @@
   stdenv,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "qh3";
-  version = "1.8.1";
+  version = "2.1.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jawah";
     repo = "qh3";
-    tag = "v${version}";
-    hash = "sha256-/N0cVm5IHijShv0/q83useJRP5/N3+9L1vtrm7Y9vp8=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-AG5DlbkwqgSlVFGC2DXFNnCSZiinzjWepeA3ZGRYmq4=";
   };
 
   cargoDeps = rustPlatform.fetchCargoVendor {
-    inherit pname version src;
-    hash = "sha256-7SbN8uj+TPoAhIwXqhqCGqWGpg9sYob95TYAHixIVkM=";
+    inherit (finalAttrs) pname version src;
+    hash = "sha256-yAcT5ZuAi9JeSImVZXDOgSptHQ5KXYMRC26mYOT7edk=";
   };
 
   nativeBuildInputs = [
     cmake
+    pkg-config
     rustPlatform.bindgenHook
     rustPlatform.cargoSetupHook
     rustPlatform.maturinBuildHook
   ];
 
   dontUseCmakeConfigure = true;
+
+  buildInputs = [
+    aws-lc
+  ];
 
   env.NIX_CFLAGS_COMPILE = toString (
     lib.optionals stdenv.cc.isGNU [
@@ -69,10 +76,10 @@ buildPythonPackage rec {
   ];
 
   meta = {
-    changelog = "https://github.com/jawah/qh3/blob/${src.tag}/CHANGELOG.rst";
+    changelog = "https://github.com/jawah/qh3/blob/${finalAttrs.src.tag}/CHANGELOG.rst";
     description = "Lightweight QUIC and HTTP/3 implementation in Python";
     homepage = "https://github.com/jawah/qh3";
     license = lib.licenses.bsd3;
     maintainers = with lib.maintainers; [ dotlambda ];
   };
-}
+})

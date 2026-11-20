@@ -842,7 +842,7 @@ in
       users.users = {
         root = {
           uid = ids.uids.root;
-          description = "System administrator";
+          description = mkDefault "System administrator";
           home = "/root";
           shell = mkDefault cfg.defaultUserShell;
           group = "root";
@@ -850,7 +850,7 @@ in
         nobody = {
           uid = ids.uids.nobody;
           isSystemUser = true;
-          description = "Unprivileged account (don't use!)";
+          description = mkDefault "Unprivileged account (don't use!)";
           group = "nogroup";
         };
       };
@@ -950,32 +950,8 @@ in
         };
       };
 
-      # Warn about user accounts with deprecated password hashing schemes
-      # This does not work when the users and groups are created by
-      # systemd-sysusers because the users are created too late then.
-      system.activationScripts.hashes =
-        if !config.systemd.sysusers.enable && !config.services.userborn.enable then
-          {
-            deps = [ "users" ];
-            text = ''
-              users=()
-              while IFS=: read -r user hash _; do
-                if [[ "$hash" = "$"* && ! "$hash" =~ ^\''$${cryptSchemeIdPatternGroup}\$ ]]; then
-                  users+=("$user")
-                fi
-              done </etc/shadow
-
-              if (( "''${#users[@]}" )); then
-                echo "
-              WARNING: The following user accounts rely on password hashing algorithms
-              that have been removed. They need to be renewed as soon as possible, as
-              they do prevent their users from logging in."
-                printf ' - %s\n' "''${users[@]}"
-              fi
-            '';
-          }
-        else
-          ""; # keep around for backwards compatibility
+      # for backwards compatibility
+      system.activationScripts.hashes = stringAfter [ "users" ] "";
 
       # for backwards compatibility
       system.activationScripts.groups = stringAfter [ "users" ] "";
@@ -1004,8 +980,7 @@ in
         "/etc/profiles/per-user/$USER"
       ];
 
-      # systemd initrd
-      boot.initrd.systemd = lib.mkIf config.boot.initrd.systemd.enable {
+      boot.initrd.systemd = lib.mkIf config.boot.initrd.enable {
         contents = {
           "/etc/passwd".text = ''
             ${lib.concatStringsSep "\n" (
@@ -1141,7 +1116,7 @@ in
       ]
       ++ flip mapAttrsToList config.boot.initrd.systemd.users (
         name: user: {
-          assertion = config.boot.initrd.systemd.enable -> (baseNameOf user.shell != "cryptsetup-askpass");
+          assertion = config.boot.initrd.enable -> (baseNameOf user.shell != "cryptsetup-askpass");
           message = ''
             cryptsetup-askpass is not available in systemd stage 1. Please remove it from: boot.initrd.systemd.users.${name}.shell
 

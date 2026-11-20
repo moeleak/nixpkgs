@@ -3,8 +3,13 @@
   stdenv,
   buildPythonPackage,
   fetchFromGitLab,
-  setuptools,
-  setuptools-scm,
+
+  # Build system
+  hatchling,
+  hatch-requirements-txt,
+  hatch-vcs,
+
+  # Dependencies
   backports-entry-points-selectable,
   cassandra-driver,
   click,
@@ -20,6 +25,8 @@
   swh-core,
   swh-model,
   swh-objstorage,
+
+  # Tests
   postgresql,
   postgresqlTestHook,
   pytest-aiohttp,
@@ -33,7 +40,7 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "swh-storage";
-  version = "4.1.1";
+  version = "4.3.0";
   pyproject = true;
 
   src = fetchFromGitLab {
@@ -42,17 +49,13 @@ buildPythonPackage (finalAttrs: {
     owner = "devel";
     repo = "swh-storage";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-AY2IcRJG19oSy2usI9JZTEKYLI3SEiLpNisqD7zus8A=";
+    hash = "sha256-e2KoL5vr7WSsc48hghSRb7a/ngL4H+X0TZpQ/wELv9s=";
   };
 
   build-system = [
-    setuptools
-    setuptools-scm
-  ];
-
-  pythonRelaxDeps = [
-    # we patched click 8.2.1
-    "click"
+    hatchling
+    hatch-requirements-txt
+    hatch-vcs
   ];
 
   dependencies = [

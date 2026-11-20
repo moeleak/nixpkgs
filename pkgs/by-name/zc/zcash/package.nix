@@ -108,13 +108,12 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Peer-to-peer, anonymous electronic cash system";
     homepage = "https://z.cash/";
     maintainers = with lib.maintainers; [
-      rht
       tkerber
       centromere
     ];
     license = lib.licenses.mit;
 
     # https://github.com/zcash/zcash/issues/4405
-    broken = stdenv.hostPlatform.isAarch64 && stdenv.hostPlatform.isDarwin;
+    broken = stdenv.hostPlatform.isDarwin;
   };
 })

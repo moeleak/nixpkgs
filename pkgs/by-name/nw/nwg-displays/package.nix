@@ -15,14 +15,14 @@
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "nwg-displays";
-  version = "0.4.1";
+  version = "0.5.0";
   format = "setuptools";
 
   src = fetchFromGitHub {
     owner = "nwg-piotr";
     repo = "nwg-displays";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-07rsLClG4OIErzC+6qnFHn9cwa2XBYl5diN0KUglh/g=";
+    hash = "sha256-KM+hVAfPamg7s2Ksg6g9NC+/Do+tnAkCRJqnp2vpIlk=";
   };
 
   nativeBuildInputs = [

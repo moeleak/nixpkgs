@@ -24,14 +24,14 @@
 
 buildPythonPackage rec {
   pname = "py7zr";
-  version = "1.1.0";
+  version = "1.1.3";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "miurahr";
     repo = "py7zr";
     tag = "v${version}";
-    hash = "sha256-lWZni9yhS5otWL1cyi8qZx2JLExbDiTPTadKKnDB2Ds=";
+    hash = "sha256-/sorvv5/kwlY/DtxW33ytHhyrR06p6aNgGW9oH+lpUw=";
   };
 
   build-system = [
@@ -79,7 +79,7 @@ buildPythonPackage rec {
     changelog = "https://github.com/miurahr/py7zr/blob/v${version}/docs/Changelog.rst#v${
       builtins.replaceStrings [ "." ] [ "" ] version
     }";
-    license = lib.licenses.gpl2Only;
+    license = lib.licenses.lgpl21Plus;
     maintainers = with lib.maintainers; [
       pitkling
       PopeRigby

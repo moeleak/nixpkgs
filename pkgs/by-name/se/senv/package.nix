@@ -1,6 +1,5 @@
 {
   lib,
-  stdenv,
   buildGoModule,
   fetchFromGitHub,
 }:
@@ -20,12 +19,14 @@ buildGoModule (finalAttrs: {
 
   subPackages = [ "." ];
 
+  # Tests exist under pkg, but not in the selected subPackages
+  doCheck = false;
+
   meta = {
     description = "Friends don't let friends leak secrets on their terminal window";
     homepage = "https://github.com/SpectralOps/senv";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ SuperSandro2000 ];
-    broken = stdenv.hostPlatform.isDarwin; # needs golang.org/x/sys bump
     mainProgram = "senv";
   };
 })

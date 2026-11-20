@@ -12,16 +12,21 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "paru";
-  version = "2.1.0";
+  version = "2.2.0";
 
   src = fetchFromGitHub {
     owner = "Morganamilo";
     repo = "paru";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-i99f2ngYhfVCKpImJ8L7u2T2FgOt7Chp8DHDbrNh1kw=";
+    hash = "sha256-0V8v0Er+8Hs9HjnLsTfzkmQ7pYxw/2rMtN78MK6piMg=";
   };
 
-  cargoHash = "sha256-USIceRh24WGV0TIrpuyHs4thjaghpxqZmk2uVKBxlm4=";
+  cargoHash = "sha256-BecGagGsapbvnYuX+arSKwgIxzVXU+CGWoy+YMyA8VU=";
+
+  postPatch = ''
+    substituteInPlace tests/startup.rs \
+      --replace-fail "/bin/cat" "cat"
+  '';
 
   nativeBuildInputs = [
     gettext

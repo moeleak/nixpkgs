@@ -6,22 +6,20 @@
 
 buildGoModule (finalAttrs: {
   pname = "wappalyzergo";
-  version = "0.2.80";
+  version = "0.3.9";
 
   src = fetchFromGitHub {
     owner = "projectdiscovery";
     repo = "wappalyzergo";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-m293HQoZRpKoKPlddQntjLJ4/6hCS7P0V4+A9bAulAU=";
+    hash = "sha256-E+btM84irya0qzEP42IVjSd9bBtp2HX07m4QWDJBhYk=";
   };
 
-  vendorHash = "sha256-kcg5XaI06UOkOTo803aTJCAt8lUE9QW9jSTbOflTTEo=";
+  vendorHash = "sha256-96se+0ZLIcX5o3TrMMCospbX7WIafxGskMKEQW791Bo=";
 
   ldflags = [ "-s" ];
 
   __structuredAttrs = true;
-
-  strictDeps = true;
 
   meta = {
     description = "Implementation of the Wappalyzer Technology Detection Library";

@@ -5,7 +5,7 @@
   alsa-lib,
   bash,
   buildPackages,
-  config,
+  curl,
   docutils,
   fetchFromGitHub,
   ffmpeg,
@@ -21,7 +21,6 @@
   libarchive,
   libass,
   libbluray,
-  libbs2b,
   libcaca,
   libcdio,
   libcdio-paranoia,
@@ -37,7 +36,7 @@
   libva,
   libvdpau,
   libxkbcommon,
-  lua,
+  lua5_2_compat,
   makeBinaryWrapper,
   libgbm,
   meson,
@@ -66,10 +65,10 @@
   alsaSupport ? stdenv.hostPlatform.isLinux,
   archiveSupport ? true,
   bluraySupport ? true,
-  bs2bSupport ? true,
   cacaSupport ? true,
   cddaSupport ? false,
   cmsSupport ? true,
+  curlSupport ? true,
   drmSupport ? stdenv.hostPlatform.isLinux,
   dvbinSupport ? stdenv.hostPlatform.isLinux,
   dvdnavSupport ? true,
@@ -77,7 +76,7 @@
   javascriptSupport ? true,
   openalSupport ? true,
   pipewireSupport ? !stdenv.hostPlatform.isDarwin,
-  pulseSupport ? config.pulseaudio or (!stdenv.hostPlatform.isDarwin),
+  pulseSupport ? !stdenv.hostPlatform.isDarwin,
   rubberbandSupport ? true,
   sdl2Support ? false,
   sixelSupport ? false,
@@ -92,11 +91,12 @@
 }:
 
 let
+  lua = lua5_2_compat;
   luaEnv = lua.withPackages (ps: with ps; [ luasocket ]);
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "mpv";
-  version = "0.41.0";
+  version = "0.42.0";
 
   outputs = [
     "out"
@@ -109,7 +109,7 @@ stdenv.mkDerivation (finalAttrs: {
     owner = "mpv-player";
     repo = "mpv";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-gJWqfvPE6xOKlgj2MzZgXiyOKxksJlY/tL6T/BeG19c=";
+    hash = "sha256-kOVHFAuwGpV+Zz04FnzvjPq2tmEpvSDkHWUXoinEeSQ=";
   };
 
   postPatch = lib.concatStringsSep "\n" [
@@ -117,7 +117,7 @@ stdenv.mkDerivation (finalAttrs: {
     # between out and dev
     ''
       substituteInPlace meson.build \
-        --replace-fail "conf_data.set_quoted('CONFIGURATION', meson.build_options())" \
+        --replace-fail "conf_data.set_quoted('CONFIGURATION', meson.build_options().strip().replace('\\\\', '\\\\\\\\'))" \
                        "conf_data.set_quoted('CONFIGURATION', '<omitted>')"
     ''
     # A trick to patchShebang everything except mpv_identify.sh
@@ -130,16 +130,11 @@ stdenv.mkDerivation (finalAttrs: {
     ''
   ];
 
-  # Ensure we reference 'lib' (not 'out') of Swift.
-  # TODO: Remove this once the Swift wrapper doesn’t include these.
-  preConfigure = lib.optionalString stdenv.hostPlatform.isDarwin ''
-    export SWIFT_LIB_DYNAMIC="${lib.getLib swift.swift}/lib/swift/macosx"
-  '';
-
   mesonFlags = [
     (lib.mesonOption "default_library" "shared")
     (lib.mesonOption "sysconfdir" "/etc")
     (lib.mesonBool "libmpv" true)
+    (lib.mesonEnable "libcurl" curlSupport)
     (lib.mesonEnable "manpage-build" true)
     (lib.mesonEnable "cdda" cddaSupport)
     (lib.mesonEnable "dvbin" dvbinSupport)
@@ -180,13 +175,13 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals alsaSupport [ alsa-lib ]
   ++ lib.optionals archiveSupport [ libarchive ]
   ++ lib.optionals bluraySupport [ libbluray ]
-  ++ lib.optionals bs2bSupport [ libbs2b ]
   ++ lib.optionals cacaSupport [ libcaca ]
   ++ lib.optionals cddaSupport [
     libcdio
     libcdio-paranoia
   ]
   ++ lib.optionals cmsSupport [ lcms2 ]
+  ++ lib.optionals curlSupport [ curl ]
   ++ lib.optionals drmSupport [
     libdrm
     libdisplay-info
@@ -228,21 +223,10 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals zimgSupport [ zimg ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [ nv-codec-headers-11 ];
 
-  # https://github.com/mpv-player/mpv/issues/15591#issuecomment-2764797522
-  # In file included from ../player/clipboard/clipboard-mac.m:19:
-  # ./osdep/mac/swift.h:270:9: fatal error: '.../app_bridge_objc-1.pch' file not found
-  env = lib.optionalAttrs (stdenv.hostPlatform.isDarwin) {
-    NIX_SWIFTFLAGS_COMPILE = "-disable-bridging-pch";
-  };
-
   postBuild = lib.optionalString stdenv.hostPlatform.isDarwin ''
     pushd .. # Must be run from the source dir because it uses relative paths
     python3 TOOLS/osxbundle.py -s build/mpv
     popd
-  '';
-
-  sandboxProfile = lib.optionalString stdenv.hostPlatform.isDarwin ''
-    (allow mach-lookup (global-name "com.apple.coreservices.launchservicesd"))
   '';
 
   postInstall = ''
@@ -303,10 +287,6 @@ stdenv.mkDerivation (finalAttrs: {
       vapoursynthSupport
       vapoursynth
       ;
-
-    # Should be removed in the future. These can't be added to `pkgs/top-level/aliases.nix`.
-    scripts = throw "'mpv-unwrapped.scripts' has been removed. Please use 'mpvScripts' instead."; # Added 2025-12-29
-    wrapper = throw "'mpv-unwrapped.wrapper' has been removed. Please use 'mpv.override' instead."; # Added 2025-12-29
 
     tests = {
       inherit (nixosTests) mpv;

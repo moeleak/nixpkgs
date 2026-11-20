@@ -6,20 +6,20 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "aaa";
-  version = "1.1.1";
+  version = "2.2.0";
 
   src = fetchFromGitHub {
-    owner = "DomesticMoth";
+    owner = "asciimoth";
     repo = "aaa";
-    tag = "v${finalAttrs.version}";
-    sha256 = "sha256-gIOlPjZOcmVLi9oOn4gBv6F+3Eq6t5b/3fKzoFqxclw=";
+    tag = "${finalAttrs.version}";
+    sha256 = "sha256-LJjpxfSQ+R1oohqROacdT5YrkDyzXzeC/ExqkqSQDaA=";
   };
 
-  cargoHash = "sha256-CHX+Ugy4ND36cpxNEFpnqid6ALHMPXmfXi+D4aktPRk=";
+  cargoHash = "sha256-FMarQiPAtPeo3XmGy9uXSLQsmnw2+uYhe/rJxUvp38w=";
 
   meta = {
-    description = "Terminal viewer for 3a format";
-    homepage = "https://github.com/DomesticMoth/aaa";
+    description = "Swiss Army knife for animated ascii art";
+    homepage = "https://github.com/asciimoth/aaa";
     license = lib.licenses.gpl3Only;
     maintainers = with lib.maintainers; [ asciimoth ];
     mainProgram = "aaa";

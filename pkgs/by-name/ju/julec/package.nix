@@ -13,8 +13,6 @@ let
       "linux-arm64.cpp"
     else if clangStdenv.hostPlatform.system == "i686-linux" then
       "linux-i386.cpp"
-    else if clangStdenv.hostPlatform.system == "x86_64-darwin" then
-      "darwin-amd64.cpp"
     else if clangStdenv.hostPlatform.system == "aarch64-darwin" then
       "darwin-arm64.cpp"
     else
@@ -22,23 +20,22 @@ let
 in
 clangStdenv.mkDerivation (finalAttrs: {
   pname = "julec";
-  version = "0.2.1";
+  version = "0.2.2";
 
   src = fetchFromGitHub {
     owner = "julelang";
     repo = "jule";
     tag = "jule${finalAttrs.version}";
     name = "jule-${finalAttrs.version}";
-    hash = "sha256-zfFsWP1nFvyzIqtf/nG4itpKxy6ZZjb3gGC3LwLVGPk=";
+    hash = "sha256-m+IJiTNOrOzx/3e67r/yWOjGRRyOy5TWHhjFZXaMOsc=";
   };
 
   irSrc = fetchFromGitHub {
     owner = "julelang";
     repo = "julec-ir";
-    # revision determined by the upstream commit hash
-    rev = "5de197f9041dbc61b1d97ed4e3b84c0f667014f8";
+    tag = "jule${finalAttrs.version}";
     name = "jule-ir-${finalAttrs.version}";
-    hash = "sha256-PMAFXLXa3wS0+TWEU2bjlw5UzOmAx8ittQzuExhrWDM=";
+    hash = "sha256-UclKaxIBW1dqCz2Rk0If7EV3P7XrtUpKuR4ROPWw2Ao=";
   };
 
   dontConfigure = true;
@@ -117,7 +114,6 @@ clangStdenv.mkDerivation (finalAttrs: {
       "x86_64-linux"
       "aarch64-linux"
       "i686-linux"
-      "x86_64-darwin"
       "aarch64-darwin"
     ];
     mainProgram = "julec";

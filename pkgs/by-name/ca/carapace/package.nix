@@ -9,16 +9,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "carapace";
-  version = "1.6.3";
+  version = "1.8.2";
 
   src = fetchFromGitHub {
     owner = "carapace-sh";
     repo = "carapace-bin";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-k6fWtwDTNc2qcr9ryL7wMVy744fiP8NrLqm4crVr+EI=";
+    hash = "sha256-BdXQGFqqcsOmPvM9kf+lwXKQkmT6Jr4jua5ivovTVZg=";
   };
 
-  vendorHash = "sha256-5AqoM16M5pPfRYxqa72LrHJRRatK2qnZK3pQIoFXG9g=";
+  vendorHash = "sha256-Kc5kecKPUOPK6bTnFxe9gtey5LobK8h0hgkJEENI7ek=";
 
   proxyVendor = true;
 
@@ -42,6 +42,7 @@ buildGoModule (finalAttrs: {
   meta = {
     description = "Multi-shell multi-command argument completer";
     homepage = "https://carapace.sh/";
+    changelog = "https://github.com/carapace-sh/carapace-bin/releases/tag/v${finalAttrs.version}";
     maintainers = with lib.maintainers; [ mimame ];
     license = lib.licenses.mit;
     mainProgram = "carapace";

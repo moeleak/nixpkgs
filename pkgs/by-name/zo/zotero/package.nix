@@ -2,8 +2,11 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  fetchurl,
   buildNpmPackage,
-  nodejs_22,
+  darwin,
+  callPackage,
+  nodejs_24,
   perl,
   python3,
   zip,
@@ -11,7 +14,9 @@
   xz,
   gawk,
   rsync,
-  firefox-esr-140-unwrapped,
+  pkg-config,
+  pango,
+  giflib,
   makeDesktopItem,
   copyDesktopItems,
   libGL,
@@ -22,31 +27,46 @@
   xvfb-run,
   makeBinaryWrapper,
   doCheck ? false,
+  zotero,
 }:
 let
-  # note-editor needs nodejs 22. Any newer version fails to build zotero's fork of @benrbray/prosemirror-math during npm install.
-  nodejs = nodejs_22;
+  nodejs = nodejs_24;
+
+  firefox = callPackage ./firefox-esr-140-bin.nix { };
+
+  # Custom Firefox components (currently libmozglue.dylib) that Zotero overlays on macOS.
+  firefoxCustomComponentsMac = fetchurl {
+    url = "https://download.zotero.org/dev/firefox-components/mac/15e328615e53f1c37374f44567f108affcf80cfdc07b100da159a5aed15d9b59.tar.xz";
+    hash = "sha256-FeMoYV5T8cNzdPRFZ/EIr/z4DP3AexANoVmlrtFdm1k=";
+  };
+
+  oneCrl = fetchurl {
+    # https://firefox.settings.services.mozilla.com/v1/buckets/security-state/collections/onecrl/changeset?_expected=0 is probably mutable
+    url = "https://web.archive.org/web/20261107133341/https://firefox.settings.services.mozilla.com/v1/buckets/security-state/collections/onecrl/changeset?_expected=0";
+    name = "firefox-onecrl";
+    hash = "sha256-dcYd2cPIGHZKqDBYOQra8i866wh4Owl17k7WYoDKbM4=";
+  };
 
   pname = "zotero";
-  version = "9.0.2";
+  version = "10.0.9";
 
   src = fetchFromGitHub {
     owner = "zotero";
     repo = "zotero";
     tag = version;
     fetchSubmodules = true;
-    hash = "sha256-OAPgJBSBHCyuy/VPlIeNwAM87cnyuHBuaMn6QKisTcA=";
+    hash = "sha256-obcPnD+Guryg8i/oI5EpizC20Ev6NNew0abH6yk5KHo=";
   };
 
   pdf-js = buildNpmPackage {
     pname = "zotero-pdf-js";
     inherit version nodejs;
-    src = "${src}/pdf-worker/pdf.js";
-    npmDepsHash = "sha256-KeYAY6EWBZVd3QucDEDtI6lwtTahCEFBFf2Ebib9HKg=";
+    src = "${src}/reader/pdfjs/pdf.js";
+    npmDepsHash = "sha256-xq0RhCruM22mFC3zkHpn4hX8YdO32Sn42fbSC0cQXFw=";
     buildPhase = ''
       runHook preBuild
 
-      npm exec gulp lib-legacy
+      npm exec gulp generic
       npm exec gulp generic-legacy
       npm exec gulp minified-legacy
 
@@ -89,7 +109,7 @@ let
     pname = "zotero-pdf-reader";
     inherit version nodejs;
     src = "${src}/reader";
-    npmDepsHash = "sha256-8marAeBAW5cKDaJT3xbVsXyVfGa5ehZYUYijDzFng38=";
+    npmDepsHash = "sha256-/Szv0BWy9zHLrusRxo8XRtfyFmq/rS4GG1iO7NkV2BQ=";
     patches = [
       ./pdf-reader-locales.patch
       ./pdf-reader-build-fix.patch
@@ -117,18 +137,19 @@ let
     '';
   };
 
-  pdf-worker = buildNpmPackage {
-    pname = "zotero-pdf-worker";
+  document-worker = buildNpmPackage {
+    pname = "zotero-document-worker";
     inherit version nodejs;
-    src = "${src}/pdf-worker";
-    npmDepsHash = "sha256-TGuN1fZOClzm6xD2rmn5BAemN4mbyOVaLbSRyMeDIm8=";
+    src = "${src}/document-worker";
+    npmDepsHash = "sha256-dUGZ0RsmW+cAXPi78W9eX7kQnTiCVc8K9lPPtw8Cif0=";
     nativeBuildInputs = [
       rsync
+      pkg-config
     ];
-    postPatch = ''
-      rm -rf pdf.js
-      cp -r ${pdf-js} pdf.js
-    '';
+    buildInputs = [
+      pango
+      giflib
+    ];
     installPhase = ''
       runHook preInstall
 
@@ -139,12 +160,35 @@ let
     '';
   };
 
+  prosemirror-math = buildNpmPackage {
+    pname = "zotero-prosemirror-math";
+    version = "1.0.0-unstable-31bb011";
+    src = fetchFromGitHub {
+      owner = "zotero";
+      repo = "prosemirror-math";
+      rev = "31bb011ed2537b63d3978cb227e60d9debb97e12";
+      hash = "sha256-aSHfY0G3jnC37YV1F63g1ofYxceym91prTfEsIUXSXY=";
+    };
+    inherit nodejs;
+    npmDepsHash = "sha256-RrqaSsm8l4T5avyMxN0N7kH78wMspvBDF7Lu2f3R7Tg=";
+    npmBuildScript = "build:lib";
+    installPhase = ''
+      runHook preInstall
+      mkdir -p $out
+      cp -r dist $out/
+      runHook postInstall
+    '';
+  };
+
   note-editor = buildNpmPackage {
     pname = "zotero-note-editor";
     inherit version nodejs;
     src = "${src}/note-editor";
     npmDepsHash = "sha256-3KSSm8oCNOIDN/ZHhDbx7+cF20qtjtZwpnCOOWe3WQc=";
     makeCacheWritable = true;
+    preBuild = ''
+      cp -r ${prosemirror-math}/dist node_modules/@benrbray/prosemirror-math/
+    '';
     patches = [ ./pdf-reader-locales.patch ];
     postPatch = ''
       mkdir -p locales/en-US/
@@ -181,10 +225,11 @@ buildNpmPackage (finalAttrs: {
     rsync
     copyDesktopItems
   ]
-  ++ lib.optionals stdenv.targetPlatform.isDarwin [
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
     makeBinaryWrapper
+    darwin.autoSignDarwinBinariesHook
   ]
-  ++ lib.optionals (!stdenv.targetPlatform.isDarwin) [
+  ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
     wrapGAppsHook3
   ];
 
@@ -200,9 +245,9 @@ buildNpmPackage (finalAttrs: {
     cp -r ${pdf-reader} reader
     chmod -R u+w reader
 
-    rm -rf pdf-worker
-    cp -r ${pdf-worker} pdf-worker
-    chmod -R u+w pdf-worker
+    rm -rf document-worker
+    cp -r ${document-worker} document-worker
+    chmod -R u+w document-worker
 
     rm -rf note-editor
     cp -r ${note-editor} note-editor
@@ -210,43 +255,79 @@ buildNpmPackage (finalAttrs: {
 
     patchShebangs --build app/ test/
 
+    substituteInPlace app/scripts/fetch_onecrl \
+      --replace-fail 'curl -sSf --retry 3 "$URL" -o "$tmp_file"' 'cp "${oneCrl}" "$tmp_file"'
+
     # Skip some flaky/failing tests
-    rm test/tests/retractionsTest.js
+    rm test/tests/retractionsTest.js test/tests/debugTest.js
     for test in \
-      "should use BrowserDownload for 403 when enforcing file type" \
-      "should use BrowserDownload for a JS redirect page" \
+      "should use BrowserRequest for 403 when enforcing file type" \
+      "should use BrowserRequest for a JS redirect page" \
       "should throw error on broken symlink" \
-      "should switch dialog from add note to add/edit citation" \
-      "should vacuum the database with force option" \
+      "should convert the target of a symlinked database file" \
+      "should mark every selected collection as current for a multiple-collection selection" \
     ; do
-      sed -i "s|it(\"$test|it.skip(\"$test|" test/tests/*.js
+      sed -i -E "s|it(\([\"']$test.*[\"'])|it.skip\1|" test/tests/*.js
     done
+  ''
+  + lib.optionalString stdenv.hostPlatform.isDarwin ''
+    substituteInPlace app/build.sh \
+      --replace-fail 'xargs -0 /usr/bin/codesign --force --sign -' 'xargs -0 -I {} true'
   '';
 
-  buildPhase = ''
-    runHook preBuild
+  buildPhase =
+    let
+      zoteroArch =
+        platform:
+        if platform.isAarch64 then
+          "arm64"
+        else if platform.isx86_64 then
+          "x64"
+        else if platform.isx86_32 then
+          "i686"
+        else
+          platform.parsed.cpu.name;
+    in
+    ''
+      runHook preBuild
 
-    npm run build
+      npm run build
 
-    # Place firefox files at the right place.
-    # The correct firefox version can be found in zotero/app/config.sh at `GECKO_VERSION_LINUX`.
-    mkdir -p app/xulrunner/
-  ''
-  + lib.optionalString stdenv.targetPlatform.isDarwin ''
-    cp -r "${firefox-esr-140-unwrapped}/Applications/Firefox ESR.app" app/xulrunner/Firefox.app
-  ''
-  + lib.optionalString (!stdenv.targetPlatform.isDarwin) ''
-    cp -r "${firefox-esr-140-unwrapped}/lib/firefox" "app/xulrunner/firefox-${stdenv.targetPlatform.parsed.kernel.name}-${
-      lib.replaceString "aarch64" "arm64" stdenv.targetPlatform.parsed.cpu.name
-    }"
-  ''
-  + ''
-    chmod -R u+w app/xulrunner/
+      # Place firefox files at the right place.
+      # The correct firefox version can be found in zotero/app/config.sh at `GECKO_VERSION_LINUX`.
+      mkdir -p app/xulrunner/
+    ''
+    + lib.optionalString stdenv.hostPlatform.isDarwin ''
+      cp -r "${firefox}/Applications/Firefox ESR.app" app/xulrunner/Firefox.app
+      # Provides app/xulrunner/MacOS/, which build.sh overlays onto Zotero.app
+      tar xf ${firefoxCustomComponentsMac} -C app/xulrunner/
+    ''
+    + lib.optionalString (!stdenv.hostPlatform.isDarwin) ''
+      cp -r "${firefox}/lib/${firefox.libName}" "app/xulrunner/firefox-${stdenv.hostPlatform.parsed.kernel.name}-${
+        lib.replaceString "aarch64" "arm64" stdenv.hostPlatform.parsed.cpu.name
+      }"
+    ''
+    + ''
+      chmod -R u+w app/xulrunner/
 
-    ./app/scripts/dir_build
+      build_dir=$(mktemp -d)
+      ./app/scripts/prepare_build -s ./build -o "$build_dir" -c release
+      ./app/build.sh -d "$build_dir" -c release -s \
+        ${if stdenv.hostPlatform.isDarwin then "-p m" else "-p l -a ${zoteroArch stdenv.hostPlatform}"}
 
-    runHook postBuild
-  '';
+    ''
+    + lib.optionalString stdenv.hostPlatform.isDarwin ''
+      while IFS= read -r -d $'\0' helper; do
+        while IFS= read -r -d $'\0' binary; do
+          if isMachO "$binary"; then
+            ${lib.getExe' darwin.sigtool "codesign"} --force --sign - "$binary"
+          fi
+        done < <(find "$helper" -type f -print0)
+      done < <(find app/staging/Zotero.app/Contents/MacOS -maxdepth 1 -name '*.app' ! -name updater.app -print0)
+    ''
+    + ''
+      runHook postBuild
+    '';
 
   inherit doCheck;
   # Build with test support if `doCheck` is enabled.
@@ -287,12 +368,12 @@ buildNpmPackage (finalAttrs: {
   installPhase = ''
     runHook preInstall
   ''
-  + lib.optionalString stdenv.targetPlatform.isDarwin ''
+  + lib.optionalString stdenv.hostPlatform.isDarwin ''
     # Copy package contents
     mkdir -p $out/Applications
     cp -r app/staging/Zotero.app $out/Applications/
   ''
-  + lib.optionalString (!stdenv.targetPlatform.isDarwin) ''
+  + lib.optionalString (!stdenv.hostPlatform.isDarwin) ''
     # Copy package contents
     mkdir -p $out/lib/
     cp -r app/staging/*/. $out/lib/
@@ -311,7 +392,7 @@ buildNpmPackage (finalAttrs: {
     runHook postInstall
   '';
 
-  preFixup = lib.optionalString (!stdenv.targetPlatform.isDarwin) ''
+  preFixup = lib.optionalString (!stdenv.hostPlatform.isDarwin) ''
     gappsWrapperArgs+=(--suffix LD_LIBRARY_PATH : ${
       lib.makeLibraryPath [
         libGL
@@ -321,12 +402,17 @@ buildNpmPackage (finalAttrs: {
     })
   '';
 
-  postFixup = lib.optionalString stdenv.targetPlatform.isDarwin ''
+  postFixup = lib.optionalString stdenv.hostPlatform.isDarwin ''
     mkdir -p $out/bin
     makeWrapper $out/Applications/Zotero.app/Contents/MacOS/zotero $out/bin/zotero
   '';
 
-  passthru.updateScript = nix-update-script { };
+  passthru = {
+    tests.build-with-checks = zotero.override {
+      doCheck = true;
+    };
+    updateScript = nix-update-script { };
+  };
 
   meta = {
     homepage = "https://www.zotero.org";

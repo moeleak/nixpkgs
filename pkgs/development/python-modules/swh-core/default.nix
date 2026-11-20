@@ -6,8 +6,9 @@
   pythonAtLeast,
 
   # build-system
-  setuptools,
-  setuptools-scm,
+  hatchling,
+  hatch-requirements-txt,
+  hatch-vcs,
 
   # dependencies
   backports-entry-points-selectable,
@@ -51,7 +52,7 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "swh-core";
-  version = "4.6.1";
+  version = "5.0.2";
   pyproject = true;
 
   src = fetchFromGitLab {
@@ -60,17 +61,13 @@ buildPythonPackage (finalAttrs: {
     owner = "devel";
     repo = "swh-core";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-5lL4/Hz8KbWurcDCOHqKh8eNqA1CkliSMCrdeYwqEHs=";
+    hash = "sha256-0k+erTXt/GyJXQN+v5qzlNg+BUl1185MLOZ6U8ySi7U=";
   };
 
   build-system = [
-    setuptools
-    setuptools-scm
-  ];
-
-  pythonRelaxDeps = [
-    # we patched click 8.2.1
-    "click"
+    hatchling
+    hatch-requirements-txt
+    hatch-vcs
   ];
 
   dependencies = [
@@ -101,7 +98,6 @@ buildPythonPackage (finalAttrs: {
     msgpack
     postgresql
     postgresqlTestHook
-    psycopg.optional-dependencies.pool
     pylzma
     pytestCheckHook
     pytest-aiohttp
@@ -119,16 +115,27 @@ buildPythonPackage (finalAttrs: {
     types-requests
     unzip
     pkgs.zstd
-  ];
+  ]
+  ++ psycopg.optional-dependencies.pool;
 
   disabledTestPaths = lib.optionals (pythonAtLeast "3.14") [
     # shutil.RegistryError: .tar.zst is already registered for "zstdtar"
     "swh/core/tests/test_cli_nar.py"
     "swh/core/tests/test_nar.py"
     "swh/core/tests/test_tarball.py"
+    # Most of the tests are failing for different reasons (e.g., it cannot find psql)
+    "swh/core/db/tests/test_db_utils.py"
   ];
 
-  disabledTests = lib.optionals stdenv.hostPlatform.isDarwin [
+  disabledTests = [
+    # <Result AssertionError("assert {'test': {'cl...23043/tests'}} == {}\n  \n  Left contains 1 more item:\n  \x1b[0m{\x1b[...stgres@127.0.0.1:23043/tests\x1b[39;49;00m\x1b[33m'\x1b[39;49;00m}}\x1b[90m\x1b[39;49;00m\n  Use -v to get more diff")>
+    "test_config_file"
+    # AssertionError: assert {'backend': {...23043/tests'}} == {'backend': {'cls': 'memory'}}
+    "test_config_overload"
+    # psql not found
+    "test_cli_swh_db_shell"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
     # FileExistsError: [Errno 17] File exists:
     "test_uncompress_upper_archive_extension"
     # AssertionError: |500 - 632.1152460000121| not within 100

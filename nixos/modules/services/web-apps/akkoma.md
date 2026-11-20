@@ -27,7 +27,7 @@ be run behind a HTTP proxy on `fediverse.example.com`.
         name = "My Akkoma instance";
         description = "More detailed description";
         email = "admin@example.com";
-        registration_open = false;
+        registrations_open = false;
       };
 
       "Pleroma.Web.Endpoint" = {
@@ -83,9 +83,6 @@ locally, and clients have to fetch them directly from the source server.
 
 ```nix
 {
-  # Enable nginx slice module distributed with Tengine
-  services.nginx.package = pkgs.tengine;
-
   # Enable media proxy
   services.akkoma.config.":pleroma".":media_proxy" = {
     enabled = true;
@@ -173,7 +170,7 @@ derivation.
   services.akkoma.frontends.primary.package =
     pkgs.runCommand "akkoma-fe"
       {
-        config = builtins.toJSON {
+        configPath = (pkgs.formats.json { }).generate "config.json" {
           expertLevel = 1;
           collapseMessageWithSubject = false;
           stopGifs = false;
@@ -189,14 +186,13 @@ derivation.
           jq
           lndir
         ];
-        passAsFile = [ "config" ];
       }
       ''
         mkdir $out
         lndir ${pkgs.akkoma-frontends.akkoma-fe} $out
 
         rm $out/static/config.json
-        jq -s add ${pkgs.akkoma-frontends.akkoma-fe}/static/config.json ${config} \
+        jq -s add ${pkgs.akkoma-frontends.akkoma-fe}/static/config.json $configPath \
           >$out/static/config.json
       '';
 }
@@ -221,17 +217,28 @@ of the fediverse and providing a pleasant experience to the users of an instance
 
     ":mrf_simple" = {
       # Tag all media as sensitive
-      media_nsfw = mkMap { "nsfw.weird.kinky" = "Untagged NSFW content"; };
+      media_nsfw = map mkTuple [
+        [
+          "nsfw.weird.kinky"
+          "Untagged NSFW content"
+        ]
+      ];
 
       # Reject all activities except deletes
-      reject = mkMap {
-        "kiwifarms.cc" = "Persistent harassment of users, no moderation";
-      };
+      reject = map mkTuple [
+        [
+          "kiwifarms.cc"
+          "Persistent harassment of users, no moderation"
+        ]
+      ];
 
       # Force posts to be visible by followers only
-      followers_only = mkMap {
-        "beta.birdsite.live" = "Avoid polluting timelines with Twitter posts";
-      };
+      followers_only = map mkTuple [
+        [
+          "beta.birdsite.live"
+          "Avoid polluting timelines with Twitter posts"
+        ]
+      ];
     };
   };
 }

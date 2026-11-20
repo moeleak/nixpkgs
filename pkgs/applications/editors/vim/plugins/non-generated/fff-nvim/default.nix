@@ -3,9 +3,10 @@
   fetchFromGitHub,
   rustPlatform,
   nix-update-script,
+  libgit2,
   openssl,
   perl,
-  zig,
+  zig_0_16,
   gitMinimal,
   pkg-config,
   stdenv,
@@ -13,18 +14,18 @@
   writableTmpDirAsHomeHook,
 }:
 let
-  version = "0.6.4";
+  version = "0.11.0";
   src = fetchFromGitHub {
     owner = "dmtrKovalenko";
-    repo = "fff.nvim";
+    repo = "fff";
     tag = "v${version}";
-    hash = "sha256-vu5yqOvVAPXHMi8sZFQuH9rNsFDffh3Ja74Be0Cs64c=";
+    hash = "sha256-GSjvvdLkuezFUrHqiSeePa64VRb3tabOKZNqEE5XSAw=";
   };
   fff-nvim-lib = rustPlatform.buildRustPackage {
     pname = "fff-nvim-lib";
     inherit version src;
 
-    cargoHash = "sha256-w6KwiE0rAT00fiRa1rT8uthVgcMB7EFGoG3+M5MYEBo=";
+    cargoHash = "sha256-VKI7MnqCGis78qmYuBkViT96ZhG4Wy9vARdnmGV048A=";
 
     cargoBuildFlags = [
       "-p"
@@ -33,7 +34,7 @@ let
       "zlob"
     ];
 
-    cargoCheckFlags = [
+    cargoTestFlags = [
       "-p"
       "fff-nvim"
       "--features"
@@ -45,7 +46,13 @@ let
       perl
       rustPlatform.bindgenHook
       writableTmpDirAsHomeHook
+      zig_0_16
     ];
+
+    dontUseZigConfigure = true;
+    dontUseZigBuild = true;
+    dontUseZigCheck = true;
+    dontUseZigInstall = true;
 
     # Some tests need git
     nativeCheckInputs = [ gitMinimal ];
@@ -56,12 +63,16 @@ let
     '';
 
     buildInputs = [
+      libgit2
       openssl
     ];
 
-    # This test requires curl and GitHub access
     checkFlags = [
+      # This test requires curl and GitHub access
       "--skip=update_check::tests::test_update_check_end_to_end"
+
+      # This test depends on catching a race window and is not deterministic
+      "--skip=drop_during_post_scan_does_not_crash"
     ];
 
     env = {
@@ -69,8 +80,6 @@ let
 
       # Allow undefined symbols on Darwin - they will be provided by Neovim's LuaJIT runtime
       RUSTFLAGS = lib.optionalString stdenv.hostPlatform.isDarwin "-C link-arg=-undefined -C link-arg=dynamic_lookup";
-
-      ZIG = lib.getExe zig; # zlob requires zig
     };
   };
 in
@@ -85,7 +94,7 @@ vimUtils.buildVimPlugin {
         "return '${fff-nvim-lib}/lib'"
   '';
 
-  nvimSkipModule = [
+  nvimSkipModules = [
     # Skip single file dev config for testing fff.nvim locally
     "empty_config"
   ];
@@ -101,7 +110,7 @@ vimUtils.buildVimPlugin {
 
   meta = {
     description = "Fast Fuzzy File Finder for Neovim";
-    homepage = "https://github.com/dmtrKovalenko/fff.nvim";
+    homepage = "https://github.com/dmtrKovalenko/fff";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [
       GaetanLepage

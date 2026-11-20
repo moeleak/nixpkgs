@@ -7,22 +7,22 @@
   zig,
   makeWrapper,
   unstableGitUpdater,
-  nixosTests,
+  runCommand,
 }:
 
 let
   ocamlPackages = ocaml-ng.ocamlPackages_5_4;
 in
-ocamlPackages.buildDunePackage {
+ocamlPackages.buildDunePackage (finalAttrs: {
   pname = "owi";
-  version = "0.2-unstable-2026-05-05";
+  version = "0.2-unstable-2026-05-22";
 
   src = fetchFromGitHub {
     owner = "ocamlpro";
     repo = "owi";
-    rev = "e79d8d82918689a83e6bc74f71ce5cef85197c1c";
+    rev = "2d6ec0d897a209f34849d25f8bcfc73298820be3";
     fetchSubmodules = true;
-    hash = "sha256-zwnx5HlEJ6eUMu+9JAbxjpS4aKJbuNLfxekFqTtjq60=";
+    hash = "sha256-A+mTFvojEpIfRPJkPRf5vfHf+nk+3/hdIbJqIDv/AzM=";
   };
 
   nativeBuildInputs = with ocamlPackages; [
@@ -79,7 +79,21 @@ ocamlPackages.buildDunePackage {
 
   passthru = {
     updateScript = unstableGitUpdater { };
-    tests = { inherit (nixosTests) owi; };
+    tests.rust =
+      runCommand "owi-test-rust"
+        {
+          nativeBuildInputs = [ finalAttrs.finalPackage ];
+        }
+        ''
+          owi rust --fail-on-assertion-only ${./test-pass.rs}
+
+          if owi rust --fail-on-assertion-only ${./test-fail.rs}; then
+            echo "owi did not find the assertion failure in test-fail.rs" >&2
+            exit 1
+          fi
+
+          touch $out
+        '';
   };
 
   meta = {
@@ -95,4 +109,4 @@ ocamlPackages.buildDunePackage {
     mainProgram = "owi";
     badPlatforms = lib.platforms.darwin;
   };
-}
+})

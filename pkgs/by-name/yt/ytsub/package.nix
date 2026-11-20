@@ -2,24 +2,31 @@
   lib,
   fetchFromGitHub,
   rustPlatform,
+  pkg-config,
+  aws-lc,
   sqlite,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "ytsub";
-  version = "0.9.0";
+  version = "0.11.1";
   __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "sarowish";
     repo = "ytsub";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-6qPNSkUAj11Rut/Wx724UsFdRLwZh2Z+ZC7837CeNeQ=";
+    hash = "sha256-LhXdR60grbvqnUsQJYWqFy6c+fC7j95/n+oFn5CYOhM=";
   };
 
-  cargoHash = "sha256-RHOG43LTI3K0VzEpGsdSKheL1fjIZ1TyB6FCgoInUm8=";
+  cargoHash = "sha256-5siJSf4NzgyPbGcqziNR6ms5eneeZSt+tvQ/EICMZ8s=";
 
-  buildInputs = [ sqlite ];
+  nativeBuildInputs = [ pkg-config ];
+
+  buildInputs = [
+    aws-lc
+    sqlite
+  ];
 
   meta = {
     description = "Subscriptions only TUI Youtube client";

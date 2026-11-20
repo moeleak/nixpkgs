@@ -2,20 +2,25 @@
   lib,
   rustPlatform,
   fetchFromGitHub,
+  sqlite,
   nix-update-script,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "bmm";
-  version = "0.3.0";
+  version = "0.3.1";
 
   src = fetchFromGitHub {
     owner = "dhth";
     repo = "bmm";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-sfAUvvZ/LKOXfnA0PB3LRbPHYoA+FJV4frYU+BpC6WI=";
+    hash = "sha256-SASf13BFNz4ZlKJJk6O/Euv+wA26ov0QKsaEKRc24d0=";
   };
 
-  cargoHash = "sha256-+o8bYi4Pe9zwiDBUMllpF+my7gp3iLX0+DntFtN7PoI=";
+  cargoHash = "sha256-AOGNMFAr32WZnyw5nNQa6svLpSc3UQonZ7RjZ5zap1I=";
+
+  buildInputs = [
+    sqlite
+  ];
 
   doInstallCheck = true;
 

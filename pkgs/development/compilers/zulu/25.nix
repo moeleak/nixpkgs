@@ -6,7 +6,11 @@
 
 let
   # For Zulu 25, FX and non-FX versions can differ
-  zuluVersion = if enableJavaFX then "25.28.85" else "25.28.85";
+  zuluVersion = if enableJavaFX then "25.34.17" else "25.34.17";
+  jdkVersion = "25.0.3";
+  # The November security update is available for the plain Linux JDK.
+  linuxZuluVersion = if enableJavaFX then zuluVersion else "25.38.201";
+  linuxJdkVersion = if enableJavaFX then jdkVersion else "25.0.5.1";
 in
 callPackage ./common.nix (
   {
@@ -14,43 +18,32 @@ callPackage ./common.nix (
     # Note that the latest build may differ by platform
     dists = {
       x86_64-linux = {
-        inherit zuluVersion;
-        jdkVersion = "25.0.0";
+        zuluVersion = linuxZuluVersion;
+        jdkVersion = linuxJdkVersion;
         hash =
           if enableJavaFX then
-            "sha256-5Hhob86uCxrrdrFEvNaqPaQEaGrF47jpgUibKkNs1AQ="
+            "sha256-gL7WgJFifVy3wYYqLFE13c7GZ6YMi3BVWhL+1+yTFN8="
           else
-            "sha256-Fk2QHlokC4wYUW9atVvBH8lomrboKQRa6oRnNW3Ns0A=";
+            "sha256-/Ho9k5a0QxNGZrnPfNlGtTLcF4H1NQxyWEmsUNFqcZg=";
       };
 
       aarch64-linux = {
-        inherit zuluVersion;
-        jdkVersion = "25.0.0";
+        zuluVersion = linuxZuluVersion;
+        jdkVersion = linuxJdkVersion;
         hash =
           if enableJavaFX then
-            "sha256-HmfKOh0X2jcLrEMmKV81nQebtOOJjzpHWe1Ca+qIFYI="
+            "sha256-K/vR9QBMbtW3KBePsoyIas9l64s6hf/uMuhAm53himE="
           else
-            "sha256-tg651UyXukFZVHg0qYzF0BYoHdKz5g50dcukkRMkvLQ=";
-      };
-
-      x86_64-darwin = {
-        inherit zuluVersion;
-        jdkVersion = "25.0.0";
-        hash =
-          if enableJavaFX then
-            "sha256-J5Akv28y3XoJgw5q2Rh4xHv1AV1I33jnPslhxDrTc0E="
-          else
-            "sha256-ws3h0xPZBLeTw3YCFO76IH7Mp98E58QISr3x9rvrwno=";
+            "sha256-fww1aBPeMV26xE0aKi1hpcq51qyPLN/24yyZS+XALaE=";
       };
 
       aarch64-darwin = {
-        inherit zuluVersion;
-        jdkVersion = "25.0.0";
+        inherit zuluVersion jdkVersion;
         hash =
           if enableJavaFX then
-            "sha256-urxxVoayeNW0g0g80eefmG+FMVzVBaBvmMKj+S3URNE="
+            "sha256-/aWoDAXxCtXhGcsZCDjJe+hvIwHANZSw8NkBbjpgklk="
           else
-            "sha256-c/ZPa618PfMfunQPvLu+98Glzt7/u13zht15vHKrqbY=";
+            "sha256-dIR+eskwrRQ5UGB0Id1sCnzLPRy72LFmXySrYri33kI=";
       };
     };
   }

@@ -5,47 +5,57 @@
   installShellFiles,
   nix-update-script,
   stdenv,
-  fetchYarnDeps,
-  yarnConfigHook,
-  yarnBuildHook,
+  fetchPnpmDeps,
+  pnpmConfigHook,
+  pnpm_10,
   nodejs,
 }:
 
 buildGoModule (finalAttrs: {
   pname = "argocd";
-  version = "3.3.6";
+  version = "3.5.6";
 
   src = fetchFromGitHub {
     owner = "argoproj";
     repo = "argo-cd";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-84GlX9m1+Af9EPPdvLJcZIqhw7a1DBj1xKmUpNnngbk=";
+    hash = "sha256-Gv/7K3eU80ncOyHq/OPKneQTOVcsuYkJ2F9YiqNOdEU=";
   };
 
-  ui = stdenv.mkDerivation {
+  ui = stdenv.mkDerivation (uiAttrs: {
     pname = "argocd-ui";
     inherit (finalAttrs) version;
     src = finalAttrs.src + "/ui";
 
-    offlineCache = fetchYarnDeps {
-      yarnLock = "${finalAttrs.src}/ui/yarn.lock";
-      hash = "sha256-kqBolkQiwZUBic0f+Ek5HwYsOmro1+FStkDLXAre79o=";
+    pnpmDeps = fetchPnpmDeps {
+      inherit (uiAttrs) pname version src;
+      pnpm = pnpm_10;
+      fetcherVersion = 4;
+      hash = "sha256-WO0wDFGESRaWVbiXkHm6oX1CNAvYiScL60Vta4/FVAI=";
     };
 
     nativeBuildInputs = [
-      yarnConfigHook
-      yarnBuildHook
+      pnpmConfigHook
+      pnpm_10
       nodejs
     ];
 
-    postInstall = ''
+    buildPhase = ''
+      runHook preBuild
+      pnpm run build
+      runHook postBuild
+    '';
+
+    installPhase = ''
+      runHook preInstall
       mkdir -p $out
       cp -r dist $out/dist
+      runHook postInstall
     '';
-  };
+  });
 
   proxyVendor = true; # darwin/linux hash mismatch
-  vendorHash = "sha256-ABhvLf1wZm/2WdkzMOBBK/mycSjX+6/kKc0VcUhxvok=";
+  vendorHash = "sha256-RxBSSnCBcFEXP5iZo6nr5FihOIJH4dYB2bMHbvqANQc=";
 
   # Set target as ./cmd per cli-local
   # https://github.com/argoproj/argo-cd/blob/master/Makefile

@@ -18,16 +18,16 @@
 
 buildNpmPackage rec {
   pname = "basedpyright";
-  version = "1.39.3";
+  version = "1.39.8";
 
   src = fetchFromGitHub {
     owner = "detachhead";
     repo = "basedpyright";
     tag = "v${version}";
-    hash = "sha256-80RQO0UwDA9ZxIGQ0/8WaEj9QlqrQ4g7m9+WJDZrZbI=";
+    hash = "sha256-8S83CTd/td7USKxfCI0cXd2gPBMivi4QMRQwVgxhs6w=";
   };
 
-  npmDepsHash = "sha256-jut63CiYGTNIP27wYCPZnE/Ab90EWJnVkx58Oy3uo9o=";
+  npmDepsHash = "sha256-humpJB+fv3+PITcPCz3uY2jNANb3P7sXy0lFP8Eg58I=";
   npmWorkspace = "packages/pyright";
 
   preBuild = ''
@@ -40,15 +40,16 @@ buildNpmPackage rec {
     docify
     pkg-config
   ]
-  ++ lib.optional stdenv.hostPlatform.isDarwin [ clang_20 ]; # clang_21 breaks keytar
+  ++ lib.optional stdenv.hostPlatform.isDarwin clang_20; # clang_21 breaks keytar
 
   buildInputs = [ libsecret ];
 
   postInstall = ''
     mv "$out/bin/pyright" "$out/bin/basedpyright"
     mv "$out/bin/pyright-langserver" "$out/bin/basedpyright-langserver"
-    # Remove dangling symlinks created during installation (remove -delete to just see the files, or -print '%l\n' to see the target
-    find -L $out -type l -print -delete
+    # dist/ is a bundle whose only non-builtin require is the optional, darwin-only fsevents;
+    # the rest of node_modules is monorepo tooling that npm prune leaves behind
+    find "$out/lib/node_modules/pyright-root/node_modules" -mindepth 1 -maxdepth 1 ! -name fsevents -exec rm -rf {} +
   '';
 
   nativeInstallCheckInputs = [ versionCheckHook ];

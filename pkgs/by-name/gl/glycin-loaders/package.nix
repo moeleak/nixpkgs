@@ -7,7 +7,6 @@
   glib,
   gtk4,
   libglycin,
-  lcms2,
   libheif,
   libjxl,
   librsvg,
@@ -20,7 +19,19 @@
   shared-mime-info,
   rustc,
   rustPlatform,
+
+  # List of loaders to build.
+  # https://gitlab.gnome.org/GNOME/glycin/-/blob/2.1.1/meson_options.txt?ref_type=tags#L26-43
+  enabledLoaders ? [
+    "heif"
+    "image-rs"
+    "jxl"
+    "svg"
+  ],
 }:
+
+# Doesn't produce any output if no loaders are enabled
+assert enabledLoaders != [ ];
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "glycin-loaders";
@@ -55,23 +66,26 @@ stdenv.mkDerivation (finalAttrs: {
   checkInputs = [
     glib
     gtk4
-    lcms2
   ];
 
   mesonFlags = [
-    "-Dglycin-loaders=true"
-    "-Dglycin-thumbnailer=false"
-    "-Dlibglycin=false"
-    "-Dlibglycin-gtk4=false"
-    "-Dvapi=false"
+    (lib.mesonBool "glycin-loaders" true)
+    (lib.mesonBool "glycin-thumbnailer" false)
+    (lib.mesonBool "libglycin" false)
+    (lib.mesonBool "libglycin-gtk4" false)
+    (lib.mesonBool "vapi" false)
     (lib.mesonBool "tests" finalAttrs.finalPackage.doCheck)
+    (lib.mesonOption "loaders" (
+      lib.concatMapStringsSep "," (loader: "glycin-${loader}") enabledLoaders
+    ))
   ];
 
   strictDeps = true;
 
   postPatch = ''
-    substituteInPlace glycin-loaders/meson.build \
-      --replace-fail "cargo_target_dir / rust_target / loader," "cargo_target_dir / '${stdenv.hostPlatform.rust.cargoShortTarget}' / rust_target / loader,"
+    substituteInPlace meson.build --replace-fail \
+      "meson.get_external_property('rust_target')" \
+      "'${stdenv.hostPlatform.rust.cargoShortTarget}'"
   ''
   + lib.optionalString finalAttrs.finalPackage.doCheck ''
     chmod +x build-aux/setup-integration-test.py
@@ -88,9 +102,14 @@ stdenv.mkDerivation (finalAttrs: {
     export XDG_CACHE_HOME=$(mktemp -d)
   '';
 
-  env.CARGO_BUILD_TARGET = stdenv.hostPlatform.rust.rustcTargetSpec;
+  # Thumbnailer files are provided by glycin-thumbnailer
+  postInstall = ''
+    rm -r $out/share/thumbnailers
+  '';
 
   passthru = {
+    inherit enabledLoaders;
+
     tests = {
       withTests = finalAttrs.finalPackage.overrideAttrs {
         doCheck = true;
@@ -102,10 +121,12 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Glycin loaders for several formats";
     homepage = "https://gitlab.gnome.org/GNOME/glycin";
     teams = [ lib.teams.gnome ];
-    license = with lib.licenses; [
-      mpl20 # or
-      lgpl21Plus
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        mpl20
+        lgpl21Plus
+      ];
     platforms = lib.platforms.linux;
   };
 })

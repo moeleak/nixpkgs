@@ -17,11 +17,13 @@
   protobuf,
   gsl,
   libxml2,
-  libxslt,
   fftw,
   fftwFloat,
-  sqlite,
+  blas,
+  lapack,
+  libxslt,
   openssl,
+  sqlite,
   mpi,
   mpiSupport ? false,
 }:
@@ -42,12 +44,12 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "casacpp";
-  version = "6.7.5.18";
+  version = "6.7.6.14";
 
   src = fetchgit {
     url = "https://open-bitbucket.nrao.edu/scm/casa/casa6.git";
     rev = "refs/tags/${finalAttrs.version}";
-    hash = "sha256-75oIlaNAyu70KWSjz38LoYAvV7RJgzH/X9uBnGpriF4=";
+    hash = "sha256-ZMcowd7EqP5CO6JNbvbOZ3X9boPKKMUwRL2RBCHTo34=";
     fetchSubmodules = false;
   };
 
@@ -58,12 +60,22 @@ stdenv.mkDerivation (finalAttrs: {
     # leaving it empty, and remove hardcoded absolute cmake build paths from
     # Cflags (which would embed /nix/store paths from the build environment).
     ./casacpp-pkgconfig.patch
+
+    # TODO: remove this once the upstream resolves this issue
+    #   error: call to implicitly-deleted copy constructor of 'std::unique_ptr<vi::VisibilityIterator2>'
+    #   error: object of type 'std::unique_ptr<vi::VisibilityIterator2>' cannot be assigned because its copy assignment operator is implicitly deleted
+    ./Fix-Vi2DataProvider-move-semantics.patch
+
+    # fix missing LAPACK symbols
+    #   ld: symbol(s) not found, dgetrf_ dgetri_ dposv_ dpotri_
+    ./Link-synthesis-target-with-LAPACK-BLAS-libraries.patch
   ];
 
   postPatch = ''
     sed -i '/execute_process(COMMAND/,/OUTPUT_VARIABLE CASACPP_VERSION)/c\set(CASACPP_VERSION "${finalAttrs.version}")' CMakeLists.txt
     sed -i 's/string(REGEX MATCH.*CASACPP_VERSION)//' CMakeLists.txt
     substituteInPlace CMakeLists.txt \
+      --replace-fail 'set(CMAKE_CXX_STANDARD 17)' 'set(CMAKE_CXX_STANDARD 20)' \
       --replace-fail \
         'find_package(gRPC QUIET)' \
         'set(gRPC_FOUND 0)'
@@ -83,9 +95,11 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optional mpiSupport mpi;
 
   buildInputs = [
+    blas
     libxslt
-    sqlite
     openssl
+    sqlite
+    lapack
   ];
 
   propagatedBuildInputs = [

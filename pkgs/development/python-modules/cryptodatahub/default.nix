@@ -8,6 +8,7 @@
   pyfakefs,
   pytestCheckHook,
   python-dateutil,
+  pyyaml,
   setuptools,
   setuptools-scm,
   urllib3,
@@ -15,14 +16,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "cryptodatahub";
-  version = "1.1.0";
+  version = "1.6.1";
   pyproject = true;
 
   src = fetchFromGitLab {
     owner = "coroner";
     repo = "cryptodatahub";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Tz2VbWS5/sGjRsOKR7eWpWAJVNv1QMSjkepI7fVZq6w=";
+    hash = "sha256-iR+21qY1IxaGg9s9E82RbxSLMA+50ztDBXci1+iJPXY=";
   };
 
   build-system = [
@@ -41,6 +42,7 @@ buildPythonPackage (finalAttrs: {
     beautifulsoup4
     pyfakefs
     pytestCheckHook
+    pyyaml
   ];
 
   pythonImportsCheck = [ "cryptodatahub" ];
@@ -59,6 +61,8 @@ buildPythonPackage (finalAttrs: {
     # Tests require network access
     "test/common/test_utils.py"
   ];
+
+  passthru.updateScript = ./update.sh;
 
   meta = {
     description = "Repository of cryptography-related data";

@@ -5,7 +5,7 @@
 }:
 
 let
-  version = "5.15.18";
+  version = "5.15.19";
 
   mk = name: args: {
     inherit version;
@@ -22,7 +22,7 @@ lib.mapAttrs mk (lib.importJSON ./srcs-generated.json)
 // {
   # qtpim has no official releases
   qtpim = {
-    version = "unstable-2020-11-02";
+    version = "5.0.0-beta1-unstable-2020-10-01";
     src = fetchFromGitHub {
       owner = "qt";
       repo = "qtpim";

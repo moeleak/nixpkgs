@@ -7,14 +7,13 @@
 }:
 buildPythonPackage (finalAttrs: {
   pname = "types-paramiko";
-  version = "4.0.0.20250822";
+  version = "5.1.0.20261030";
   pyproject = true;
-  __structuredAttrs = true;
 
   src = fetchPypi {
     pname = "types_paramiko";
     inherit (finalAttrs) version;
-    hash = "sha256-G1awy9Puw9L9EjyesnBOYSt3fhWhdwWoBCeeplJeDFM=";
+    hash = "sha256-+7LnuNkBU31Q6Fq134qxmuxMeLXw7G//E0iNcMis9E8=";
   };
 
   build-system = [ setuptools ];

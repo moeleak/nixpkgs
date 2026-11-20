@@ -14,19 +14,29 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "openasar";
-  version = "0-unstable-2026-04-18";
+  version = "0-unstable-2026-07-24";
 
   src = fetchFromGitHub {
     owner = "GooseMod";
     repo = "OpenAsar";
-    rev = "6232c4f44ddf26d1256ae201aa539eadccd71b24";
-    hash = "sha256-ktS0aqv9BSFuZ44A1ux3QsXAHO5z7B33psaJ3Q7+nYk=";
+    rev = "5a44615cad9db23ae57573c498b26bae4e6e255b";
+    hash = "sha256-aKyhFsecE1nRYYQVSYPUm5MY69dfEv2MnmiyVxfrwhk=";
   };
 
+  patches = [
+    # Remove when upstream fix gets merged: https://github.com/GooseMod/OpenAsar/pull/262
+    ./readonly-modules-dir.patch
+  ];
   postPatch = ''
     # Hardcode unzip path
     substituteInPlace ./src/updater/moduleUpdater.js \
       --replace \'unzip\' \'${unzip}/bin/unzip\'
+
+    # Fix for videos and GIFs not playing
+    substituteInPlace src/cmdSwitches.js \
+      --replace-fail 'libopenh264-2.5.1-linux64.7.so' 'libopenh264-2.7.0-linux64.8.so' \
+      --replace-fail 'EnableDrDc,' ""
+
     # Remove auto-update feature
     echo "module.exports = async () => log('AsarUpdate', 'Removed');" > ./src/asarUpdate.js
   '';

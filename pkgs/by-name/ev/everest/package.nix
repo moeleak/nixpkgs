@@ -11,8 +11,8 @@
 
 let
   pname = "everest";
-  version = "6286";
-  rev = "dcc400b1724b4762ca92b50e8d274f66ddeafa0c";
+  version = "6696";
+  rev = "254c5d911485fe3187bd2051f0d74e6512512ee6";
   phome = "$out/lib/Celeste";
 in
 buildDotnetModule {
@@ -25,7 +25,7 @@ buildDotnetModule {
     fetchSubmodules = true;
     # TODO: use leaveDotGit = true and modify external/MonoMod in postFetch to please SourceLink
     # Microsoft.SourceLink.Common.targets(53,5): warning : Source control information is not available - the generated source link is empty.
-    hash = "sha256-I2Cy3gGAqD9Irxg44qFH48piJQSn1CpmetyUvJs35cE=";
+    hash = "sha256-zELowmDTDMT2G22U85B+p31XX3UagP5mvMOIWr6w2tU=";
   };
 
   nativeBuildInputs = [ autoPatchelfHook ];
@@ -102,7 +102,7 @@ buildDotnetModule {
 
   meta = {
     description = "Celeste mod loader (don't install; use celestegame instead)";
-    license = with lib.licenses; [ mit ];
+    license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ ulysseszhan ];
     homepage = "https://everestapi.github.io";
     platforms = [ "x86_64-linux" ];

@@ -3,20 +3,27 @@
   buildGoModule,
   fetchFromGitHub,
   nixosTests,
+  stdenv,
 }:
 
 buildGoModule (finalAttrs: {
   pname = "yggdrasil";
-  version = "0.5.13";
+  version = "0.5.15";
 
   src = fetchFromGitHub {
     owner = "yggdrasil-network";
     repo = "yggdrasil-go";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-L4eNrytAklblRrAQPf4zzgvrtHaZWmpTMcOLwkKMPCc=";
+    hash = "sha256-Z8niRksjOC6ZPx6Ot9QG9R3ZLWIJBTIjwGEa2EvBlg8=";
   };
 
-  vendorHash = "sha256-z09K/ZDw9mM7lfqeyZzi0WRSedzgKED0Sywf1kJXlDk=";
+  vendorHash = "sha256-pZjyeDNZFpXhFUs50JzBmo46jQv66YghT6OzuOh6eDg=";
+
+  # These tests require root, but look up the build user before skipping.
+  # Sandboxed Darwin build UIDs may have no account database entry.
+  checkFlags = lib.optionals stdenv.hostPlatform.isDarwin [
+    "-skip=^(TestCurrentUserid|TestCommonUsername)$"
+  ];
 
   subPackages = [
     "cmd/genkeys"

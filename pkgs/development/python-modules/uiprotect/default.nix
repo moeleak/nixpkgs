@@ -11,23 +11,19 @@
   aiohttp,
   av,
   convertertools,
-  dateparser,
   orjson,
   packaging,
   pillow,
   platformdirs,
   propcache,
   pydantic,
-  pydantic-extra-types,
-  pyjwt,
   rich,
   typer,
   yarl,
 
   # tests
-  aiosqlite,
-  asttokens,
   ffmpeg,
+  jsonschema,
   pytest-asyncio,
   pytest-benchmark,
   pytest-cov-stub,
@@ -38,21 +34,27 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "uiprotect";
-  version = "10.4.1";
+  version = "25.0.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "uilibs";
     repo = "uiprotect";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-J9SVsExFQMxUQSONsB6G8rb0nIu3sNKtHmiMdy6jpqk=";
+    hash = "sha256-2WRAVqhkAw5uX+icjT9fOD0hFe/zEjomk7qZmdXiKDY=";
   };
 
   build-system = [ poetry-core ];
 
   pythonRelaxDeps = [
+    "orjson"
+    "packaging"
     "platformdirs"
+    "propcache"
     "pydantic"
+    "pyjwt"
+    "rich"
+    "typer"
   ];
 
   dependencies = [
@@ -60,24 +62,20 @@ buildPythonPackage (finalAttrs: {
     aiohttp
     av
     convertertools
-    dateparser
     orjson
     packaging
     pillow
     platformdirs
     propcache
     pydantic
-    pydantic-extra-types
-    pyjwt
     rich
     typer
     yarl
   ];
 
   nativeCheckInputs = [
-    aiosqlite
-    asttokens
     ffmpeg # Required for command ffprobe
+    jsonschema
     pytest-asyncio
     pytest-benchmark
     pytest-cov-stub
@@ -87,6 +85,11 @@ buildPythonPackage (finalAttrs: {
   ];
 
   pytestFlags = [ "--benchmark-disable" ];
+
+  disabledTests = [
+    # not useful in nix packaging
+    "test_import_skips_optional_test_util_dependencies"
+  ];
 
   pythonImportsCheck = [ "uiprotect" ];
 

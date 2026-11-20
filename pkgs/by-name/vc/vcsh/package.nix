@@ -2,8 +2,8 @@
   lib,
   stdenv,
   fetchurl,
-  autoconf,
-  automake116x,
+  autoreconfHook,
+  installShellFiles,
   makeWrapper,
   pkg-config,
   unzip,
@@ -20,9 +20,16 @@ stdenv.mkDerivation (finalAttrs: {
     hash = "sha256-M/UME2kNCxwzngKXMYp0cdps7LWVwoS2I/mTrvPts7g=";
   };
 
+  postPatch = ''
+    patchShebangs build-aux/git-version-gen
+  '';
+
   nativeBuildInputs = [
-    autoconf
-    automake116x
+    # The files included in the release tarball require automake 1.16
+    # specifically. Regenerating files with autoreconf allows using newer
+    # versions.
+    autoreconfHook
+    installShellFiles
     makeWrapper
     pkg-config
     unzip
@@ -38,6 +45,15 @@ stdenv.mkDerivation (finalAttrs: {
       TestMost
     ]);
 
+  # The release archive lacks the build-aux/*.am fragments that configure
+  # needs to regenerate aminclude.am with the completion install rules,
+  # so install the completions manually.
+  postInstall = ''
+    installShellCompletion --cmd vcsh \
+      --bash completions/vcsh.bash \
+      --zsh completions/vcsh.zsh
+  '';
+
   outputs = [
     "out"
     "doc"
@@ -50,7 +66,6 @@ stdenv.mkDerivation (finalAttrs: {
     changelog = "https://github.com/RichiH/vcsh/blob/v${finalAttrs.version}/changelog";
     license = lib.licenses.gpl2Plus;
     maintainers = with lib.maintainers; [
-      ttuegel
       alerque
     ];
     platforms = lib.platforms.unix;

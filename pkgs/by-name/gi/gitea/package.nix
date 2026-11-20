@@ -1,6 +1,6 @@
 {
   lib,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
   makeWrapper,
   git,
@@ -13,14 +13,14 @@
   openssh,
   fetchPnpmDeps,
   pnpmConfigHook,
-  pnpm_10,
+  pnpm_11,
   stdenv,
   sqliteSupport ? true,
   nixosTests,
 }:
 
 let
-  pnpm = pnpm_10;
+  pnpm = pnpm_11;
 
   frontend = stdenv.mkDerivation (finalAttrs: {
     pname = "gitea-frontend";
@@ -29,8 +29,8 @@ let
     pnpmDeps = fetchPnpmDeps {
       inherit (finalAttrs) pname version src;
       inherit pnpm;
-      fetcherVersion = 3;
-      hash = "sha256-dewYYPO2wmNyYiQadoEKWJ10cghm6Lv7UE1iVlyNiEY=";
+      fetcherVersion = 4;
+      hash = "sha256-Q8PJfQ5RPKM1upeujKLd5msANQRj+Fjwz/Q+lqov0yI=";
     };
 
     nativeBuildInputs = [
@@ -38,6 +38,8 @@ let
       pnpmConfigHook
       pnpm
     ];
+
+    __darwinAllowLocalNetworking = true;
 
     buildPhase = ''
       make frontend
@@ -49,42 +51,30 @@ let
     '';
   });
 in
-buildGoModule rec {
+buildGo127Module (finalAttrs: {
   pname = "gitea";
-  version = "1.26.1";
-
-  src = fetchFromGitHub {
-    owner = "go-gitea";
-    repo = "gitea";
-    tag = "v${gitea.version}";
-    hash = "sha256-UlPS+gcSEzKY+g5y+k3NsL3b8FRVHnlqkiuJTz5ijFM=";
-  };
-
-  proxyVendor = true;
-
-  vendorHash = "sha256-JSyjJIdRePbSnKL6GHdjx5Xbnsniq6KHOlEFsYvMmbw=";
+  version = "28.3.0";
 
   outputs = [
     "out"
     "data"
   ];
 
-  patches = [ ./static-root-path.patch ];
-
-  # go-modules derivation doesn't provide $data
-  # so we need to wait until it is built, and then
-  # at that time we can then apply the substituteInPlace
-  overrideModAttrs = _: {
-    postPatch = ''
-      substituteInPlace go.mod \
-        --replace-fail "go 1.26.2" "go 1.26"
-    '';
+  src = fetchFromGitHub {
+    owner = "go-gitea";
+    repo = "gitea";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-y+sawjuhvZn9HBnrfzXtdBwH3i3oXQBYNoRhpsmdURY=";
   };
 
+  proxyVendor = true;
+
+  vendorHash = "sha256-H57+G/LeZobc6yzkeCdX4aPTc0mKdYUCTxOQFxzCeL4=";
+
   postPatch = ''
-    substituteInPlace modules/setting/server.go --subst-var data
-    substituteInPlace go.mod \
-      --replace-fail "go 1.26.2" "go 1.26"
+    substituteInPlace modules/setting/server.go \
+      --replace-fail '"gitea.dev/modules/util"' "" \
+      --replace-fail "StaticRootPath = util.IfZero(StaticRootPath, AppWorkPath)" "StaticRootPath = \"$data\""
   '';
 
   subPackages = [ "." ];
@@ -99,8 +89,8 @@ buildGoModule rec {
   ldflags = [
     "-s"
     "-w"
-    "-X main.Version=${version}"
-    "-X 'main.Tags=${lib.concatStringsSep " " tags}'"
+    "-X main.Version=${finalAttrs.version}"
+    "-X 'main.Tags=${lib.concatStringsSep " " finalAttrs.tags}'"
   ];
 
   postInstall = ''
@@ -110,6 +100,7 @@ buildGoModule rec {
     mkdir -p $out
     cp -R ./options/locale $out/locale
 
+    mv $out/bin/gitea{.dev,}
     wrapProgram $out/bin/gitea \
       --prefix PATH : ${
         lib.makeBinPath [
@@ -127,12 +118,15 @@ buildGoModule rec {
       lib.warn "gitea.passthru.data-compressed is deprecated. Use \"compressDrvWeb gitea.data\"."
         (compressDrvWeb gitea.data { });
 
-    tests = nixosTests.gitea;
+    tests = {
+      inherit (nixosTests) gitea gitea-actions-runner;
+    };
   };
 
   meta = {
     description = "Git with a cup of tea";
     homepage = "https://about.gitea.com";
+    changelog = "https://github.com/go-gitea/gitea/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [
       techknowlogick
@@ -140,4 +134,4 @@ buildGoModule rec {
     ];
     mainProgram = "gitea";
   };
-}
+})

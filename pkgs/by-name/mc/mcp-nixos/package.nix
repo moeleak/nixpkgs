@@ -3,29 +3,35 @@
   fetchFromGitHub,
   python3Packages,
 }:
-
+let
+  pythonPackages = python3Packages.overrideScope (
+    final: prev: {
+      # mcp v2 breaks fastmcp-slim
+      mcp = final.mcp_1;
+    }
+  );
+in
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "mcp-nixos";
-  version = "2.4.3";
+  version = "3.0.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "utensils";
     repo = "mcp-nixos";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-mWq9nnL4IGhUFkXJr8+t6BresOTDFS1caG8NuFqjrJg=";
+    hash = "sha256-dugBcQqUWItvuO3VYFANm/istcVwGilwzZ33cfaSW3g=";
   };
 
-  build-system = [ python3Packages.hatchling ];
+  build-system = [ pythonPackages.hatchling ];
 
-  dependencies = with python3Packages; [
+  dependencies = with pythonPackages; [
     beautifulsoup4
     fastmcp
-    mcp
     requests
   ];
 
-  nativeCheckInputs = with python3Packages; [
+  nativeCheckInputs = with pythonPackages; [
     pytestCheckHook
     pytest-asyncio
     pytest-cov-stub
@@ -34,11 +40,6 @@ python3Packages.buildPythonApplication (finalAttrs: {
   disabledTestPaths = [
     # Requires network access
     "tests/test_integration.py"
-  ];
-
-  disabledTests = [
-    # Requires network access
-    "test_valid_channel"
   ];
 
   pythonImportsCheck = [ "mcp_nixos" ];

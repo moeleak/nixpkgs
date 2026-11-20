@@ -4,25 +4,25 @@
   fetchFromGitHub,
   fetchPnpmDeps,
   nodejs,
-  pnpm_9,
+  pnpm_11,
   pnpmConfigHook,
   callPackage,
   testers,
   runCommand,
   writeText,
-  nix-update-script,
+  gitUpdater,
   lessc,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "lessc";
-  version = "4.6.3";
+  version = "4.9.1";
 
   src = fetchFromGitHub {
     owner = "less";
     repo = "less.js";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-udfqfjdIhQ6UGAeXCT5FbI+iXNqfkbQMqZnnIDUrQaQ=";
+    hash = "sha256-kRhXqmClUyz+W42qXaeBZ2rJXyjZbYl+sxqLGOg5I3Q=";
   };
 
   pnpmDeps = fetchPnpmDeps {
@@ -32,16 +32,16 @@ stdenv.mkDerivation (finalAttrs: {
       src
       pnpmWorkspaces
       ;
-    pnpm = pnpm_9;
-    fetcherVersion = 3;
-    hash = "sha256-ZdADm6WKPP48DK+ezk/jdzXVEBX161SqgYgU5fsCW2k=";
+    pnpm = pnpm_11;
+    fetcherVersion = 4;
+    hash = "sha256-uV91YMyqWKXmGdx20Z0+rjJKF02vL7vdomY0IzAky9U=";
   };
 
   strictDeps = true;
 
   nativeBuildInputs = [
     pnpmConfigHook
-    pnpm_9
+    pnpm_11
     nodejs
   ];
 
@@ -60,6 +60,7 @@ stdenv.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
+    CI=true pnpm prune --prod --ignore-scripts
     mkdir -p $out/{bin,lib/lessc}
     cp -r {packages,node_modules} $out/lib/lessc
     chmod +x $out/lib/lessc/packages/less/bin/lessc
@@ -69,7 +70,10 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   passthru = {
-    updateScript = nix-update-script { };
+    updateScript = gitUpdater {
+      rev-prefix = "v";
+      ignoredVersions = "alpha";
+    };
     plugins = callPackage ./plugins { };
     wrapper = callPackage ./wrapper { };
     withPlugins = fn: lessc.wrapper.override { plugins = fn lessc.plugins; };

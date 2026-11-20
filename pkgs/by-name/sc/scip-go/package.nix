@@ -6,16 +6,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "scip-go";
-  version = "0.2.4";
+  version = "0.2.9";
 
   src = fetchFromGitHub {
-    owner = "sourcegraph";
+    owner = "scip-code";
     repo = "scip-go";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-c2yCe1dtTVA6rWhphN7LGUY0lz9Xn/AVTSAB6uRMHs0=";
+    hash = "sha256-cl9GwCjysTit5nPG1uivEbz1HDaClFvYRVwutQ4W9AY=";
   };
 
-  vendorHash = "sha256-TPd0CvNoAlskbGtKi7exxy+u9HabFJdprJ595ybRRQ8=";
+  vendorHash = "sha256-5pQSrYS1SU2cwaWiGcYlVHm2pQIY68Is+F8611wNNXI=";
 
   ldflags = [
     "-s"
@@ -26,7 +26,7 @@ buildGoModule (finalAttrs: {
 
   meta = {
     description = "SCIP (SCIP Code Intelligence Protocol) indexer for Golang";
-    homepage = "https://github.com/sourcegraph/scip-go/tree/v${finalAttrs.version}";
+    homepage = "https://github.com/scip-code/scip-go/tree/v${finalAttrs.version}";
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ arikgrahl ];
     mainProgram = "scip-go";

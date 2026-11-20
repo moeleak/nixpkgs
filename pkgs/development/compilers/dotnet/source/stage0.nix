@@ -99,8 +99,8 @@ let
           old.passthru or { }
           // (
             let
-              inherit (vmr) targetRid updateScript;
-              otherRids = lib.remove targetRid (
+              inherit (vmr) hostRid updateScript;
+              otherRids = lib.remove hostRid (
                 map (system: dotnetCorePackages.systemToDotnetRid system) vmr.meta.platforms
               );
 
@@ -153,15 +153,16 @@ let
 
                   [[ ! -e eng/PublishSourceBuild.props ]] ||
                     substituteInPlace eng/PublishSourceBuild.props \
-                      --replace-fail 'AfterTargets="Publish"' "" \
-                      --replace-fail 'AfterTargets="DiscoverArtifacts"' ""
+                      --replace-quiet 'AfterTargets="Publish"' "" \
+                      --replace-quiet 'AfterTargets="Execute"' "" \
+                      --replace-quiet 'AfterTargets="DiscoverArtifacts"' ""
                 '';
                 buildFlags = [
                   "--online"
                 ]
                 ++ old.buildFlags
                 ++ [
-                  "-p:RootRepo=source-build-reference-packages"
+                  "-p:RootRepo=source-build-assets"
                   "-p:SkipPrepareSdkArchive=true"
                 ];
                 prebuiltPackages = null;
@@ -179,6 +180,7 @@ let
                 trap 'rm -fr "$tmp"' EXIT
 
                 HOME=$tmp/.home
+                mkdir -p "$HOME"
                 cd "$tmp"
 
                 phases="''${prePhases[*]:-} unpackPhase patchPhase ''${preConfigurePhases[*]:-} \
@@ -193,7 +195,7 @@ let
 
                 combined=$(nix-build ${toString ./combine-deps.nix} \
                   --arg list "[ ''${depsFiles[*]} ]" \
-                  --argstr baseRid ${targetRid} \
+                  --argstr baseRid ${hostRid} \
                   --arg otherRids '${lib.generators.toPretty { multiline = false; } otherRids}')
 
                 jq . "$combined" > deps.json

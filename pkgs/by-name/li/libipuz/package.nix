@@ -4,7 +4,6 @@
   cargo,
   fetchFromGitLab,
   gi-docgen,
-  glib,
   gobject-introspection,
   json-glib,
   meson,
@@ -15,14 +14,17 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "libipuz";
-  version = "0.5.2";
+  version = "0.5.6";
+
+  strictDeps = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitLab {
     domain = "gitlab.gnome.org";
     owner = "jrb";
     repo = "libipuz";
     rev = finalAttrs.version;
-    hash = "sha256-8bFMtqRD90SF9uT39Wkjf0eUef+0HgyrqY+DFA/xutI=";
+    hash = "sha256-5V4tbJuDgZ7HLXCnhYvFk2DnWa7ZGUr9WcthGwLjxmU=";
   };
 
   cargoRoot = "libipuz/rust";
@@ -33,13 +35,12 @@ stdenv.mkDerivation (finalAttrs: {
       version
       cargoRoot
       ;
-    hash = "sha256-Aw/caE5Z5JxoKLEr2Dr2wq6cyFleNNwtKM1yXM8ZWmU=";
+    hash = "sha256-mkhjtgLt5lIuj32QmMcb5/TQZCai7mwLkXvTRcjO/+g=";
   };
 
   nativeBuildInputs = [
     cargo
     gi-docgen
-    glib
     gobject-introspection
     meson
     ninja
@@ -48,11 +49,9 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    glib
+    gi-docgen
     json-glib
   ];
-
-  passthru.updateScript = nix-update-script { };
 
   meta = {
     description = "Library for parsing .ipuz puzzle files";

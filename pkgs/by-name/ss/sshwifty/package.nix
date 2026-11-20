@@ -1,6 +1,6 @@
 {
   lib,
-  buildGoModule,
+  buildGoLatestModule,
   fetchFromGitHub,
   fetchNpmDeps,
   nodejs,
@@ -9,15 +9,17 @@
   nixosTests,
   nix-update-script,
 }:
-buildGoModule (finalAttrs: {
+# Upstream updates regularly bump the minimum required Go version,
+# so let's build using the latest Go available in nixpkgs.
+buildGoLatestModule (finalAttrs: {
   pname = "sshwifty";
-  version = "0.4.5-beta-release";
+  version = "0.4.12-beta-release";
 
   src = fetchFromGitHub {
     owner = "nirui";
     repo = "sshwifty";
     tag = finalAttrs.version;
-    hash = "sha256-b6DgDhnaeIT8HnE2+TNzI2XPmERwPdnv6U8cu0ZZmAc=";
+    hash = "sha256-zp/TqvjAb+yDOVkFXjXML/TxomIyPEG8fLq6BeDnSxU=";
   };
 
   nativeBuildInputs = [
@@ -32,10 +34,10 @@ buildGoModule (finalAttrs: {
 
   npmDeps = fetchNpmDeps {
     inherit (finalAttrs) src;
-    hash = "sha256-xfnG5ONEVA58ZHmFoG6x9bYxwHuAjq7VsqxifEH2nQk=";
+    hash = "sha256-t6g83QNq5hCNXPx5dcYYCaBJbjyXAao33qvdbZFCxvo=";
   };
 
-  vendorHash = "sha256-s9wjaxeuIBClyBwDSZvnSVxXh/RI6oOITU2cL3oNb5o=";
+  vendorHash = "sha256-fXQW97/ztjerM62rw1k1ZKD2LSBV2iKLZkk1hJ7HhXE=";
 
   preBuild = ''
     # Generate static pages

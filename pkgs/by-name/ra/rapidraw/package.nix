@@ -10,6 +10,8 @@
   openssl,
   onnxruntime,
   webkitgtk_4_1,
+  aws-lc,
+  oniguruma,
   gtk3,
   glib,
   gdk-pixbuf,
@@ -33,29 +35,31 @@
   dbus,
   gvfs,
   libheif,
+  libgphoto2,
   glib-networking,
   nodejs_24,
   npmHooks,
   cargo-tauri,
   writableTmpDirAsHomeHook,
+  nix-update-script,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "rapidraw";
-  version = "1.5.5";
+  version = "1.7.0";
 
   src = fetchFromGitHub {
     owner = "CyberTimon";
     repo = "RapidRAW";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-CnH8EuHzHxuXbnOry2gMU/tMqpE8++ztyNPk3HHdZqE=";
+    hash = "sha256-VysHU8f67u+eDBDUet4iK2t++MWhZAxrKI6o3x6HjL4=";
   };
 
-  cargoHash = "sha256-c2MK1DyonfeZKfZAVWfwVh/In5SqKq7nnFrlz2686SM=";
+  cargoHash = "sha256-ZwiVvHEFzpqJ/NfTrhAZn8KEkrfYWFlT71ThQWPL+xk=";
 
   npmDeps = fetchNpmDeps {
     inherit (finalAttrs) src;
-    hash = "sha256-1A6b63FjNvkAbu62dRXfMjTL1y2wr2gEsZkLqYvTk0w=";
+    hash = "sha256-MbecY5iU1Swc1gCPsIaiiOJ2/BZx7j5+qSW9tH5tyKs=";
   };
 
   nativeBuildInputs = [
@@ -65,10 +69,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
     nodejs_24
     npmHooks.npmConfigHook
     cargo-tauri.hook
+    rustPlatform.bindgenHook
     writableTmpDirAsHomeHook
   ];
 
   buildInputs = [
+    aws-lc
+    oniguruma
     nodejs_24
     glib-networking
     openssl
@@ -92,14 +99,15 @@ rustPlatform.buildRustPackage (finalAttrs: {
     zlib
     libGL
     dbus
-    gvfs
     libheif
     onnxruntime
     wrapGAppsHook4
+    libgphoto2
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [
     webkitgtk_4_1
     libappindicator
+    gvfs
   ];
 
   cargoRoot = "src-tauri";
@@ -113,15 +121,17 @@ rustPlatform.buildRustPackage (finalAttrs: {
     substituteInPlace src-tauri/tauri.conf.json \
       --replace-fail '  "identifier": "io.github.CyberTimon.RapidRAW",' '  "identifier": "io.github.CyberTimon.RapidRAW", "mainBinaryName": "rapidraw",'
 
-    # Disable downloading of ONNX runtime library this is correctly linked during postInstall
+    # Patch out required runtime dependencies to avoid downloading them during the build
+    # onnxruntime is correctly linked during postInstall
     substituteInPlace src-tauri/build.rs \
-      --replace-fail 'if !is_valid' 'if false'
+      --replace-fail 'runtime_libraries(&target_os, &target_arch)' 'Vec::<(&str, &str, &str)>::new()'
   '';
 
-  # Fix dyld error about onnxruntime not being loaded on darwin during cargo test
-  preCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
-    export DYLD_LIBRARY_PATH="${onnxruntime}/lib:$DYLD_LIBRARY_PATH"
-  '';
+  tauriBuildFlags = [
+    "--no-sign"
+    "--features"
+    "tethering"
+  ];
 
   dontWrapGApps = true;
 
@@ -141,8 +151,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
       ln -sf ${onnxruntime}/lib/libonnxruntime.so $out/lib/RapidRAW/resources/libonnxruntime.so
     ''
     + lib.optionalString stdenv.hostPlatform.isDarwin ''
-      # The binary links against @rpath/libonnxruntime.*.dylib but has no LC_RPATH entries
-      install_name_tool -add_rpath "${onnxruntime}/lib" "$out/Applications/RapidRAW.app/Contents/MacOS/rapidraw"
       # The app also dlopen()s libonnxruntime.dylib at a hardcoded path inside the bundle
       mkdir -p "$out/Applications/RapidRAW.app/Contents/Resources/resources"
       ln -sf ${onnxruntime}/lib/libonnxruntime.dylib "$out/Applications/RapidRAW.app/Contents/Resources/resources/libonnxruntime.dylib"
@@ -158,6 +166,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
       wrapGApp "$out/Applications/RapidRAW.app/Contents/MacOS/rapidraw" \
         --set ORT_STRATEGY "system"
     '';
+
+  passthru.updateScript = nix-update-script { };
 
   meta = {
     description = "Blazingly-fast, non-destructive, and GPU-accelerated RAW image editor built with performance in mind";

@@ -1,5 +1,6 @@
 {
-  buildGoModule,
+  # Version 1.27 override necessary because it is not yet the default.
+  buildGo127Module,
   fetchFromGitHub,
   fetchzip,
   installShellFiles,
@@ -9,10 +10,10 @@
 }:
 
 let
-  version = "2.8.6";
-  srcHash = "sha256-pKP4g2pTMYtx/B/Y3ow7tvDdhCSuwbszzeLVXB0W7Bo=";
-  vendorHash = "sha256-VBafft9/AuXaHWvZymy7P9gaSuO8D6IZHfK68Ixp3mI=";
-  manifestsHash = "sha256-h/HR/rJwPWXiuoj9T+LajdsdT4Jo8/EuN+O1I7e9sjI=";
+  version = "2.10.0";
+  srcHash = "sha256-BE8uDHDMaOOEFOb6UEIH8L5uzVKn/Eybf2fynLkD2Pc=";
+  vendorHash = "sha256-l/4P92/8tpBuQodAw6aHpGpm1sm/t0a605CUyVRdxKY=";
+  manifestsHash = "sha256-61BEm2D20+Ssczu72Wle80+5ZitHqRBnQshS8Ia+7Bg=";
 
   manifests = fetchzip {
     url = "https://github.com/fluxcd/flux2/releases/download/v${version}/manifests.tar.gz";
@@ -21,14 +22,14 @@ let
   };
 in
 
-buildGoModule rec {
+buildGo127Module (finalAttrs: {
   pname = "fluxcd";
   inherit vendorHash version;
 
   src = fetchFromGitHub {
     owner = "fluxcd";
     repo = "flux2";
-    rev = "v${version}";
+    rev = "v${finalAttrs.version}";
     hash = srcHash;
   };
 
@@ -44,7 +45,7 @@ buildGoModule rec {
   ldflags = [
     "-s"
     "-w"
-    "-X main.VERSION=${version}"
+    "-X main.VERSION=${finalAttrs.version}"
   ];
 
   subPackages = [ "cmd/flux" ];
@@ -55,9 +56,12 @@ buildGoModule rec {
   #   panic: mkdir /homeless-shelter: permission denied
   nativeCheckInputs = [ writableTmpDirAsHomeHook ];
 
+  # TestPluginSearch and TestPluginSearchErrors start a local HTTP server for the tests.
+  __darwinAllowLocalNetworking = true;
+
   doInstallCheck = true;
   installCheckPhase = ''
-    $out/bin/flux --version | grep ${version} > /dev/null
+    $out/bin/flux --version | grep ${finalAttrs.version} > /dev/null
   '';
 
   postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
@@ -70,7 +74,7 @@ buildGoModule rec {
   passthru.updateScript = ./update.sh;
 
   meta = {
-    changelog = "https://github.com/fluxcd/flux2/releases/tag/v${version}";
+    changelog = "https://github.com/fluxcd/flux2/releases/tag/v${finalAttrs.version}";
     description = "Open and extensible continuous delivery solution for Kubernetes";
     downloadPage = "https://github.com/fluxcd/flux2/";
     longDescription = ''
@@ -85,8 +89,8 @@ buildGoModule rec {
       ryan4yin
       SchahinRohani
       stealthybox
-      superherointj
+      videl
     ];
     mainProgram = "flux";
   };
-}
+})

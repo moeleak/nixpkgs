@@ -16,7 +16,7 @@ stdenv.mkDerivation rec {
     repo = "qoauth";
     rev = "v${version}";
     name = "qoauth-${version}.tar.gz";
-    sha256 = "1b2jdqs526ac635yb2whm049spcsk7almnnr6r5b4yqhq922anw3";
+    hash = "sha256-g1slRMIQe7JKNtnaStWZml2dCKiQi+XLMEwZUTRuUqw=";
   };
 
   postPatch = ''
@@ -40,6 +40,7 @@ stdenv.mkDerivation rec {
 
   meta = {
     description = "Qt library for OAuth authentication";
+    homepage = "https://github.com/ayoy/qoauth";
     inherit (qtbase.meta) platforms;
     license = lib.licenses.lgpl21;
   };

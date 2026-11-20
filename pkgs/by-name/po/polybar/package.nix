@@ -1,5 +1,4 @@
 {
-  config,
   cairo,
   cmake,
   fetchFromGitHub,
@@ -8,7 +7,6 @@
   libxdmcp,
   libpthread-stubs,
   libxcb,
-  pcre,
   pkg-config,
   python3,
   python3Packages, # sphinx-build
@@ -36,7 +34,7 @@
   alsaSupport ? true,
   githubSupport ? false,
   mpdSupport ? false,
-  pulseSupport ? config.pulseaudio or false,
+  pulseSupport ? false,
   iwSupport ? false,
   nlSupport ? true,
   i3Support ? false,
@@ -68,7 +66,6 @@ stdenv.mkDerivation (finalAttrs: {
     libxdmcp
     libpthread-stubs
     libxcb
-    pcre
     python3
     xcbproto
     libxcb-util
@@ -132,7 +129,6 @@ stdenv.mkDerivation (finalAttrs: {
     '';
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [
-      afldcr
       moni
     ];
     mainProgram = "polybar";

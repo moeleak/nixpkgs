@@ -68,17 +68,14 @@ let
     debug = {
       # Necessary for BTF and crashkernel
       DEBUG_INFO = yes;
-      DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT = whenAtLeast "5.18" yes;
-      # Reduced debug info conflict with BTF and have been enabled in
-      # aarch64 defconfig since 5.13
-      DEBUG_INFO_REDUCED = whenAtLeast "5.13" (option no);
-      # Intermittently breaks on 5.10 for unknown reasons.
-      # https://lore.kernel.org/r/6dd6eef7-15cb-00a3-c216-d6eaaa5cbf54@est.tech
-      DEBUG_INFO_BTF = whenAtLeast "5.11" (option yes);
+      DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT = yes;
+      # Reduced debug info conflict with BTF
+      DEBUG_INFO_REDUCED = option no;
+      DEBUG_INFO_BTF = option yes;
       # Allow loading modules with mismatched BTFs
       # FIXME: figure out how to actually make BTFs reproducible instead
       # See https://github.com/NixOS/nixpkgs/pull/181456 for details.
-      MODULE_ALLOW_BTF_MISMATCH = whenAtLeast "5.18" (option yes);
+      MODULE_ALLOW_BTF_MISMATCH = option yes;
       BPF_LSM = option yes;
       DEBUG_KERNEL = yes;
       DEBUG_DEVRES = no;
@@ -109,7 +106,7 @@ let
       NETCONSOLE_DYNAMIC = yes;
 
       # Export known printks in debugfs
-      PRINTK_INDEX = whenAtLeast "5.15" yes;
+      PRINTK_INDEX = yes;
 
       # Enable crashkernel support
       PROC_VMCORE = yes;
@@ -130,7 +127,7 @@ let
       PM_WAKELOCKS = yes;
       POWERCAP = yes;
       # ACPI Firmware Performance Data Table Support
-      ACPI_FPDT = whenAtLeast "5.12" (option yes);
+      ACPI_FPDT = option yes;
       # ACPI Heterogeneous Memory Attribute Table Support
       ACPI_HMAT = option yes;
       # ACPI Platform Error Interface
@@ -170,7 +167,7 @@ let
 
       # Default SATA link power management to "medium with device initiated PM"
       # for some extra power savings.
-      SATA_MOBILE_LPM_POLICY = whenAtLeast "5.18" (freeform "3");
+      SATA_MOBILE_LPM_POLICY = freeform "3";
 
       # GPIO power management
       POWER_RESET_GPIO = option yes;
@@ -184,8 +181,8 @@ let
       INTEL_RAPL = module;
       X86_INTEL_LPSS = yes;
       X86_INTEL_PSTATE = yes;
-      X86_AMD_PSTATE = whenAtLeast "5.17" yes;
-      X86_AMD_PSTATE_DYNAMIC_EPP = whenAtLeast "7.1" yes;
+      X86_AMD_PSTATE = yes;
+      AMD_PMF_UTIL_SUPPORT = whenAtLeast "7.3" yes;
       # Intel DPTF (Dynamic Platform and Thermal Framework) Support
       ACPI_DPTF = yes;
 
@@ -203,11 +200,10 @@ let
       CHT_WC_PMIC_OPREGION = yes;
       INTEL_SOC_PMIC_CHTDC_TI = yes;
       CHT_DC_TI_PMIC_OPREGION = yes;
-      MFD_TPS68470 = whenOlder "5.13" yes;
       TPS68470_PMIC_OPREGION = yes;
 
       # Enable Intel thermal hardware feedback
-      INTEL_HFI_THERMAL = whenAtLeast "5.18" yes;
+      INTEL_HFI_THERMAL = yes;
     };
 
     external-firmware = {
@@ -228,14 +224,15 @@ let
     };
 
     memory = {
-      DAMON = whenAtLeast "5.15" yes;
-      DAMON_VADDR = whenAtLeast "5.15" yes;
-      DAMON_PADDR = whenAtLeast "5.16" yes;
-      DAMON_SYSFS = whenAtLeast "5.18" yes;
-      DAMON_DBGFS = whenBetween "5.15" "6.9" yes;
-      DAMON_RECLAIM = whenAtLeast "5.16" yes;
-      DAMON_LRU_SORT = whenAtLeast "6.0" yes;
+      DAMON = yes;
+      DAMON_VADDR = yes;
+      DAMON_PADDR = yes;
+      DAMON_SYSFS = yes;
+      DAMON_DBGFS = whenOlder "6.9" yes;
+      DAMON_RECLAIM = yes;
+      DAMON_LRU_SORT = yes;
       DAMON_STAT = whenAtLeast "6.17" yes;
+      DAMON_STAT_ENABLED_DEFAULT = whenAtLeast "6.17" no;
       # Support recovering from memory failures on systems with ECC and MCA recovery.
       MEMORY_FAILURE = yes;
 
@@ -247,6 +244,10 @@ let
       # This check isn't super accurate but it's close enough
       HIGHMEM = option yes;
       BOUNCE = option yes;
+    };
+
+    iommu = lib.optionalAttrs stdenv.hostPlatform.isAarch64 {
+      ARM_SMMU_V3_SVA = yes;
     };
 
     memtest = {
@@ -300,6 +301,7 @@ let
       XDP_SOCKETS = yes;
       XDP_SOCKETS_DIAG = yes;
       WAN = yes;
+      TCP_AO = whenAtLeast "6.7" yes;
       TCP_CONG_ADVANCED = yes;
       TCP_CONG_CUBIC = yes; # This is the default congestion control algorithm since 2.6.19
       # Required by systemd per-cgroup firewalling
@@ -355,7 +357,7 @@ let
       NETFILTER_NETLINK_GLUE_CT = yes;
       NF_TABLES_INET = yes;
       NF_TABLES_NETDEV = yes;
-      NFT_REJECT_NETDEV = whenAtLeast "5.11" module;
+      NFT_REJECT_NETDEV = module;
 
       # IP: Netfilter Configuration
       NF_TABLES_IPV4 = yes;
@@ -366,7 +368,7 @@ let
       NF_TABLES_BRIDGE = module;
       # Expose some debug info
       NF_CONNTRACK_PROCFS = yes;
-      NF_FLOW_TABLE_PROCFS = whenAtLeast "6.0" yes;
+      NF_FLOW_TABLE_PROCFS = yes;
 
       # needed for `dropwatch`
       # Builtin-only since https://github.com/torvalds/linux/commit/f4b6bcc7002f0e3a3428bac33cf1945abff95450
@@ -405,12 +407,15 @@ let
       # HAM radio
       HAMRADIO = whenOlder "7.1" yes;
       AX25 = whenOlder "7.1" module;
+
+      # Gate for the DINGHAI_PF module
+      DINGHAI = whenAtLeast "7.3" yes;
     }
     // lib.optionalAttrs (stdenv.hostPlatform.system == "aarch64-linux") {
       # Not enabled by default, hides modules behind it
       NET_VENDOR_MEDIATEK = yes;
       # Enable SoC interface for MT7915 module, required for MT798X.
-      MT7986_WMAC = whenBetween "5.18" "6.6" yes;
+      MT7986_WMAC = whenOlder "6.6" yes;
       MT798X_WMAC = whenAtLeast "6.6" yes;
     };
 
@@ -468,8 +473,6 @@ let
       FRAMEBUFFER_CONSOLE_ROTATION = yes;
       FRAMEBUFFER_CONSOLE_DETECT_PRIMARY = yes;
       FB_GEODE = lib.mkIf (stdenv.hostPlatform.system == "i686-linux") yes;
-      # Use simplefb on older kernels where we don't have simpledrm (enabled below)
-      FB_SIMPLE = whenOlder "5.15" yes;
       DRM_FBDEV_EMULATION = yes;
     };
 
@@ -507,17 +510,13 @@ let
         NOUVEAU_LEGACY_CTX_SUPPORT = whenOlder "6.3" no;
 
         # Enable simpledrm and use it for generic framebuffer
-        # Technically added in 5.14, but adding more complex configuration is not worth it
-        DRM_SIMPLEDRM = whenAtLeast "5.15" yes;
-        SYSFB_SIMPLEFB = whenAtLeast "5.15" yes;
+        DRM_SIMPLEDRM = yes;
+        SYSFB_SIMPLEFB = yes;
 
         # Allow specifying custom EDID on the kernel command line
         DRM_LOAD_EDID_FIRMWARE = yes;
         VGA_SWITCHEROO = lib.mkIf stdenv.hostPlatform.isx86 yes; # Hybrid graphics support
-        DRM_GMA500 = lib.mkIf stdenv.hostPlatform.isx86 (whenAtLeast "5.12" module);
-        DRM_GMA600 = lib.mkIf stdenv.hostPlatform.isx86 (whenOlder "5.13" yes);
-        DRM_GMA3600 = lib.mkIf stdenv.hostPlatform.isx86 (whenOlder "5.12" yes);
-        DRM_VMWGFX_FBCON = lib.mkIf stdenv.hostPlatform.isx86 (whenOlder "6.1" yes);
+        DRM_GMA500 = lib.mkIf stdenv.hostPlatform.isx86 module;
         # (experimental) amdgpu support for verde and newer chipsets
         DRM_AMDGPU_SI = yes;
         # (stable) amdgpu support for bonaire and newer chipsets
@@ -526,10 +525,7 @@ let
         DRM_DP_AUX_CHARDEV = whenOlder "6.10" yes;
         DRM_DISPLAY_DP_AUX_CHARDEV = whenAtLeast "6.10" yes;
         # amdgpu display core (DC) support
-        DRM_AMD_DC_DCN3_0 = lib.mkIf (with stdenv.hostPlatform; isx86) (whenOlder "5.11" yes);
-        DRM_AMD_DC_DCN = lib.mkIf (with stdenv.hostPlatform; isx86 || isPower64) (
-          whenBetween "5.11" "6.4" yes
-        );
+        DRM_AMD_DC_DCN = lib.mkIf (with stdenv.hostPlatform; isx86 || isPower64) (whenOlder "6.4" yes);
         # Not available when using clang
         # See: https://github.com/torvalds/linux/blob/172a9d94339cea832d89630b89d314e41d622bd8/drivers/gpu/drm/amd/display/Kconfig#L14
         DRM_AMD_DC_FP = lib.mkIf (!stdenv.cc.isClang) (whenAtLeast "6.4" yes);
@@ -542,7 +538,7 @@ let
         # Enable AMD secure display when available
         DRM_AMD_SECURE_DISPLAY = lib.mkIf (
           with stdenv.hostPlatform;
-          (lib.versionAtLeast version "5.13" && (isx86 || isPower64))
+          (isx86 || isPower64)
           || (lib.versionAtLeast version "6.2" && isAarch64 && !stdenv.cc.isClang)
           || (lib.versionAtLeast version "6.5" && isLoongArch64 && !stdenv.cc.isClang)
           || (lib.versionAtLeast version "6.10" && isRiscV64 && !stdenv.cc.isClang)
@@ -576,9 +572,9 @@ let
             # Enable Hyper-V guest stuff
             HYPERV = whenAtLeast "6.18" yes;
             # Enable Hyper-V Synthetic DRM Driver
-            DRM_HYPERV = whenAtLeast "5.14" module;
+            DRM_HYPERV = module;
             # And disable the legacy framebuffer driver when we have the new one
-            FB_HYPERV = whenBetween "5.14" "7.0" no;
+            FB_HYPERV = whenOlder "7.0" no;
           }
       // lib.optionalAttrs (stdenv.hostPlatform.system == "x86_64-linux") {
         # Intel GVT-g graphics virtualization supports 64-bit only
@@ -609,6 +605,12 @@ let
       # Do not enable Nova drivers, which are still WIP. This is the Kconfig default.
       NOVA_CORE = whenAtLeast "6.15" no;
       DRM_NOVA = whenAtLeast "6.16" no;
+
+      ANDROID_BINDER_IPC_RUST = whenAtLeast "7.4" yes;
+
+      # Do not enable Tyr yet, it's stil WIP. It might conflict with
+      # Panthor. aarch64 only, that's a Mali GPU driver.
+      DRM_TYR = lib.mkIf stdenv.hostPlatform.isAarch64 (whenAtLeast "6.18" no);
     };
 
     sound = {
@@ -632,33 +634,22 @@ let
     // lib.optionalAttrs (stdenv.hostPlatform.system == "x86_64-linux") {
       SND_SOC_INTEL_SOUNDWIRE_SOF_MACH = module;
       SND_SOC_INTEL_USER_FRIENDLY_LONG_NAMES = yes; # dep of SOF_MACH
-      SND_SOC_SOF_INTEL_SOUNDWIRE_LINK = whenOlder "5.11" yes; # dep of SOF_MACH
       SND_SOC_SOF_TOPLEVEL = yes;
       SND_SOC_SOF_ACPI = module;
       SND_SOC_SOF_PCI = module;
-      SND_SOC_SOF_APOLLOLAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_APOLLOLAKE_SUPPORT = whenOlder "5.12" yes;
-      SND_SOC_SOF_CANNONLAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_CANNONLAKE_SUPPORT = whenOlder "5.12" yes;
-      SND_SOC_SOF_COFFEELAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_COFFEELAKE_SUPPORT = whenOlder "5.12" yes;
-      SND_SOC_SOF_COMETLAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_COMETLAKE_LP_SUPPORT = whenOlder "5.12" yes;
-      SND_SOC_SOF_ELKHARTLAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_ELKHARTLAKE_SUPPORT = whenOlder "5.12" yes;
-      SND_SOC_SOF_GEMINILAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_GEMINILAKE_SUPPORT = whenOlder "5.12" yes;
+      SND_SOC_SOF_APOLLOLAKE = module;
+      SND_SOC_SOF_CANNONLAKE = module;
+      SND_SOC_SOF_COFFEELAKE = module;
+      SND_SOC_SOF_COMETLAKE = module;
+      SND_SOC_SOF_ELKHARTLAKE = module;
+      SND_SOC_SOF_GEMINILAKE = module;
       SND_SOC_SOF_HDA_AUDIO_CODEC = yes;
       SND_SOC_SOF_HDA_LINK = yes;
-      SND_SOC_SOF_ICELAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_ICELAKE_SUPPORT = whenOlder "5.12" yes;
+      SND_SOC_SOF_ICELAKE = module;
       SND_SOC_SOF_INTEL_TOPLEVEL = yes;
-      SND_SOC_SOF_JASPERLAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_JASPERLAKE_SUPPORT = whenOlder "5.12" yes;
-      SND_SOC_SOF_MERRIFIELD = whenAtLeast "5.12" module;
-      SND_SOC_SOF_MERRIFIELD_SUPPORT = whenOlder "5.12" yes;
-      SND_SOC_SOF_TIGERLAKE = whenAtLeast "5.12" module;
-      SND_SOC_SOF_TIGERLAKE_SUPPORT = whenOlder "5.12" yes;
+      SND_SOC_SOF_JASPERLAKE = module;
+      SND_SOC_SOF_MERRIFIELD = module;
+      SND_SOC_SOF_TIGERLAKE = module;
     };
 
     usb = {
@@ -666,13 +657,17 @@ let
 
       USB_EHCI_ROOT_HUB_TT = yes; # Root Hub Transaction Translators
       USB_EHCI_TT_NEWSCHED = yes; # Improved transaction translator scheduling
-      USB_HIDDEV = yes; # USB Raw HID Devices (like monitor controls and Uninterruptable Power Supplies)
+      USB_HIDDEV = yes; # USB Raw HID Devices (like monitor controls and Uninterruptible Power Supplies)
 
       # default to dual role mode
       USB_DWC2_DUAL_ROLE = yes;
       USB_DWC3_DUAL_ROLE = yes;
 
       USB_XHCI_SIDEBAND = whenAtLeast "6.16" yes; # needed for audio offload
+
+      # The default (=y) forces us to have the XHCI firmware available in initrd,
+      # which our initrd builder can't currently do easily.
+      USB_XHCI_TEGRA = lib.mkIf stdenv.hostPlatform.isAarch64 module;
     };
 
     usb-serial = {
@@ -707,10 +702,10 @@ let
       EXT4_FS_POSIX_ACL = yes;
       EXT4_FS_SECURITY = yes;
 
-      NTFS_FS = whenBetween "5.15" "6.9" no;
       NTFS_FS_POSIX_ACL = whenAtLeast "7.1" yes;
-      NTFS3_LZX_XPRESS = whenAtLeast "5.15" yes;
-      NTFS3_FS_POSIX_ACL = whenAtLeast "5.15" yes;
+      NTFS_FS_WOF_COMPRESSION = whenAtLeast "7.3" yes;
+      NTFS3_LZX_XPRESS = yes;
+      NTFS3_FS_POSIX_ACL = yes;
 
       REISERFS_FS_XATTR = whenOlder "6.13" (option yes);
       REISERFS_FS_POSIX_ACL = whenOlder "6.13" (option yes);
@@ -756,7 +751,6 @@ let
       CIFS_XATTR = yes;
       CIFS_POSIX = option yes;
       CIFS_FSCACHE = yes;
-      CIFS_WEAK_PW_HASH = whenOlder "5.15" yes;
       CIFS_UPCALL = yes;
       CIFS_DFS_UPCALL = yes;
 
@@ -773,6 +767,9 @@ let
       SQUASHFS_LZ4 = yes;
       SQUASHFS_ZSTD = yes;
 
+      EROFS_FS_ZIP_DEFLATE = whenAtLeast "6.6" yes;
+      EROFS_FS_ZIP_ZSTD = whenAtLeast "6.10" yes;
+
       # Native Language Support modules, needed by some filesystems
       NLS = yes;
       NLS_DEFAULT = freeform "utf8";
@@ -786,6 +783,10 @@ let
       DEVTMPFS = yes;
 
       UNICODE = yes; # Casefolding support for filesystems
+    }
+    // lib.optionalAttrs stdenv.hostPlatform.isPower {
+      # Needed to use the installation iso image formatted for tbxi booting (ISO9660 w/ hybrid HFS+ partition).
+      HFSPLUS_FS = yes;
     };
 
     security = {
@@ -796,7 +797,9 @@ let
       FORTIFY_SOURCE = option yes;
 
       # https://googleprojectzero.blogspot.com/2019/11/bad-binder-android-in-wild-exploit.html
-      DEBUG_LIST = yes;
+      DEBUG_LIST = whenOlder "6.6" yes;
+      # https://git.kernel.org/torvalds/c/aebc7b0d8d91bbc69e976909963046bc48bca4fd
+      LIST_HARDENED = whenAtLeast "6.6" yes;
 
       HARDENED_USERCOPY = yes;
       RANDOMIZE_BASE = option yes;
@@ -809,15 +812,13 @@ let
       SECURITY_YAMA = option yes;
       # The goal of Landlock is to enable to restrict ambient rights (e.g. global filesystem access) for a set of processes.
       # This does not have any effect if a program does not support it
-      SECURITY_LANDLOCK = whenAtLeast "5.13" yes;
+      SECURITY_LANDLOCK = yes;
 
       # IPE (Integrity Policy Enforcement) - LSM that can enforce file integrity based on
       # fs-verity measurements or dm-verity. Useful for verified boot and immutable /nix/store.
       SECURITY_IPE = whenAtLeast "6.12" yes;
       IPE_PROP_FS_VERITY = whenAtLeast "6.12" yes;
       IPE_PROP_FS_VERITY_BUILTIN_SIG = whenAtLeast "6.12" yes;
-
-      DEVKMEM = lib.mkIf (!stdenv.hostPlatform.isAarch64) (whenOlder "5.13" no); # Disable /dev/kmem
 
       USER_NS = yes; # Support for user namespaces
 
@@ -833,29 +834,55 @@ let
       # only when compiled as yes, TPM 2.0 will automatically seed the kernel RNG
       HW_RANDOM = yes;
 
-      MODULE_SIG = no; # r13y, generates a random key during build and bakes it in
-      # Depends on MODULE_SIG and only really helps when you sign your modules
-      # and enforce signatures which we don't do by default.
-      SECURITY_LOCKDOWN_LSM = no;
+      MODULE_SIG = yes;
+      # We use kmodigest to produce a deterministic single‐module
+      # certificate for each module. This prevents the kernel from
+      # generating its own ephemeral module signing key at build time.
+      MODULE_SIG_KEY = freeform "";
+
+      # Support ECDSA and ML‐DSA module signatures.
+      CRYPTO_ECDSA = yes;
+      CRYPTO_MLDSA = whenAtLeast "7.0" yes;
+
+      # Reserve enough space for 12000 single‐module certificates.
+      # Current `allmodconfig` builds produce in the region of ~7500 to
+      # ~9000 in‐tree modules, so this should be sufficient margin.
+      SYSTEM_EXTRA_CERTIFICATE = yes;
+      SYSTEM_EXTRA_CERTIFICATE_SIZE = freeform (toString (12000 * 260));
+
+      SECONDARY_TRUSTED_KEYRING = yes;
+      SYSTEM_BLACKLIST_KEYRING = yes;
+
+      SECURITY_LOCKDOWN_LSM = yes;
+      SECURITY_LOCKDOWN_LSM_EARLY = yes;
 
       IMA = yes;
+
+      INTEGRITY_SIGNATURE = yes;
+      INTEGRITY_ASYMMETRIC_KEYS = yes;
+      INTEGRITY_PLATFORM_KEYRING = yes;
+      INTEGRITY_MACHINE_KEYRING = whenAtLeast "6.4" yes;
+      INTEGRITY_CA_MACHINE_KEYRING = whenAtLeast "6.4" yes;
+      INTEGRITY_CA_MACHINE_KEYRING_MAX = whenAtLeast "6.4" yes;
 
       # provides a register of persistent per-UID keyrings, useful for encrypting storage pools in stratis
       PERSISTENT_KEYRINGS = yes;
       # enable temporary caching of the last request_key() result
       KEYS_REQUEST_CACHE = yes;
       # randomized slab caches
-      RANDOM_KMALLOC_CACHES = whenAtLeast "6.6" yes;
+      RANDOM_KMALLOC_CACHES = whenBetween "6.6" "7.2" yes;
+      KMALLOC_PARTITION_CACHES = whenAtLeast "7.2" yes;
+      KMALLOC_PARTITION_RANDOM = whenAtLeast "7.2" yes;
 
       # NIST SP800-90A DRBG modes - enabled by most distributions
       #   and required by some out-of-tree modules (ShuffleCake)
       #   This does not include the NSA-backdoored Dual-EC mode from the same NIST publication.
-      CRYPTO_DRBG_HASH = yes;
-      CRYPTO_DRBG_CTR = yes;
+      CRYPTO_DRBG_HASH = whenOlder "7.2" yes;
+      CRYPTO_DRBG_CTR = whenOlder "7.2" yes;
 
       # Enable KFENCE
       # See: https://docs.kernel.org/dev-tools/kfence.html
-      KFENCE = whenAtLeast "5.12" yes;
+      KFENCE = yes;
 
       # Enable support for page poisoning. Still needs to be enabled on the command line to actually work.
       PAGE_POISONING = yes;
@@ -865,11 +892,11 @@ let
       INIT_ON_ALLOC_DEFAULT_ON = yes;
 
       # Randomize kernel stack offset on syscall entry to make stack address dependent
-      # attacks harder, supported since 5.13.
+      # attacks harder
       # Only default enabled on AArch64 from 7.1 due to perf issues prior to that release
       # that were resolved in "randomize_kstack: Maintain kstack_offset per task"
-      RANDOMIZE_KSTACK_OFFSET_DEFAULT = whenAtLeast (
-        if stdenv.hostPlatform.isAarch64 then "7.1" else "5.13"
+      RANDOMIZE_KSTACK_OFFSET_DEFAULT = lib.mkIf (
+        !(stdenv.hostPlatform.isAarch64 && lib.versionOlder version "7.1")
       ) yes;
 
       # Enable stack smashing protections in schedule()
@@ -882,9 +909,9 @@ let
     }
     // lib.optionalAttrs stdenv.hostPlatform.isx86_64 {
       # Enable Intel SGX
-      X86_SGX = whenAtLeast "5.11" yes;
+      X86_SGX = yes;
       # Allow KVM guests to load SGX enclaves
-      X86_SGX_KVM = whenAtLeast "5.13" yes;
+      X86_SGX_KVM = yes;
 
       # AMD Cryptographic Coprocessor (CCP)
       CRYPTO_DEV_CCP = yes;
@@ -893,16 +920,16 @@ let
       # AMD SEV and AMD SEV-SE
       KVM_AMD_SEV = yes;
       # AMD SEV-SNP
-      SEV_GUEST = whenAtLeast "5.19" module;
+      SEV_GUEST = module;
       # Shadow stacks
       X86_USER_SHADOW_STACK = whenAtLeast "6.6" yes;
 
       # Enable support for Intel Trust Domain Extensions (TDX)
-      INTEL_TDX_GUEST = whenAtLeast "5.19" yes;
+      INTEL_TDX_GUEST = yes;
       TDX_GUEST_DRIVER = whenAtLeast "6.2" module;
 
       # Mitigate straight line speculation at the cost of some file size
-      SLS = whenBetween "5.17" "6.9" yes;
+      SLS = whenOlder "6.9" yes;
       MITIGATION_SLS = whenAtLeast "6.9" yes;
 
       DEFAULT_MMAP_MIN_ADDR = freeform "65536";
@@ -919,7 +946,6 @@ let
       # https://lwn.net/Articles/682582/
       # https://bugzilla.kernel.org/show_bug.cgi?id=12309#c655
       BLK_WBT = yes;
-      BLK_WBT_SQ = whenOlder "5.0" yes; # Removed in 5.0-RC1
       BLK_WBT_MQ = yes;
     };
 
@@ -933,10 +959,8 @@ let
       CGROUP_DMEM = whenAtLeast "6.14" yes;
 
       MEMCG = yes;
-      MEMCG_SWAP = whenOlder "6.1" yes;
 
       BLK_DEV_THROTTLING = yes;
-      CFQ_GROUP_IOSCHED = whenOlder "5.0" yes; # Removed in 5.0-RC1
       CGROUP_PIDS = yes;
     };
 
@@ -963,7 +987,6 @@ let
       STACK_TRACER = yes;
       UPROBE_EVENTS = option yes;
       BPF_SYSCALL = yes;
-      BPF_UNPRIV_DEFAULT_OFF = whenOlder "5.16" yes;
       BPF_EVENTS = yes;
       FUNCTION_PROFILER = yes;
       RING_BUFFER_BENCHMARK = no;
@@ -972,7 +995,7 @@ let
 
     perf = {
       # enable AMD Zen branch sampling if available
-      PERF_EVENTS_AMD_BRS = whenAtLeast "5.19" (option yes);
+      PERF_EVENTS_AMD_BRS = option yes;
     };
 
     virtualisation = {
@@ -984,7 +1007,7 @@ let
       KVM_ASYNC_PF = lib.mkIf (with stdenv.hostPlatform; isS390 || isx86) yes;
       KVM_GENERIC_DIRTYLOG_READ_PROTECT = yes;
       KVM_GUEST = lib.mkIf (with stdenv.hostPlatform; isPower || isx86) yes;
-      KVM_MMIO = yes;
+      KVM_MMIO = whenOlder "7.4" yes;
       KVM_VFIO = yes;
       KSM = yes;
       VIRT_DRIVERS = yes;
@@ -1063,7 +1086,7 @@ let
       ZRAM_BACKEND_LZ4HC = whenAtLeast "6.12" yes;
       ZRAM_BACKEND_LZO = whenAtLeast "6.12" yes;
       ZRAM_BACKEND_ZSTD = whenAtLeast "6.12" yes;
-      ZRAM_DEF_COMP_ZSTD = whenAtLeast "5.11" yes;
+      ZRAM_DEF_COMP_ZSTD = yes;
       ZSWAP = option yes;
       ZSWAP_COMPRESSOR_DEFAULT_ZSTD = lib.mkOptionDefault yes;
       ZPOOL = whenOlder "6.18" yes;
@@ -1118,7 +1141,12 @@ let
         useZstd = stdenv.buildPlatform.is64bit;
       in
       {
-        # stdenv.hostPlatform.linux-kernel.target assumes uncompressed on RISC-V.
+        # Increase the default kernel log buffer size to 1 MiB. This
+        # prevents it from filling up with lines about loading X.509
+        # certificates when using single‐module certificates.
+        LOG_BUF_SHIFT = freeform "20";
+
+        # The default target assumes uncompressed on RISC-V.
         KERNEL_UNCOMPRESSED = lib.mkIf stdenv.hostPlatform.isRiscV yes;
 
         KERNEL_XZ = lib.mkIf (
@@ -1126,9 +1154,7 @@ let
         ) yes;
 
         KERNEL_ZSTD = lib.mkIf (
-          with stdenv.hostPlatform;
-          (isMips || isS390 || isx86 || (lib.versionAtLeast version "6.1" && isAarch64 || isLoongArch64))
-          && useZstd
+          with stdenv.hostPlatform; (isMips || isS390 || isx86 || isAarch64 || isLoongArch64) && useZstd
         ) yes;
 
         HID_BATTERY_STRENGTH = yes;
@@ -1149,20 +1175,18 @@ let
         LOGITECH_FF = yes;
         LOGIG940_FF = yes;
         LOGIWHEELS_FF = yes;
-        NINTENDO_FF = whenAtLeast "5.16" yes;
+        NINTENDO_FF = yes;
         NVIDIA_SHIELD_FF = whenAtLeast "6.5" yes;
-        PLAYSTATION_FF = whenAtLeast "5.12" yes;
+        PLAYSTATION_FF = yes;
         SONY_FF = yes;
         SMARTJOYPLUS_FF = yes;
         THRUSTMASTER_FF = yes;
         ZEROPLUS_FF = yes;
 
-        MODULE_COMPRESS = lib.mkMerge [
-          (whenOlder "5.13" yes)
-          (whenAtLeast "6.12" yes)
-        ];
+        MODULE_COMPRESS = whenAtLeast "6.12" yes;
         MODULE_COMPRESS_ALL = whenAtLeast "6.12" yes;
         MODULE_COMPRESS_XZ = yes;
+        MODULE_DECOMPRESS = yes;
 
         SYSVIPC = yes; # System-V IPC
 
@@ -1174,10 +1198,7 @@ let
 
         # enable support for device trees and overlays
         OF = option yes;
-        # OF_OVERLAY breaks v5.10 on x86_64, see https://github.com/NixOS/nixpkgs/issues/403985
-        OF_OVERLAY = lib.mkIf (!(lib.versionOlder version "5.15" && stdenv.hostPlatform.isx86_64)) (
-          option yes
-        );
+        OF_OVERLAY = option yes;
 
         # Enable initrd support.
         BLK_DEV_INITRD = yes;
@@ -1193,6 +1214,9 @@ let
         SCSI_LOWLEVEL = yes; # enable lots of SCSI devices
         SCSI_LOWLEVEL_PCMCIA = yes;
         SCSI_SAS_ATA = yes; # added to enable detection of hard drive
+
+        # Required for booting our ISO in qemu's IBM pSeries machine emulation mode via '-cdrom'.
+        SCSI_IBMVSCSI = lib.mkIf (stdenv.hostPlatform.isPower64 && stdenv.hostPlatform.isBigEndian) yes;
 
         SPI = yes; # needed for many devices
         SPI_MASTER = yes;
@@ -1232,10 +1256,6 @@ let
         BT_RFCOMM_TTY = option yes; # RFCOMM TTY support
         BT_QCA = module; # enables QCA6390 bluetooth
 
-        # Removed on 5.17 as it was unused
-        # upstream: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=0a4ee518185e902758191d968600399f3bc2be31
-        CLEANCACHE = whenOlder "5.17" (option yes);
-
         FSCACHE_STATS = yes;
 
         DVB_DYNAMIC_MINORS = option yes; # we use udev
@@ -1249,7 +1269,7 @@ let
         # Generic compression support for EFI payloads
         # Add new platforms only after they have been verified to build and boot.
         # This is unsupported on x86 due to a custom decompression mechanism.
-        EFI_ZBOOT = lib.mkIf stdenv.hostPlatform.isAarch64 (whenAtLeast "6.1" yes);
+        EFI_ZBOOT = lib.mkIf stdenv.hostPlatform.isAarch64 yes;
 
         CGROUPS = yes; # used by systemd
         FHANDLE = yes; # used by systemd
@@ -1258,9 +1278,6 @@ let
         POSIX_MQUEUE = yes;
         FRONTSWAP = whenOlder "6.6" yes;
         FUSION = yes; # Fusion MPT device support
-        IDE = lib.mkIf (with stdenv.hostPlatform; isAarch32 || isM68k || isMips || isPower || isx86) (
-          whenOlder "5.14" no
-        ); # deprecated IDE support, removed in 5.14
         IDLE_PAGE_TRACKING = yes;
 
         JOYSTICK_XPAD_FF = option yes; # X-Box gamepad rumble support
@@ -1273,7 +1290,7 @@ let
         KEXEC_HANDOVER = whenAtLeast "6.16" (option yes);
         LIVEUPDATE = whenAtLeast "6.19" (option yes);
 
-        PARTITION_ADVANCED = yes; # Needed for LDM_PARTITION
+        PARTITION_ADVANCED = yes; # Needed for LDM_PARTITION and BSD_DISKLABEL
         # Windows Logical Disk Manager (Dynamic Disk) support
         LDM_PARTITION = yes;
         LOGIRUMBLEPAD2_FF = yes; # Logitech Rumblepad 2 force feedback
@@ -1281,12 +1298,14 @@ let
         MEDIA_ATTACH = yes;
         MEGARAID_NEWGEN = yes;
 
+        BSD_DISKLABEL = yes;
+
         MLX5_CORE_EN = option yes;
 
         NVME_MULTIPATH = yes;
 
         NVME_AUTH = lib.mkMerge [
-          (whenBetween "6.0" "6.7" yes)
+          (whenOlder "6.7" yes)
           (whenAtLeast "6.7" module)
         ];
 
@@ -1295,7 +1314,7 @@ let
 
         NVME_TARGET = module;
         NVME_TARGET_PASSTHRU = yes;
-        NVME_TARGET_AUTH = whenAtLeast "6.0" yes;
+        NVME_TARGET_AUTH = yes;
         NVME_TARGET_TCP_TLS = whenAtLeast "6.7" yes;
 
         PCI_P2PDMA = lib.mkIf (
@@ -1316,7 +1335,7 @@ let
         MTRR_SANITIZER = lib.mkIf stdenv.hostPlatform.isx86 yes;
         NET_FC = yes; # Fibre Channel driver support
         # Needed for touchpads to work on some AMD laptops
-        PINCTRL_AMD = whenAtLeast "5.19" yes;
+        PINCTRL_AMD = yes;
         # GPIO on Intel Bay Trail, for some Chromebook internal eMMC disks
         PINCTRL_BAYTRAIL = lib.mkIf stdenv.hostPlatform.isx86 yes;
         # GPIO for Braswell and Cherryview devices
@@ -1359,6 +1378,7 @@ let
         BINFMT_SCRIPT = yes;
         # For systemd-binfmt
         BINFMT_MISC = option yes;
+        BINFMT_MISC_BPF = whenAtLeast "7.3" (whenPlatformHasEBPFJit (option yes));
 
         # Required for EDID overriding
         FW_LOADER = yes;
@@ -1366,10 +1386,16 @@ let
         FW_LOADER_USER_HELPER_FALLBACK = option no;
 
         FW_LOADER_COMPRESS = yes;
-        FW_LOADER_COMPRESS_ZSTD = whenAtLeast "5.19" yes;
+        FW_LOADER_COMPRESS_ZSTD = yes;
 
         HOTPLUG_PCI_ACPI = yes; # PCI hotplug using ACPI
         HOTPLUG_PCI_PCIE = yes; # PCI-Expresscard hotplug support
+
+        # Allows PCIe devices to report errors with Advanced Error Reporting (AER).
+        PCIEAER = yes;
+        ACPI_APEI_PCIEAER = yes;
+        # PCIe link training status, e.g. on Cix P1
+        PCIE_CADENCE_DEBUGFS = whenAtLeast "7.3" (option yes);
 
         # Enable all available thermal governors
         THERMAL_GOV_BANG_BANG = yes;
@@ -1400,45 +1426,32 @@ let
         DRM_AMDGPU_USERPTR = yes;
 
         # We want to prefer PREEMPT_LAZY when available, and fall back on PREEMPT_VOLUNTARY.
-        # It just so happens that kconfig asks for PREEMPT_LAZY first, so doing it like this
-        # does what we want.
-        # FIXME: This is stupid and bad.
-        # See: https://github.com/torvalds/linux/commit/7dadeaa6e851e7d67733f3e24fc53ee107781d0f
+        # The version cutoff is arbitrary, the real cutoff is somewhere around 6.13 depending on target.
         PREEMPT = no;
-        PREEMPT_LAZY = option yes;
-        PREEMPT_VOLUNTARY = option yes;
+        PREEMPT_LAZY = whenAtLeast "6.18" yes;
+        PREEMPT_VOLUNTARY = whenOlder "6.18" yes;
 
         X86_AMD_PLATFORM_DEVICE = lib.mkIf stdenv.hostPlatform.isx86 yes;
-        X86_PLATFORM_DRIVERS_DELL = lib.mkIf stdenv.hostPlatform.isx86 (whenAtLeast "5.12" yes);
-        X86_PLATFORM_DRIVERS_HP = lib.mkIf stdenv.hostPlatform.isx86 (whenAtLeast "6.1" yes);
+        X86_PLATFORM_DRIVERS_DELL = lib.mkIf stdenv.hostPlatform.isx86 yes;
+        X86_PLATFORM_DRIVERS_HP = lib.mkIf stdenv.hostPlatform.isx86 yes;
 
         ARM64_PMEM = lib.mkIf stdenv.hostPlatform.isAarch64 yes;
 
         LIRC = yes;
 
-        SCHED_CORE = whenAtLeast "5.14" yes;
+        SCHED_CORE = yes;
         SCHED_CLASS_EXT = whenAtLeast "6.12" (whenPlatformHasEBPFJit yes);
 
-        LRU_GEN = whenAtLeast "6.1" yes;
-        LRU_GEN_ENABLED = whenAtLeast "6.1" yes;
+        LRU_GEN = yes;
+        LRU_GEN_ENABLED = yes;
 
-        FSL_MC_UAPI_SUPPORT = lib.mkIf (stdenv.hostPlatform.system == "aarch64-linux") (
-          whenAtLeast "5.12" yes
-        );
+        FSL_MC_UAPI_SUPPORT = lib.mkIf (stdenv.hostPlatform.system == "aarch64-linux") yes;
 
-        ASHMEM = {
-          optional = true;
-          tristate = whenBetween "5.0" "5.18" "y";
-        };
-        ANDROID = {
-          optional = true;
-          tristate = whenBetween "5.0" "5.19" "y";
-        };
-        ANDROID_BINDER_IPC = {
+        ANDROID_BINDER_IPC = whenOlder "7.4" {
           optional = true;
           tristate = "y";
         };
-        ANDROID_BINDERFS = {
+        ANDROID_BINDERFS = whenOlder "7.4" {
           optional = true;
           tristate = "y";
         };
@@ -1455,7 +1468,7 @@ let
         LEGACY_TIOCSTI = whenAtLeast "6.2" no;
 
         # Fresh toolchains frequently break -Werror build for minor issues.
-        WERROR = whenAtLeast "5.15" no;
+        WERROR = no;
 
         # > CONFIG_KUNIT should not be enabled in a production environment. Enabling KUnit disables Kernel Address-Space Layout Randomization (KASLR), and tests may affect the state of the kernel in ways not suitable for production.
         # https://www.kernel.org/doc/html/latest/dev-tools/kunit/start.html
@@ -1463,6 +1476,9 @@ let
 
         # Set system time from RTC on startup and resume
         RTC_HCTOSYS = option yes;
+
+        # Emulate RTC update interrupts for RTCs without alarm/update interrupts
+        RTC_INTF_DEV_UIE_EMUL = option yes;
 
         # Expose watchdog information in sysfs
         WATCHDOG_SYSFS = yes;
@@ -1472,8 +1488,9 @@ let
         WATCH_QUEUE = yes;
 
         # Enable coreboot firmware drivers.
-        # While these are called CONFIG_GOOGLE_*, they apply to coreboot systems in general.
-        GOOGLE_FIRMWARE = yes;
+        # Before 7.4 these were called CONFIG_GOOGLE_*, but they apply to coreboot systems in general.
+        GOOGLE_FIRMWARE = whenOlder "7.4" yes;
+        COREBOOT_FIRMWARE = whenAtLeast "7.4" yes;
 
         # Disabled by default on POWER
         ATA_BMDMA = yes;
@@ -1488,8 +1505,8 @@ let
             ACPI_HOTPLUG_CPU = yes;
             ACPI_HOTPLUG_MEMORY = yes;
             MEMORY_HOTPLUG = yes;
-            MEMORY_HOTPLUG_DEFAULT_ONLINE = whenOlder "6.14" yes;
-            MHP_DEFAULT_ONLINE_TYPE_ONLINE_AUTO = whenAtLeast "6.14" yes;
+            MEMORY_HOTPLUG_DEFAULT_ONLINE = whenOlder "6.12" yes;
+            MHP_DEFAULT_ONLINE_TYPE_ONLINE_AUTO = whenAtLeast "6.12" yes;
             MEMORY_HOTREMOVE = lib.mkIf (
               with stdenv.hostPlatform;
               isLoongArch64
@@ -1504,8 +1521,8 @@ let
             SPARSEMEM = yes;
 
             # Bump the maximum number of CPUs to support systems like EC2 x1.*
-            # instances and Xeon Phi.
-            NR_CPUS = freeform "384";
+            # instances and Xeon Phi or AMD EPYC.
+            NR_CPUS = freeform "512";
 
             # Enable LEDS to display link-state status of PHY devices (i.e. eth lan/wan interfaces)
             LED_TRIGGER_PHY = yes;
@@ -1537,7 +1554,7 @@ let
 
             # Add debug interfaces for CMA
             CMA_DEBUGFS = yes;
-            CMA_SYSFS = whenAtLeast "5.13" yes;
+            CMA_SYSFS = yes;
 
             # https://docs.kernel.org/arch/arm/mem_alignment.html
             # tldr:
@@ -1560,9 +1577,7 @@ let
             #  This minimizes the potential for aarch32 userspace to behave
             #  differently when run under aarch64 kernels compared to when
             #  it is run under an aarch32 kernel.
-            COMPAT_ALIGNMENT_FIXUPS = lib.mkIf (stdenv.hostPlatform.system == "aarch64-linux") (
-              whenAtLeast "6.1" yes
-            );
+            COMPAT_ALIGNMENT_FIXUPS = lib.mkIf (stdenv.hostPlatform.system == "aarch64-linux") yes;
 
             # requirement for CP15_BARRIER_EMULATION
             ARMV8_DEPRECATED = lib.mkIf (stdenv.hostPlatform.system == "aarch64-linux") yes;
@@ -1607,6 +1622,12 @@ let
         # > round to working out why.  The workaround is to build it in[…].
         # > (It won't do any harm on non-Mac systems.)
         I2C_POWERMAC = yes;
+      }
+      // lib.optionalAttrs stdenv.hostPlatform.isPower {
+        # Needed for booting PowerMacs from disc
+        # (the only nice way that doesn't involve messing around with internal drives or in Open Firmware)
+        ATA = yes;
+        PATA_MACIO = yes;
       };
 
     accel = {

@@ -21,21 +21,15 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "shader-slang";
-  version = "2026.5.2";
+  version = "2026.21";
 
   src = fetchFromGitHub {
     owner = "shader-slang";
     repo = "slang";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-kx1g7GrUX8ZPg/HGS6SpRYat/YLTJejxCM2UgcUkDgo=";
+    hash = "sha256-JSRxVdo7Xp06GmoLtCKN6IwyskCPrgbp4OFoqyt/gEk=";
     fetchSubmodules = true;
   };
-
-  postPatch = ''
-    # Header location has moved in glslang 15+
-    substituteInPlace source/slang-glslang/slang-glslang.cpp \
-      --replace-fail '"SPIRV/GlslangToSpv.h"' '"glslang/SPIRV/GlslangToSpv.h"'
-  '';
 
   outputs = [
     "out"
@@ -101,6 +95,9 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.cmakeBool "SLANG_RHI_ENABLE_VULKAN" false)
     (lib.cmakeBool "SLANG_RHI_ENABLE_METAL" false)
     (lib.cmakeBool "SLANG_RHI_ENABLE_WGPU" false)
+    # Disable DXC (DirectX Compiler) for now; wiring up directx-shader-compiler
+    # as a proper dependency is left for a future PR
+    (lib.cmakeBool "SLANG_ENABLE_DXIL" false)
   ]
   ++ lib.optionals withGlslang [
     (lib.cmakeBool "SLANG_USE_SYSTEM_SPIRV_TOOLS" true)

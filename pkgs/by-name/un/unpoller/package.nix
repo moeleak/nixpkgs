@@ -7,16 +7,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "unpoller";
-  version = "2.39.0";
+  version = "5.6.3";
 
   src = fetchFromGitHub {
     owner = "unpoller";
     repo = "unpoller";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-9cA8SkAfuAOQpA61BzqXVTWoHdAR9JQ6aITNaju20vQ=";
+    hash = "sha256-2/cRA/W+5L2l7IcpjagbxBjx+yNulMk4QhQYV9Pv0mU=";
   };
 
-  vendorHash = "sha256-7IUdVnM97kuikuUz95Jsl9iSyhJyifaRTj1TonwFRVU=";
+  vendorHash = "sha256-9B6Lhi7jWn5u2Iig3c49ky8kYaNlFiefIVwYdnOEsIo=";
 
   ldflags = [
     "-w"

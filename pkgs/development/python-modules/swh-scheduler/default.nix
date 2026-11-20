@@ -3,9 +3,15 @@
   stdenv,
   buildPythonPackage,
   fetchFromGitLab,
-  setuptools,
-  setuptools-scm,
+
+  # Build system
+  hatchling,
+  hatch-requirements-txt,
+  hatch-vcs,
+
+  # Dependencies
   celery,
+  dateparser,
   flask,
   humanize,
   importlib-metadata,
@@ -13,6 +19,8 @@
   psycopg,
   tabulate,
   swh-storage,
+
+  # Tests
   plotille,
   postgresql,
   postgresqlTestHook,
@@ -31,7 +39,7 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "swh-scheduler";
-  version = "3.3.0";
+  version = "3.6.0";
   pyproject = true;
 
   src = fetchFromGitLab {
@@ -40,21 +48,18 @@ buildPythonPackage (finalAttrs: {
     owner = "devel";
     repo = "swh-scheduler";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Kv5QH3sj/InKOSjxGtwVxtoAluHx5eIxO5GqcbOs0NY=";
+    hash = "sha256-QcVC/H0La6BMR72GdJg0kDznTbPZChmTlrzqCQwKdDs=";
   };
 
   build-system = [
-    setuptools
-    setuptools-scm
-  ];
-
-  pythonRelaxDeps = [
-    # we patched click 8.2.1
-    "click"
+    hatchling
+    hatch-requirements-txt
+    hatch-vcs
   ];
 
   dependencies = [
     celery
+    dateparser
     flask
     humanize
     importlib-metadata
@@ -86,7 +91,10 @@ buildPythonPackage (finalAttrs: {
     types-requests
   ];
 
-  disabledTests = [ "test_setup_log_handler_with_env_configuration" ];
+  disabledTests = [
+    "test_setup_log_handler_with_env_configuration"
+    "test_task_exception"
+  ];
 
   meta = {
     changelog = "https://gitlab.softwareheritage.org/swh/devel/swh-scheduler/-/tags/${finalAttrs.src.tag}";

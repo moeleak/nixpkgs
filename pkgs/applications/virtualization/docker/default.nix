@@ -52,8 +52,8 @@ let
       nixosTests,
       clientOnly ? !stdenv.hostPlatform.isLinux,
       symlinkJoin,
-      withSystemd ? lib.meta.availableOn stdenv.hostPlatform systemd,
-      systemd,
+      withSystemd ? lib.meta.availableOn stdenv.hostPlatform systemdLibs,
+      systemdLibs,
       withBtrfs ? stdenv.hostPlatform.isLinux,
       btrfs-progs,
       withLvm ? stdenv.hostPlatform.isLinux,
@@ -143,10 +143,33 @@ let
         hash = mobyHash;
       };
 
+      extraMobyPath = lib.optionals stdenv.hostPlatform.isLinux (
+        lib.makeBinPath [
+          iproute2
+          iptables
+          e2fsprogs
+          xz
+          xfsprogs
+          procps
+          util-linuxMinimal
+          gitMinimal
+        ]
+      );
+
+      extraMobyUserPath = lib.optionals (stdenv.hostPlatform.isLinux && !clientOnly) (
+        lib.makeBinPath [
+          rootlesskit
+          slirp4netns
+          fuse-overlayfs
+        ]
+      );
+
       moby = buildGoModule (
         lib.optionalAttrs stdenv.hostPlatform.isLinux {
           pname = "moby";
           inherit version;
+
+          __structuredAttrs = true;
 
           src = moby-src;
 
@@ -167,29 +190,8 @@ let
           ++ lib.optionals (lib.versionAtLeast version "29.0.0") [ nftables ]
           ++ lib.optionals withLvm [ lvm2 ]
           ++ lib.optionals withBtrfs [ btrfs-progs ]
-          ++ lib.optionals withSystemd [ systemd ]
+          ++ lib.optionals withSystemd [ systemdLibs ]
           ++ lib.optionals withSeccomp [ libseccomp ];
-
-          extraPath = lib.optionals stdenv.hostPlatform.isLinux (
-            lib.makeBinPath [
-              iproute2
-              iptables
-              e2fsprogs
-              xz
-              xfsprogs
-              procps
-              util-linuxMinimal
-              gitMinimal
-            ]
-          );
-
-          extraUserPath = lib.optionals (stdenv.hostPlatform.isLinux && !clientOnly) (
-            lib.makeBinPath [
-              rootlesskit
-              slirp4netns
-              fuse-overlayfs
-            ]
-          );
 
           postPatch = ''
             patchShebangs hack/make.sh hack/make/
@@ -218,7 +220,9 @@ let
             install -Dm755 ./bundles/dynbinary-daemon/docker-proxy $out/libexec/docker/docker-proxy
 
             makeWrapper $out/libexec/docker/dockerd $out/bin/dockerd \
-              --prefix PATH : "$out/libexec/docker:$extraPath"
+              --prefix PATH : "$out/libexec/docker${
+                lib.optionalString (extraMobyPath != "") ":${extraMobyPath}"
+              }"
 
             ln -s ${docker-containerd}/bin/containerd $out/libexec/docker/containerd
             ln -s ${docker-containerd}/bin/containerd-shim${lib.optionalString (lib.versionAtLeast version "29.0.0") "-runc-v2"} $out/libexec/docker/containerd-shim${lib.optionalString (lib.versionAtLeast version "29.0.0") "-runc-v2"}
@@ -233,7 +237,9 @@ let
             # rootless Docker
             install -Dm755 ./contrib/dockerd-rootless.sh $out/libexec/docker/dockerd-rootless.sh
             makeWrapper $out/libexec/docker/dockerd-rootless.sh $out/bin/dockerd-rootless \
-              --prefix PATH : "$out/libexec/docker:$extraPath:$extraUserPath"
+              --prefix PATH : "$out/libexec/docker${
+                lib.optionalString (extraMobyPath != "") ":${extraMobyPath}"
+              }${lib.optionalString (extraMobyUserPath != "") ":${extraMobyUserPath}"}"
 
             runHook postInstall
           '';
@@ -267,6 +273,8 @@ let
       {
         pname = "docker";
         inherit version;
+
+        __structuredAttrs = true;
 
         src = fetchFromGitHub {
           owner = "docker";
@@ -335,7 +343,7 @@ let
           install -Dm755 ./build/docker $out/libexec/docker/docker
 
           makeWrapper $out/libexec/docker/docker $out/bin/docker \
-            --prefix PATH : "$out/libexec/docker:$extraPath" \
+            --prefix PATH : "$out/libexec/docker" \
             --prefix DOCKER_CLI_PLUGIN_DIRS : "${dockerCliPluginsDirs}"
         ''
         + lib.optionalString (!clientOnly) ''
@@ -400,7 +408,7 @@ in
   # https://github.com/moby/moby/tree/${mobyRev}/Dockerfile
   docker_25 =
     let
-      version = "25.0.13";
+      version = "25.0.16";
     in
     callPackage dockerGen {
       inherit version;
@@ -409,7 +417,7 @@ in
       cliRev = "43987fca488a535d810c429f75743d8c7b63bf4f";
       cliHash = "sha256-OwufdfuUPbPtgqfPeiKrQVkOOacU2g4ommHb770gV40=";
       mobyRev = "v${version}";
-      mobyHash = "sha256-X+1QG/toJt+VNLktR5vun8sG3PRoTVBAcekFXxocJdU=";
+      mobyHash = "sha256-St5yLoxo8QUTu7PjNcblS/EzZm98T189RPl1y+pAyHA=";
       runcRev = "v1.2.5";
       runcHash = "sha256-J/QmOZxYnMPpzm87HhPTkYdt+fN+yeSUu2sv6aUeTY4=";
       containerdRev = "v1.7.27";
@@ -418,38 +426,20 @@ in
       tiniHash = "sha256-jCBNfoJAjmcTJBx08kHs+FmbaU82CbQcf0IVjd56Nuw=";
     };
 
-  docker_28 =
-    let
-      version = "28.5.2";
-    in
-    callPackage dockerGen {
-      inherit version;
-      cliRev = "v${version}";
-      cliHash = "sha256-11wbqvenTJooAzqOEp0UivPxhvWwSl1thCAzDMx0i/o=";
-      mobyRev = "v${version}";
-      mobyHash = "sha256-T5zz1lSLVdMR646CfhWAiVU4/VPAY1CRU+jIdjEWycs=";
-      runcRev = "v1.3.3";
-      runcHash = "sha256-Ci/2otySB7FaFoutmzWeVaTU+tO/lnluQfneFSQM1RE=";
-      containerdRev = "v1.7.28";
-      containerdHash = "sha256-vz7RFJkFkMk2gp7bIMx1kbkDFUMS9s0iH0VoyD9A21s=";
-      tiniRev = "369448a167e8b3da4ca5bca0b3307500c3371828";
-      tiniHash = "sha256-jCBNfoJAjmcTJBx08kHs+FmbaU82CbQcf0IVjd56Nuw=";
-    };
-
   docker_29 =
     let
-      version = "29.4.3";
+      version = "29.9.3";
     in
     callPackage dockerGen {
       inherit version;
       cliRev = "v${version}";
-      cliHash = "sha256-jGD+Z3koM0a2Te7cq2HdKFizZj39djvTQUmn815Mn4o=";
+      cliHash = "sha256-Wb1JRfML8olvQtOoMbcBwFsYKnejX5k6JH+tfXSPRAI=";
       mobyRev = "docker-v${version}";
-      mobyHash = "sha256-YWmxJZwjxh0gwqjHHJDpzZy1K1jS82Twmzb+uWtnejk=";
-      runcRev = "v1.3.5";
-      runcHash = "sha256-Swphxbu/OLkUrfRjLMZIVGwYb7AN0xHdyxm0ysAVam0=";
-      containerdRev = "v2.2.3";
-      containerdHash = "sha256-jaOLZf246kmvBHHrwgvqrhxuh+n1HE6NDqckZK4tvnM=";
+      mobyHash = "sha256-xtLqR9pOw53vlKE0E+1wVrRgV0ag22A94NXq/FUqW6A=";
+      runcRev = "v1.5.2";
+      runcHash = "sha256-DOEnEK/1KlMCzJHW5bWCVChfBUzWOgbgPJn7GMatwAc=";
+      containerdRev = "v2.4.2";
+      containerdHash = "sha256-RP1qn/dlfVCAwe3ZxASStzGZmuYwdUVwfPGG8XByNNk=";
       tiniRev = "369448a167e8b3da4ca5bca0b3307500c3371828";
       tiniHash = "sha256-jCBNfoJAjmcTJBx08kHs+FmbaU82CbQcf0IVjd56Nuw=";
     };

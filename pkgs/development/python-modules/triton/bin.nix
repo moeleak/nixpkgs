@@ -1,17 +1,23 @@
 {
   lib,
   stdenv,
+  config,
   cudaPackages,
   buildPythonPackage,
   fetchurl,
+  runCommand,
   python,
   autoPatchelfHook,
   zlib,
+  rocmPackages,
+
+  rocmSupport ? config.rocmSupport,
+  addDriverRunpath,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "triton";
-  version = "3.6.0";
+  version = "3.9.0";
   format = "wheel";
 
   src =
@@ -37,11 +43,47 @@ buildPythonPackage (finalAttrs: {
 
   dontStrip = true;
 
-  # If this breaks, consider replacing with "${cuda_nvcc}/bin/ptxas"
   postFixup = ''
     mkdir -p $out/${python.sitePackages}/triton/third_party/cuda/bin/
     ln -s ${cudaPackages.cuda_nvcc}/bin/ptxas $out/${python.sitePackages}/triton/third_party/cuda/bin/
+  ''
+  # Use the NixOS driver directory as the fallback, preserving TRITON_LIBCUDA_PATH.
+  + ''
+    substituteInPlace "${placeholder "out"}/${python.sitePackages}/triton/backends/nvidia/driver.py" \
+      --replace-fail \
+        "if env_libcuda_path := knobs.nvidia.libcuda_path:" \
+        "if env_libcuda_path := knobs.nvidia.libcuda_path or '${addDriverRunpath.driverLink}/lib':"
+  ''
+  + lib.optionalString rocmSupport ''
+    substituteInPlace "${placeholder "out"}/${python.sitePackages}/triton/backends/amd/driver.py" \
+      --replace-fail \
+        "lib_name = "libamdhip64.so" \
+        "return '${rocmPackages.clr}/lib/libamdhip64.so'"
   '';
+
+  passthru.tests.libcuda-dirs =
+    runCommand "triton-bin-libcuda-dirs"
+      {
+        nativeBuildInputs = [ (python.withPackages (_: [ finalAttrs.finalPackage ])) ];
+      }
+      ''
+        check_libcuda_dirs() {
+          expected="$1" python - <<'PYTHON'
+        import os
+        from triton.backends.nvidia import driver
+
+        expected = [os.environ["expected"]]
+        assert driver.libcuda_dirs() == expected, driver.libcuda_dirs()
+        assert driver.library_dirs() == [driver.libdevice_dir, *expected], driver.library_dirs()
+        PYTHON
+        }
+
+        unset TRITON_LIBCUDA_PATH
+        check_libcuda_dirs '${addDriverRunpath.driverLink}/lib'
+        TRITON_LIBCUDA_PATH= check_libcuda_dirs '${addDriverRunpath.driverLink}/lib'
+        TRITON_LIBCUDA_PATH="$TMPDIR/custom cuda/lib" check_libcuda_dirs "$TMPDIR/custom cuda/lib"
+        touch "$out"
+      '';
 
   meta = {
     description = "Language and compiler for custom Deep Learning operations";

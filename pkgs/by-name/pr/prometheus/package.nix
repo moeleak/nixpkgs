@@ -1,9 +1,13 @@
 {
   stdenv,
   lib,
+  nix-update-script,
   go,
   buildGoModule,
-  buildNpmPackage,
+  nodejs,
+  pnpmConfigHook,
+  pnpm_11,
+  fetchPnpmDeps,
   fetchFromGitHub,
   nixosTests,
   enableAWS ? true,
@@ -34,9 +38,7 @@
 }:
 
 let
-  source = import ./source.nix;
-
-  inherit (source) version vendorHash;
+  version = "3.16.0";
 
   pname = "prometheus";
 
@@ -44,21 +46,32 @@ let
     owner = "prometheus";
     repo = "prometheus";
     tag = "v${version}";
-    hash = source.hash;
+    hash = "sha256-vkFloS1cfC3EtqT0Ta0C5SeOqcNxRyYDKtjLPU3YPT8=";
   };
 
-  assets = buildNpmPackage {
+  assets = stdenv.mkDerivation (finalAssetsAttrs: {
     pname = "${pname}-assets";
     inherit version;
 
     src = "${src}/web/ui";
 
-    npmDepsHash = source.npmDepsHash;
-
     patches = [
       # Disable old React app as it depends on deprecated create-react-apps
       # script
       ./disable-react-app.diff
+    ];
+
+    pnpmDeps = fetchPnpmDeps {
+      inherit (finalAssetsAttrs) pname version src;
+      pnpm = pnpm_11;
+      fetcherVersion = 4;
+      hash = "sha256-39gQDCdBq4QtEEBpZvF4h9AyQduS4lq0tgKLYe+pNUc=";
+    };
+
+    nativeBuildInputs = [
+      nodejs
+      pnpmConfigHook
+      pnpm_11
     ];
 
     env.CI = true;
@@ -69,34 +82,40 @@ let
     checkPhase = ''
       runHook preCheck
 
-      npm test
+      pnpm test
 
       runHook postCheck
     '';
 
-    postInstall = ''
+    buildPhase = ''
+      runHook preBuild
+
+      pnpm build
+
+      runHook postBuild
+    '';
+
+    installPhase = ''
+      runHook preInstall
+
       mkdir -p $out/static
-      cp -r $out/lib/node_modules/prometheus-io/static/* $out/static
+      cp -r static/* $out/static
       find $out/static -type f -exec gzip -f9 {} \;
 
-      # Remove node_modules
-      rm -rf $out/lib
+      runHook postInstall
     '';
-  };
+  });
 in
 buildGoModule (finalAttrs: {
   inherit
     pname
     version
-    vendorHash
     src
     ;
 
-  proxyVendor = true;
+  vendorHash = "sha256-IX7dR1SS/gPTHZ3WJQraMt35SONizf1ZRb8FIk401Ok=";
 
-  patches = [
-    ./prometheus-pr18519-fix-TestFsType.patch
-  ];
+  proxyVendor = true;
 
   outputs = [
     "out"
@@ -107,6 +126,7 @@ buildGoModule (finalAttrs: {
   excludedPackages = [
     "documentation/prometheus-mixin"
     "internal/tools"
+    "promql/promqltest/cmd/migrate"
     "web/ui/mantine-ui/src/promql/tools"
   ];
 
@@ -213,8 +233,14 @@ buildGoModule (finalAttrs: {
   doInstallCheck = true;
 
   passthru = {
+    inherit assets;
     tests = { inherit (nixosTests) prometheus; };
-    updateScript = ./update.sh;
+    updateScript = nix-update-script {
+      extraArgs = [
+        "--subpackage"
+        "assets"
+      ];
+    };
   };
 
   meta = {

@@ -7,6 +7,7 @@
   protoc-gen-js,
   protobuf,
   tantivy-go,
+  zstd,
 }:
 
 let
@@ -15,7 +16,6 @@ let
       # https://github.com/anyproto/anytype-heart/blob/f33a6b09e9e4e597f8ddf845fc4d6fe2ef335622/pkg/lib/localstore/ftsearch/ftsearchtantivy.go#L3
       x86_64-linux = "linux-amd64-musl";
       aarch64-linux = "linux-arm64-musl";
-      x86_64-darwin = "darwin-amd64";
       aarch64-darwin = "darwin-arm64";
     }
     .${stdenv.hostPlatform.system}
@@ -26,7 +26,7 @@ buildGoModule (finalAttrs: {
 
   # Use only versions specified in anytype-ts middleware.version file:
   #  https://github.com/anyproto/anytype-ts/blob/v<anytype-ts-version>/middleware.version
-  version = "0.49.0-rc08";
+  version = "0.51.7";
 
   # Update only together with 'anytype' package.
   # nixpkgs-update: no auto update
@@ -34,10 +34,10 @@ buildGoModule (finalAttrs: {
     owner = "anyproto";
     repo = "anytype-heart";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-gTUesFf6cDwsFCEUjpcy9VA67GwuZ9mNTih4HC0Vi7g=";
+    hash = "sha256-r/V5L1RswCq/llka8u08ciqENasI08dWfnX8j4PeV3c=";
   };
 
-  vendorHash = "sha256-1D7v/lgmoKOOHNG3vgpzDpWQ66lmmP8IeZ5rvXe4D9M=";
+  vendorHash = "sha256-57Mz/NZQPX70KxmEnV0xiAhldOxf9AjFbGYSVZAdGvs=";
 
   subPackages = [ "cmd/grpcserver" ];
   tags = [
@@ -47,6 +47,9 @@ buildGoModule (finalAttrs: {
 
   env.CGO_ENABLED = 1;
   proxyVendor = true;
+
+  buildInputs = [ zstd ];
+  env.NIX_LDFLAGS = "-lzstd";
 
   nativeBuildInputs = [
     protoc-gen-grpc-web
@@ -59,16 +62,11 @@ buildGoModule (finalAttrs: {
     cp ${tantivy-go}/lib/libtantivy_go.a deps/libs/${arch}
   '';
 
-  postBuild = ''
-    protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
-    protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
-  '';
-
   postInstall = ''
     mv $out/bin/grpcserver $out/bin/anytypeHelper
-    mkdir -p $out/lib
-    cp -r dist/js/pb/* $out/lib
-    cp -r dist/js/pb/* $out/lib
+    mkdir -p $out/lib/protos
+    find pb -type f -name "*.proto" -exec cp {} $out/lib/protos/ \;
+    find pkg/lib/pb -type f -name "*.proto" -exec cp {} $out/lib/protos/ \;
 
     mkdir -p $out/lib/json/generated
     cp pkg/lib/bundle/system*.json $out/lib/json/generated
@@ -94,7 +92,6 @@ buildGoModule (finalAttrs: {
     platforms = [
       "x86_64-linux"
       "aarch64-linux"
-      "x86_64-darwin"
       "aarch64-darwin"
     ];
     broken = stdenv.hostPlatform.isDarwin;

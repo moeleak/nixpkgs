@@ -21,6 +21,7 @@
   libva-minimal,
   llvmPackages,
   lm_sensors,
+  mesa-libclc,
   meson,
   ninja,
   pkg-config,
@@ -33,6 +34,7 @@
   stdenv,
   udev,
   valgrind-light,
+  venus-protocol,
   vulkan-loader,
   wayland,
   wayland-protocols,
@@ -104,14 +106,12 @@
     "wayland"
   ],
   vulkanLayers ? [
-    "anti-lag"
     "device-select"
     "intel-nullhw"
     "overlay"
     "screenshot"
     "vram-report-limit"
   ],
-  mesa,
   mesa-gl-headers,
   makeSetupHook,
 }:
@@ -146,7 +146,7 @@ let
 
   common = import ./common.nix { inherit lib fetchFromGitLab; };
 in
-stdenv.mkDerivation {
+stdenv.mkDerivation (finalAttrs: {
   inherit (common)
     pname
     version
@@ -249,6 +249,10 @@ stdenv.mkDerivation {
   mesonFlags = [
     "--sysconfdir=/etc"
 
+    # Disable debug assertions for performance/compatibility
+    # https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/docs/meson.rst?ref_type=heads#options
+    (lib.mesonBool "b_ndebug" true)
+
     # What to build
     (lib.mesonOption "platforms" (lib.concatStringsSep "," eglPlatforms))
     (lib.mesonOption "gallium-drivers" (lib.concatStringsSep "," galliumDrivers))
@@ -329,12 +333,13 @@ stdenv.mkDerivation {
     libxxf86vm
     llvmPackages.clang
     llvmPackages.clang-unwrapped
-    llvmPackages.libclc
     llvmPackages.libllvm
     lm_sensors
+    mesa-libclc
     python3Packages.python # for shebang
     spirv-llvm-translator
     udev
+    venus-protocol
     vulkan-loader
     wayland
     wayland-protocols
@@ -392,6 +397,7 @@ stdenv.mkDerivation {
     moveToOutput bin/panfrost_texfeatures $cross_tools
     moveToOutput bin/panfrostdump $cross_tools
     moveToOutput bin/pco_clc $cross_tools
+    moveToOutput bin/pdsc_precomp $cross_tools
     moveToOutput bin/vtn_bindgen2 $cross_tools
 
     moveToOutput "lib/lib*OpenCL*" $opencl
@@ -399,6 +405,7 @@ stdenv.mkDerivation {
     mkdir -p $opencl/etc/OpenCL/vendors/
     echo $opencl/lib/libRusticlOpenCL.so > $opencl/etc/OpenCL/vendors/rusticl.icd
 
+    mkdir -p $spirv2dxil
     moveToOutput bin/spirv2dxil $spirv2dxil
     moveToOutput "lib/libspirv_to_dxil*" $spirv2dxil
   '';
@@ -443,19 +450,20 @@ stdenv.mkDerivation {
       ;
 
     # for compatibility
-    drivers = lib.warn "`mesa.drivers` is deprecated, use `mesa` instead" mesa;
+    drivers = lib.warn "`mesa.drivers` is deprecated, use `mesa` instead" finalAttrs.finalPackage;
 
     tests.outDoesNotDependOnLLVM = stdenv.mkDerivation {
       name = "mesa-does-not-depend-on-llvm";
       buildCommand = ''
-        echo ${mesa} >>$out
+        echo ${finalAttrs.finalPackage} >>$out
       '';
       disallowedRequisites = [ llvmPackages.llvm ];
     };
 
     llvmpipeHook = makeSetupHook {
       name = "llvmpipe-hook";
-      substitutions.mesa = mesa;
+      substitutions.mesa = finalAttrs.finalPackage;
+      meta.license = lib.licenses.mit;
     } ./llvmpipe-hook.sh;
   };
-}
+})

@@ -8,16 +8,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "cargo-deny";
-  version = "0.19.5";
+  version = "0.21.0";
 
   src = fetchFromGitHub {
     owner = "EmbarkStudios";
     repo = "cargo-deny";
     tag = finalAttrs.version;
-    hash = "sha256-/rhdG/N2xQYCRPAddS2GELRuc/LsQVt8puvgn/cdbj4=";
+    hash = "sha256-ncn4RiuGPTl6KGQLsIr7oDge2AaVJ4tTFVksx/ebbc4=";
   };
 
-  cargoHash = "sha256-Xx8t3DpJ9n1v3Cky1r+WiP3/Q4rJ7wDntSiV8VS8qTQ=";
+  cargoHash = "sha256-XXzqijwhI9HKCdDyji9ZOBReS8YcxHFMQ7SSjxYZonQ=";
 
   nativeBuildInputs = [
     pkg-config
@@ -39,10 +39,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     mainProgram = "cargo-deny";
     homepage = "https://github.com/EmbarkStudios/cargo-deny";
     changelog = "https://github.com/EmbarkStudios/cargo-deny/blob/${finalAttrs.version}/CHANGELOG.md";
-    license = with lib.licenses; [
-      asl20 # or
-      mit
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        asl20
+        mit
+      ];
     maintainers = with lib.maintainers; [
       matthiasbeyer
       jk

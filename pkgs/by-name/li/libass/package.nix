@@ -17,11 +17,11 @@ assert fontconfigSupport -> fontconfig != null;
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "libass";
-  version = "0.17.4";
+  version = "0.17.5";
 
   src = fetchurl {
     url = "https://github.com/libass/libass/releases/download/${finalAttrs.version}/libass-${finalAttrs.version}.tar.xz";
-    hash = "sha256-ePEXm4ONAl6cJuj+8z+AkvZWEURP+hv8DPrGozURoFo=";
+    hash = "sha256-LcolwODIN93wC1IBGz+CysHk3dOtAYIngGsMIoiGSsw=";
   };
 
   outputs = [
@@ -44,10 +44,7 @@ stdenv.mkDerivation (finalAttrs: {
     fribidi
     harfbuzz
   ]
-  ++ lib.optional fontconfigSupport fontconfig
-  ++ lib.optional stdenv.hostPlatform.isDarwin [
-    libiconv
-  ];
+  ++ lib.optional fontconfigSupport fontconfig;
 
   meta = {
     description = "Portable ASS/SSA subtitle renderer";

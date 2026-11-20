@@ -33,16 +33,21 @@ let
 in
 python3.pkgs.buildPythonApplication (finalAttrs: {
   pname = "trackma";
-  version = "0.9";
+  version = "0.10.3";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "z411";
     repo = "trackma";
     tag = "v${finalAttrs.version}";
-    sha256 = "Hov9qdVabu1k3SIoUmvcRtSK8TcETqGPXI2RqN/bei4=";
+    sha256 = "HiHeq8mLNT54BWXXwOfeY+c+wGHWnlN5rA2WgXdrRY8=";
     fetchSubmodules = true; # for anime-relations submodule
   };
+
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail '"^1.2.0 || ^2.0.0"' '">=1.2.0,<3.0.0"'
+  '';
 
   nativeBuildInputs = [
     copyDesktopItems

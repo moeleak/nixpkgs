@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  blueprint-compiler,
   desktop-file-utils,
   fetchFromGitLab,
   isocodes,
@@ -13,21 +14,26 @@
   pkg-config,
   shared-mime-info,
   wrapGAppsHook4,
+  _experimental-update-script-combinators,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "crosswords";
-  version = "0.3.15";
+  version = "0.3.19.1";
+
+  strictDeps = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitLab {
     domain = "gitlab.gnome.org";
     owner = "jrb";
     repo = "crosswords";
     rev = finalAttrs.version;
-    hash = "sha256-KcHcTjPoQNA5TBXnKgudjBTV/0JbeVMJ09XVAL7SizI=";
+    hash = "sha256-bncC3QXseYMkw3SH+PAqUpXiL0qZy4JASbhFoVvabqA=";
   };
 
   nativeBuildInputs = [
+    blueprint-compiler
     desktop-file-utils
     meson
     ninja
@@ -43,7 +49,24 @@ stdenv.mkDerivation (finalAttrs: {
     libipuz
   ];
 
-  passthru.updateScript = nix-update-script { };
+  mesonFlags = [
+    (lib.mesonBool "development" false)
+  ];
+
+  postInstall = ''
+    substituteInPlace $out/share/thumbnailers/crosswords.thumbnailer \
+      --replace-fail "TryExec=crosswords-thumbnailer" "TryExec=$out/bin/crosswords-thumbnailer" \
+      --replace-fail "Exec=crosswords-thumbnailer" "Exec=$out/bin/crosswords-thumbnailer"
+  '';
+
+  passthru.updateScript = _experimental-update-script-combinators.sequence [
+    (nix-update-script {
+      attrPath = "libipuz";
+    })
+    (nix-update-script {
+      attrPath = "crosswords";
+    })
+  ];
 
   meta = {
     description = "Crossword player and editor for GNOME";

@@ -16,7 +16,7 @@
   multicharge,
 }:
 
-assert !blas.isILP64 && !lapack.isILP64;
+assert blas.isILP64 == lapack.isILP64;
 assert (
   builtins.elem buildType [
     "meson"
@@ -26,21 +26,20 @@ assert (
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "dftd4";
-  version = "3.7.0";
+  version = "4.3.1";
+  __structuredAttrs = true;
+  strictDeps = true;
 
   src = fetchFromGitHub {
     owner = "dftd4";
     repo = "dftd4";
-    rev = "v${finalAttrs.version}";
-    hash = "sha256-dixPCLH5dWkE2/7ghGEXJmX2/g1DN30dB4jX2d7fmio=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-hItJfHB3ZDFlqixrhT9Ut54I0xC3BoWeor5mVzZhLK8=";
   };
 
   patches = [
-    # Make sure fortran headers are installed directly in /include
-    ./fortran-module-dir.patch
-
-    # Fix wrong generation of package config include paths
-    ./cmake.patch
+    # Fix pkg-config, meson and cmake paths for include and lib dirs
+    ./build-paths.patch
   ];
 
   nativeBuildInputs = [
@@ -65,8 +64,22 @@ stdenv.mkDerivation (finalAttrs: {
     multicharge
   ];
 
+  mesonFlags = [
+    "-Dilp64=${if blas.isILP64 then "true" else "false"}"
+  ]
+  ++ lib.optionals blas.isILP64 [
+    "-Dlapack=custom"
+    "-Dcustom_libraries=blas,lapack"
+  ];
+
   cmakeFlags = [
     (lib.strings.cmakeBool "BUILD_SHARED_LIBS" (!stdenv.hostPlatform.isStatic))
+    (lib.cmakeBool "WITH_ILP64" blas.isILP64)
+  ]
+  ++ lib.optionals blas.isILP64 [
+    "-DBLAS_LIBRARIES=${lib.getLib blas}/lib/libblas${
+      if stdenv.hostPlatform.isStatic then ".a" else stdenv.hostPlatform.extensions.sharedLibrary
+    }"
   ];
 
   outputs = [
@@ -82,18 +95,12 @@ stdenv.mkDerivation (finalAttrs: {
       app/tester.py
   '';
 
-  preCheck = ''
-    export OMP_NUM_THREADS=2
-  '';
-
   meta = {
     description = "Generally Applicable Atomic-Charge Dependent London Dispersion Correction";
+    changelog = "https://github.com/dftd4/dftd4/releases/tag/${finalAttrs.src.tag}";
     mainProgram = "dftd4";
-    license = with lib.licenses; [
-      lgpl3Plus
-      gpl3Plus
-    ];
-    homepage = "https://github.com/grimme-lab/dftd4";
+    license = lib.licenses.lgpl3Plus;
+    homepage = "https://github.com/dftd4/dftd4";
     platforms = lib.platforms.linux;
     maintainers = [ lib.maintainers.sheepforce ];
   };

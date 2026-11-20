@@ -31,21 +31,22 @@
   cctools,
   # Allow to independently override the jdks used to build and run respectively
   jdk_headless,
-  version ? "8.6.0",
+  version ? "8.7.0",
 }:
 
 let
   inherit (callPackage ./build-support/patching.nix { }) addFilePatch;
-  inherit (stdenv.hostPlatform) isDarwin isAarch64;
+  inherit (stdenv.hostPlatform) isDarwin;
 
   bazelSystem = if isDarwin then "darwin" else "linux";
 
   # on aarch64 Darwin, `uname -m` returns "arm64"
-  bazelArch = if isDarwin && isAarch64 then "arm64" else stdenv.hostPlatform.parsed.cpu.name;
+  bazelArch =
+    if isDarwin then stdenv.hostPlatform.darwinArch else stdenv.hostPlatform.parsed.cpu.name;
 
   src = fetchzip {
     url = "https://github.com/bazelbuild/bazel/releases/download/${version}/bazel-${version}-dist.zip";
-    hash = "sha256-W22eB0IzHNZe3xaF8AZOkUTDCic3NXkypdqSDY61Su0=";
+    hash = "sha256-bm+gkkrAVepJWZddDEV1+jX4jRdD+tZ1TH2YG9adIyk=";
     stripRoot = false;
   };
 
@@ -129,7 +130,7 @@ stdenv.mkDerivation rec {
     # guarantee that it will always run in any nix context.
     #
     # See also ./bazel_darwin_sandbox.patch in bazel_5. That patch uses
-    # NIX_BUILD_TOP env var to conditionnally disable sleep features inside the
+    # NIX_BUILD_TOP env var to conditionally disable sleep features inside the
     # sandbox.
     #
     # If you want to investigate the sandbox profile path,

@@ -1,190 +1,285 @@
 {
   lib,
   stdenv,
-  python3,
+  python3Packages,
   fetchFromGitHub,
+  callPackage,
+  rustPlatform,
 
   # tests
+  gitMinimal,
   uv,
   versionCheckHook,
   writableTmpDirAsHomeHook,
 }:
 
-let
-  python = python3.override {
-    packageOverrides = _final: prev: {
-      # Many tests fail with the current version of opentelemetry we have in nixpkgs
-      # vibe.acp.exceptions.InternalError: module '...' has no attribute 'GEN_AI_PROVIDER_NAME'
-      opentelemetry-api = prev.opentelemetry-api.overridePythonAttrs (old: rec {
-        version = "1.40.0";
-        src = old.src.override {
-          tag = "v${version}";
-          hash = "sha256-1KVy9s+zjlB4w7E45PMCWRxPus24bgBmmM3k2R9d+Jg=";
-        };
-      });
-      # 112/2907 tests fail with textual 8.2.5:
-      # textual.app.InvalidThemeError: Theme 'textual-ansi' has not been registered.
-      textual = prev.textual.overridePythonAttrs (old: rec {
-        version = "8.2.4";
-        src = old.src.override {
-          tag = "v${version}";
-          hash = "sha256-827cm9pcj1o1FYeaoWKCJ6dEyXeDop4kYd205cySTfg=";
-        };
-      });
-    };
-  };
-  python3Packages = python.pkgs;
-in
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "mistral-vibe";
-  version = "2.9.5";
+  version = "3.1.0";
   pyproject = true;
-  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "mistralai";
     repo = "mistral-vibe";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-NiW4VZyQerFhDEDXOOTNzOpsPnZvoyxJWMfg9hHJJ8c=";
+    hash = "sha256-lgrxLd7sfXMHK2Q1yvopbUZXtogZWxlMijtXl5cMGXc=";
   };
 
-  build-system = with python3Packages; [
-    editables
-    hatch-vcs
-    hatchling
+  patches = [
+    # os.nice() fails with EPERM in the sandbox
+    ./tolerate-unavailable-nice.patch
   ];
 
-  pythonRelaxDeps = [
-    "agent-client-protocol"
-    "cryptography"
-    "gitpython"
-    "mistralai"
-    "opentelemetry-exporter-otlp-proto-http"
-    "opentelemetry-sdk"
-    "opentelemetry-semantic-conventions"
-    "pydantic-settings"
-    "zstandard"
+  postPatch =
+    # The e2e tests expect the `vibe` executables to sit next to the Python interpreter
+    ''
+      substituteInPlace tests/e2e/common.py \
+        --replace-fail \
+          'Path(sys.executable).with_name(' \
+          "Path('$out/bin/vibe').with_name("
+    '';
+
+  # The Unified Harness native extension (`mistralai_vibe_local_harness._native`)
+  cargoRoot = "harness/core";
+  cargoDeps = rustPlatform.fetchCargoVendor {
+    inherit (finalAttrs) pname version src;
+    sourceRoot = "${finalAttrs.src.name}/${finalAttrs.cargoRoot}";
+    hash = "sha256-JkmZ65pnioLfTLg9Nmtsjs4m6lB72c6iTKvnwz48Gqo=";
+  };
+
+  nativeBuildInputs = [
+    rustPlatform.cargoSetupHook
+    rustPlatform.maturinBuildHook
   ];
-  dependencies = with python3Packages; [
-    agent-client-protocol
-    anyio
-    cachetools
-    charset-normalizer
-    cryptography
-    gitpython
-    giturlparse
-    google-auth
-    httpx
-    jsonpatch
-    keyring
-    markdownify
-    mcp
-    mistralai
-    opentelemetry-api
-    opentelemetry-exporter-otlp-proto-http
-    opentelemetry-sdk
-    opentelemetry-semantic-conventions
-    packaging
-    pexpect
-    pydantic
-    pydantic-settings
-    pyperclip
-    python-dotenv
-    pyyaml
-    requests
-    rich
-    sounddevice
-    textual
-    textual-speedups
-    tomli-w
-    tree-sitter
-    tree-sitter-bash
-    watchfiles
-    websockets
-    zstandard
+
+  env = {
+    # The v8 crate would otherwise download these at build time
+    RUSTY_V8_ARCHIVE = finalAttrs.passthru.librusty_v8.archive;
+    RUSTY_V8_SRC_BINDING_PATH = finalAttrs.passthru.librusty_v8.srcBinding;
+  };
+
+  # Replicate what upstream's custom build backend (build_backend/maturin_backend.py)
+  # does before handing over to maturin, without its zig/manylinux portability
+  # tweaks and with the Rust TUI built separately.
+  preBuild = ''
+    mkdir -p .native-build
+    cp -r harness/core .native-build/harness-core
+    cp -r harness/runtimes/python/python/mistralai_vibe_local_harness .
+
+    mkdir -p vibe/_bin
+    cp ${lib.getExe finalAttrs.passthru.vibe-rs} vibe/_bin/vibe-rs
+  '';
+
+  pythonRelaxDeps = true;
+  pythonRemoveDeps = [
+    # Not packaged in nixpkgs, and not imported by vibe
+    "opentelemetry-exporter-otlp-common"
   ];
+  dependencies =
+    with python3Packages;
+    [
+      agent-client-protocol
+      annotated-types
+      anyio
+      attrs
+      authlib
+      beautifulsoup4
+      cachetools
+      certifi
+      cffi
+      charset-normalizer
+      click
+      croniter
+      cryptography
+      eval-type-backport
+      gitdb
+      gitpython
+      giturlparse
+      google-auth
+      googleapis-common-protos
+      h11
+      httpcore2
+      httpx2
+      humanize
+      idna
+      jaraco-classes
+      jaraco-context
+      jaraco-functools
+      joserfc
+      jsonpatch
+      jsonpath-python
+      jsonpointer
+      jsonschema
+      jsonschema-specifications
+      keyring
+      markdownify
+      mcp
+      mcp-types
+      miniaudio
+      mistralai
+      more-itertools
+      opentelemetry-api
+      opentelemetry-exporter-http-transport
+      opentelemetry-exporter-otlp-proto-common
+      opentelemetry-exporter-otlp-proto-http
+      opentelemetry-proto
+      opentelemetry-sdk
+      opentelemetry-semantic-conventions
+      packaging
+      pexpect
+      protobuf
+      ptyprocess
+      pyasn1
+      pyasn1-modules
+      pycparser
+      pydantic
+      pydantic-core
+      pydantic-settings
+      pyjwt
+      python-dateutil
+      python-dotenv
+      python-multipart
+      pyyaml
+      referencing
+      requests
+      rfc8785
+      rpds-py
+      sentry-sdk
+      setproctitle
+      six
+      smmap
+      socksio
+      soupsieve
+      sse-starlette
+      starlette
+      tomli-w
+      tree-sitter
+      tree-sitter-bash
+      truststore
+      typing-extensions
+      typing-inspection
+      urllib3
+      uuid-utils
+      uvicorn
+      watchfiles
+      websockets
+      zstandard
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isLinux [
+      jeepney
+      secretstorage
+    ];
 
   pythonImportsCheck = [ "vibe" ];
 
   nativeCheckInputs = [
+    # vibe.core.agent_loop.TeleportError: Teleport requires git to be installed.
+    gitMinimal
+    # respx models its routes on HTTPX
+    python3Packages.httpx
+    python3Packages.pyte
     python3Packages.pytest-asyncio
-    python3Packages.pytest-textual-snapshot
     python3Packages.pytest-xdist
     python3Packages.pytestCheckHook
     python3Packages.respx
+    python3Packages.rich
+    python3Packages.tomlkit
     uv
     versionCheckHook
     writableTmpDirAsHomeHook
   ];
   versionCheckKeepEnvironment = [ "HOME" ];
 
+  # Make sure that the installed runtime, which ships the native extension, is imported
+  preCheck = ''
+    rm -rf mistralai_vibe_local_harness
+  '';
+
   disabledTests = [
-    # Fail in the sandbox
-    # vibe.core.audio_recorder.audio_recorder_port.NoAudioInputDeviceError: No audio input device available
-    "test_audio_stream_yields_chunks"
-    "test_auto_stops_after_max_duration"
-    "test_buffer_mode_audio_stream_yields_nothing"
-    "test_callback_feeds_audio_data"
-    "test_callback_pads_silence_at_end"
-    "test_can_play_multiple_times"
-    "test_can_record_multiple_times"
-    "test_cancel_discards_audio"
-    "test_creates_stream_with_correct_params"
-    "test_finished_callback_resets_state"
-    "test_manual_stop_prevents_on_expire"
-    "test_on_expire_receives_audio"
-    "test_on_finished_called_after_natural_completion"
-    "test_peak_clamps_to_one"
-    "test_peak_updates_from_callback"
-    "test_play_sets_playing_state"
-    "test_play_when_already_playing_raises"
-    "test_silent_audio_has_zero_peak"
-    "test_start_sets_recording_state"
-    "test_start_when_already_recording_raises"
-    "test_stop_closes_stream"
-    "test_stop_from_event_loop_does_not_block"
-    "test_stop_returns_empty_data_in_stream_mode"
-    "test_stop_returns_positive_duration"
-    "test_stop_returns_valid_wav"
-    "test_stop_triggers_on_finished_via_callback"
-    "test_stop_without_drain_returns_promptly"
-    "test_stream_audio_does_not_leak_into_buffer_recording"
-    "test_unsupported_format_raises"
+    # AssertionError: assert <MCPSourceStatus.UNAVAILABLE: 'unavailable'> is <MCPSourceStatus.ENABLED: 'enabled'>
+    "test_mcp_catalog_read_refresh_toggle_remove_and_compatibility_aliases"
+    "test_local_mcp_servers_stay_usable_when_connectors_reject_the_key"
 
-    # AssertionError: assert True is False
-    #  +  where True = VibeApp(title='VibeApp', ...)._rewind_mode
-    "test_rewind_confirm_edits_message_and_prefills_input"
-    "test_rewind_option_selection_with_number_keys"
+    # TypeError: cannot pickle 'itertools.count' object (Python 3.14 compatibility)
+    "test_orchestrator_deepcopies_and_stays_functional"
 
-    # AssertionError: assert 3 == 1
-    # +  where 3 = len([UserMessage(classes='user-message'), UserMessage(classes='...
-    "test_rewind_removes_messages_after_selected"
+    # The sandbox helper runs `python3 -I`, which cannot import the harness runtime
+    # assert 3 == 1
+    "test_a_sandbox_without_skills_of_its_own_needs_no_upload"
+
+    # An extra notification is emitted because connectors fail to load (no network)
+    "test_opening_a_unified_session_notifies_invalid_managed_config"
+
+    # Flaky: TimeoutError
+    "test_unified_host_reads_the_live_public_event_cursor"
+
+    # Flaky: RuntimeError: A turn is already running
+    "test_a_forked_child_can_be_forked_again_onto_an_inherited_turn"
+
+    # Flaky: session references are not yet garbage-collected
+    "test_closed_sessions_release_their_servers_and_background_tasks"
+
+    # Both writes land in the same coarse filesystem timestamp tick, so the
+    # (device, inode, mtime, size) fingerprint does not change
+    "test_changes_when_file_changes"
+
+    # TypeError: OTLPSpanExporter.__init__() got an unexpected keyword argument '_transport'
+    # (requires opentelemetry-exporter-otlp-proto-http>=1.45.0)
+    "test_trace_export_swaps_each_batch_and_keeps_tenant_headers"
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
-    # AssertionError
-    "test_rebuilds_index_when_mass_change_threshold_is_exceeded"
-    "test_updates_index_incrementally_by_default"
-    "test_updates_index_on_file_creation"
-    "test_updates_index_on_file_deletion"
-    "test_updates_index_on_file_rename"
-    "test_updates_index_on_folder_rename"
-    "test_watcher_toggle_flow_off_on_off"
+    # AssertionError: assert 'alive' == 'gone'
+    "test_background_processes_answer_the_model_alike_on_the_host_and_in_a_sandbox"
+
+    # RuntimeError: Session lease file watcher did not start
+    "test_unified_lease_subscription_ends_with_its_connection"
+    "test_unified_lease_subscription_reports_held_sessions_then_changes"
+
+    # The skill file watcher never reports changes in the sandbox (TimeoutError)
+    "test_a_configured_skill_path_created_later_is_picked_up"
+    "test_a_new_skill_file_yields_one_change"
+    "test_a_skill_written_after_the_session_opened_is_picked_up_without_reload"
+    "test_a_watch_with_nothing_to_watch_waits_for_a_folder"
+
+    # The file watch never sees the other process's write in the sandbox (TimeoutError)
+    "test_a_read_by_another_process_reaches_the_owners"
+
+    # The killed shell's stdout does not close in time (TimeoutError)
+    "test_killing_a_shell_right_after_its_first_output_kills_its_next_command"
   ];
 
   disabledTestPaths = [
-    # This tests the install_script and fails. This is not relevant for nixpkgs.
-    "tests/test_install_script.py"
+    # These tests invoke uv run and fail to import the packaged pydantic extension.
+    "tests/e2e/agent_loop_characterization/test_resume.py"
+    "tests/e2e/agent_loop_characterization/test_subagents.py"
+    "tests/e2e/agent_loop_characterization/test_tool_execution.py"
+    "tests/e2e/agent_loop_characterization/test_tool_permissions.py"
+    "tests/e2e/agent_loop_characterization/test_user_interaction.py"
+    "tests/e2e/test_cli_tui_hooks.py"
+    "tests/e2e/test_cli_tui_onboarding.py"
+    "tests/e2e/test_cli_tui_session_exit.py"
+    "tests/e2e/test_cli_tui_streaming.py"
+    "tests/e2e/test_cli_tui_tool_approval.py"
 
-    # All snapshot tests fail with AssertionError
-    "tests/snapshots/"
-
-    # Try to invoke `uv run vibe`
-    "tests/e2e/"
+    # Flaky: telemetry events are not received in the expected order
+    "tests/app_server/test_setup_oidc_telemetry.py"
 
     # ACP tests require network access
-    "tests/acp/test_acp.py"
     "tests/acp/test_acp_entrypoint_smoke.py"
+
+    # The installer is run with a PATH restricted to /usr/bin:/bin, where the
+    # sandbox provides no `bash`
+    "tests/test_install_script.py"
   ];
+
+  __darwinAllowLocalNetworking = true;
+
+  passthru = {
+    librusty_v8 = callPackage ./librusty_v8.nix { };
+    vibe-rs = callPackage ./vibe-rs.nix {
+      inherit (finalAttrs) version src meta;
+    };
+  };
 
   meta = {
     description = "Minimal CLI coding agent by Mistral";

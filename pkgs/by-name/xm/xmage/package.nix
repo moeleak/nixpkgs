@@ -5,14 +5,13 @@
   jdk8,
   unzrip,
 }:
-
 stdenv.mkDerivation (finalAttrs: {
   pname = "xmage";
-  version = "1.4.58-dev_2025-10-06_20-40";
+  version = "1.4.63-dev_2026-10-31_09-42";
 
   src = fetchurl {
-    url = "https://xmage.today/files/mage-full_${finalAttrs.version}.zip";
-    sha256 = "sha256-UOtxV+ykDIH+PLjLrC66Rut92IIw2iDHWwvJ2ytmUAs=";
+    url = "https://github.com/magefree/mage/releases/download/${finalAttrs.passthru.tag}/mage-full_${finalAttrs.version}.zip";
+    hash = "sha256-9I5polg3IIAKtqRHRY7ec73tXLIZBbDZZYpgUqtDkIo=";
   };
 
   preferLocalBuild = true;
@@ -42,6 +41,11 @@ stdenv.mkDerivation (finalAttrs: {
       chmod +x $out/bin/xmage
     '';
 
+  passthru = {
+    tag = "xmage_1.4.63V1";
+    updateScript = ./update.sh;
+  };
+
   meta = {
     description = "Magic Another Game Engine";
     mainProgram = "xmage";
@@ -51,7 +55,7 @@ stdenv.mkDerivation (finalAttrs: {
       matthiasbeyer
       abueide
     ];
-    homepage = "http://xmage.de/";
+    homepage = "https://xmage.today/";
+    changelog = "https://github.com/magefree/mage/releases/tag/${finalAttrs.passthru.tag}";
   };
-
 })

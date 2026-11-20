@@ -66,34 +66,37 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "apache-beam";
-  version = "2.72.0";
+  version = "2.77.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "apache";
     repo = "beam";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-HlpaKDX/w6g6q8nOB8G83q4/ffgymk/XyTpwYVpbd2U=";
+    hash = "sha256-JaIMkMLXfkst8HZs4fFUgRBDZ2YzyyfZd/wrgDkjp3A=";
   };
 
   sourceRoot = "${finalAttrs.src.name}/sdks/python";
 
+  patches = [
+    # Beam's dataframe module references DataFrame.first/last/bool/applymap, all removed in
+    # pandas 3. Their `with_docs_from` decorators do getattr at import, crashing frames.py (which
+    # then never registers the deferred types). Guard them behind hasattr like the neighboring
+    # ffill/bfill aliases. Upstream caps pandas < 2.4, so this is nixpkgs-local.
+    ./pandas-3-compat.patch
+  ];
+
   postPatch = ''
     substituteInPlace pyproject.toml \
+      --replace-fail "distlib==0.4.3" "distlib" \
+      --replace-fail "cython>=3.2.6,<4" "cython" \
+      --replace-fail "numpy>=1.14.3,<2.5.0" "numpy" \
       --replace-fail "==" ">="
 
     substituteInPlace setup.py \
+      --replace-fail "numpy>=1.14.3,<2.5.0" "numpy" \
       --replace-fail "  copy_tests_from_docs()" ""
   '';
-
-  pythonRelaxDeps = [
-    "envoy-data-plane"
-    "httplib2"
-    "jsonpickle"
-    "objsize"
-    "protobuf"
-    "pyarrow"
-  ];
 
   build-system = [
     cython
@@ -108,6 +111,12 @@ buildPythonPackage (finalAttrs: {
     yapf
   ];
 
+  pythonRelaxDeps = [
+    "numpy"
+    "objsize"
+    "pillow"
+    "protobuf"
+  ];
   dependencies = [
     beartype
     crcmod
@@ -191,7 +200,6 @@ buildPythonPackage (finalAttrs: {
 
     # These tests depend on the availability of specific servers backends.
     "apache_beam/runners/portability/flink_runner_test.py"
-    "apache_beam/runners/portability/samza_runner_test.py"
     "apache_beam/runners/portability/spark_runner_test.py"
 
     # Fails starting from dill 0.3.6 because it tries to pickle pytest globals:
@@ -221,6 +229,7 @@ buildPythonPackage (finalAttrs: {
 
     # FIXME AttributeError: 'Namespace' object has no attribute 'test_pipeline_options'
     # Upstream issue https://github.com/apache/beam/issues/33853
+    "apache_beam/runners/portability/kafka_streams_runner_test.py"
     "apache_beam/runners/portability/prism_runner_test.py"
 
     # FIXME ValueError: Unable to run pipeline with requirement: unsupported_requirement
@@ -231,10 +240,11 @@ buildPythonPackage (finalAttrs: {
     "apache_beam/yaml/yaml_udf_test.py"
     "apache_beam/dataframe/frames_test.py"
 
-    # FIXME Those tests do not terminate due to a grpc error (threading issue)
-    # grpc_status:14, grpc_message:"Cancelling all calls"}"
-    # Upstream issue https://github.com/apache/beam/issues/33851
-    "apache_beam/runners/portability/portable_runner_test.py"
+    # Pandas 3 behavioral changes in Beam's dataframe module (upstream caps pandas < 2.4):
+    # the doctests compare against pandas-version-specific output and the taxiride example
+    # relies on DataFrame APIs removed in pandas 3.
+    "apache_beam/dataframe/doctests_test.py"
+    "apache_beam/examples/dataframe/taxiride_test.py"
   ]
   ++ lib.optionals (pythonAtLeast "3.13") [
     # > instruction = ofs_table[pc]
@@ -243,6 +253,9 @@ buildPythonPackage (finalAttrs: {
   ];
 
   disabledTests = [
+    # ConnectionResetError: [Errno 104] Connection reset by peer
+    "test_process_exits_on_unsafe_hard_delete_with_manager"
+
     # importlib.metadata.PackageNotFoundError: No package metadata was found for pip
     "test_populate_requirements_cache_uses_find_links"
 
@@ -301,6 +314,28 @@ buildPythonPackage (finalAttrs: {
 
     # AssertionError: False is not true
     "test_samples_all_with_both_experiments"
+
+    # ValueError: buffer source array is read-only (Cython coder over a read-only numpy buffer)
+    "test_coders_microbenchmark"
+
+    # Pandas 3 behavioral changes in Beam's dataframe module (upstream caps pandas < 2.4).
+    # groupby() no longer accepts the removed `axis` argument:
+    "test_groupby_apply"
+    "test_groupby_sum_mean"
+    "test_scalar"
+    # (only surface on Python 3.13, but same groupby() `axis` root cause)
+    "test_dataframes_with_grouped_index"
+    "test_dataframes_with_multi_index"
+    "test_dataframes_with_multi_index_get_result"
+    # read_csv attribute/dtype differences:
+    "test_csv_splitter_00_defaults"
+    "test_csv_splitter_01_header"
+    "test_csv_splitter_05_names_and_header"
+    "test_csv_splitter_06_skip_blank_lines"
+    "test_csv_splitter_07_skip_blank_lines"
+    "test_csv_splitter_08_comment"
+    # nan instead of None for missing values:
+    "test_convert_with_none"
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     #  PermissionError: [Errno 13] Permission denied: '/tmp/...'

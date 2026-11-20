@@ -2,6 +2,7 @@
   lib,
   buildPythonPackage,
   fetchFromGitHub,
+  idna,
   pefile,
   pytestCheckHook,
   python-magic,
@@ -10,26 +11,25 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "iocx";
-  version = "0.7.0";
+  version = "0.7.6.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "iocx-dev";
     repo = "iocx";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-QLnlxCFVN2hxQtprNuete9iEAy3k4lxJUwbZcPhHMH0=";
+    hash = "sha256-tRiFys/1xrToGeTb/lD2Z/YJOBJzenN1m2bsq6L7+vQ=";
   };
 
   build-system = [ setuptools ];
 
   dependencies = [
+    idna
     pefile
     python-magic
   ];
 
-  nativeCheckInputs = [
-    pytestCheckHook
-  ];
+  nativeCheckInputs = [ pytestCheckHook ];
 
   pythonImportsCheck = [ "iocx" ];
 
@@ -50,7 +50,7 @@ buildPythonPackage (finalAttrs: {
     description = "IOC extraction engine for PE binaries and text";
     homepage = "https://github.com/iocx-dev/iocx";
     changelog = "https://github.com/iocx-dev/iocx/releases/tag/${finalAttrs.src.tag}";
-    license = lib.licenses.mit;
+    license = lib.licenses.mpl20;
     maintainers = with lib.maintainers; [ fab ];
   };
 })

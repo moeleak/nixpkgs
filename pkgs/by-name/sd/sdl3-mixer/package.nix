@@ -2,6 +2,7 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  fetchpatch,
   cmake,
   ninja,
   pkg-config,
@@ -24,7 +25,7 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "sdl3-mixer";
-  version = "3.2.0";
+  version = "3.2.4";
   __structuredAttrs = true;
 
   outputs = [
@@ -36,8 +37,21 @@ stdenv.mkDerivation (finalAttrs: {
     owner = "libsdl-org";
     repo = "SDL_mixer";
     tag = "release-${finalAttrs.version}";
-    hash = "sha256-+kOxmBX/zPCTq51F9ysSGsZdJSb21uM56U50mEgprbo=";
+    hash = "sha256-mPk6xU1/GkBtWgF8S9ttha7/PNxcBEiSxpzo6ARLC9I=";
   };
+
+  patches = [
+    (fetchpatch {
+      name = "CVE-2026-122328.patch";
+      url = "https://github.com/libsdl-org/SDL_mixer/commit/df966f698e18ae849bd92796a26311e79c555718.patch";
+      hash = "sha256-eeANExbIy9lzR8bSsK95nz6Pf2OobQBhFbv8Y4OMjqA=";
+    })
+    (fetchpatch {
+      name = "CVE-2026-122329.patch";
+      url = "https://github.com/libsdl-org/SDL_mixer/commit/34486847a607540ce9ef5fbe20979c7140bf8c82.patch";
+      hash = "sha256-bzeUQPwnCekstzg2Eo3EX3q8RIiO85CIJRNI3jHj8Uc=";
+    })
+  ];
 
   strictDeps = true;
   doCheck = true;

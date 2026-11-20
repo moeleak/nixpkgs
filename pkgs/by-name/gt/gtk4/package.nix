@@ -4,7 +4,6 @@
   buildPackages,
   replaceVars,
   fetchurl,
-  fetchpatch,
   pkg-config,
   docutils,
   gettext,
@@ -36,7 +35,6 @@
   libxkbcommon,
   libpng,
   libtiff,
-  librsvg,
   libjpeg,
   libxml2,
   gnome,
@@ -77,7 +75,7 @@ in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "gtk4";
-  version = "4.20.3";
+  version = "4.24.0";
 
   outputs = [
     "out"
@@ -93,14 +91,8 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = fetchurl {
     url = "mirror://gnome/sources/gtk/${lib.versions.majorMinor finalAttrs.version}/gtk-${finalAttrs.version}.tar.xz";
-    hash = "sha256-KHPykDCIpmxxFz6i7YX/riZqZrlyw6SEK7svbxh+wVM=";
+    hash = "sha256-KLpKwcBPhurAm3mhY8sWOkwrVEQtn37MwEZ5BipYEEQ=";
   };
-
-  # TODO: make it unconditional on rebuild, drop on version >= 4.20.4
-  patches = lib.optional stdenv.hostPlatform.is32bit (fetchpatch {
-    url = "https://gitlab.gnome.org/GNOME/gtk/-/commit/3b7ed49f26700c65fa9c6f41cf40d4fd5f921756.diff";
-    hash = "sha256-P6cE7fnR5W+H0EWQWJ3hYSu4MwMygPIfS6e0IiXlQv8=";
-  });
 
   depsBuildBuild = [
     pkg-config
@@ -118,6 +110,7 @@ stdenv.mkDerivation (finalAttrs: {
     sassc
     gi-docgen
     libxml2 # for xmllint
+    shared-mime-info
   ]
   ++ lib.optionals (compileSchemas && !stdenv.buildPlatform.canExecute stdenv.hostPlatform) [
     mesonEmulatorHook
@@ -134,7 +127,6 @@ stdenv.mkDerivation (finalAttrs: {
     libxkbcommon
     libpng
     libtiff
-    librsvg
     libjpeg
     (libepoxy.override { inherit x11Support; })
     isocodes
@@ -204,9 +196,6 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.mesonEnable "vulkan" vulkanSupport)
     (lib.mesonEnable "print-cups" cupsSupport)
     (lib.mesonBool "x11-backend" x11Support)
-  ]
-  ++ lib.optionals (stdenv.hostPlatform.isDarwin && !stdenv.hostPlatform.isAarch64) [
-    "-Dmedia-gstreamer=disabled" # requires gstreamer-gl
   ];
 
   doCheck = false; # needs X11
@@ -255,11 +244,6 @@ stdenv.mkDerivation (finalAttrs: {
     moveToOutput bin/gtk4-update-icon-cache "$out"
     # Launcher
     moveToOutput bin/gtk-launch "$out"
-
-    # TODO: patch glib directly
-    for f in $dev/bin/gtk4-encode-symbolic-svg; do
-      wrapProgram $f --prefix XDG_DATA_DIRS : "${shared-mime-info}/share"
-    done
   ''
   + lib.optionalString broadwaySupport ''
     # Broadway daemon
@@ -308,7 +292,9 @@ stdenv.mkDerivation (finalAttrs: {
     '';
     homepage = "https://www.gtk.org/";
     license = lib.licenses.lgpl2Plus;
-    maintainers = with lib.maintainers; [ raskin ];
+    identifiers.cpeParts = lib.meta.cpeFullVersionWithVendor "gnome" finalAttrs.version // {
+      product = "gtk";
+    };
     teams = [ lib.teams.gnome ];
     platforms = lib.platforms.all;
     changelog = "https://gitlab.gnome.org/GNOME/gtk/-/raw/${finalAttrs.version}/NEWS";

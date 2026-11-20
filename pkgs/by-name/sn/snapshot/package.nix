@@ -3,6 +3,7 @@
   lib,
   fetchurl,
   libglycin,
+  libglycin-gtk4,
   glycin-loaders,
   cargo,
   desktop-file-utils,
@@ -17,19 +18,17 @@
   gtk4,
   libadwaita,
   libcamera,
-  lcms2,
-  libseccomp,
   pipewire,
   gnome,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "snapshot";
-  version = "49.1";
+  version = "51.0";
 
   src = fetchurl {
     url = "mirror://gnome/sources/snapshot/${lib.versions.major finalAttrs.version}/snapshot-${finalAttrs.version}.tar.xz";
-    hash = "sha256-NVj2+ODTiylQtrrZue7COCSb7f7c5w+1iijK1pRebOk=";
+    hash = "sha256-PmT6TNGnQq40tvbY5tlhSi0+q4ihsAccEatTYX6yFMI=";
   };
 
   cargoVendorDir = "vendor";
@@ -37,7 +36,6 @@ stdenv.mkDerivation (finalAttrs: {
   nativeBuildInputs = [
     cargo
     desktop-file-utils
-    libglycin.patchVendorHook
     meson
     ninja
     pkg-config
@@ -48,7 +46,9 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildInputs = [
     glib
+    libglycin
     libglycin.setupHook
+    libglycin-gtk4
     glycin-loaders
     gst_all_1.gst-plugins-bad
     gst_all_1.gst-plugins-base
@@ -58,15 +58,13 @@ stdenv.mkDerivation (finalAttrs: {
     gtk4
     libadwaita
     libcamera # for the gstreamer plugin
-    lcms2
-    libseccomp
     pipewire # for device provider
   ];
 
   postPatch = ''
     substituteInPlace src/meson.build --replace-fail \
-      "'src' / rust_target / meson.project_name()" \
-      "'src' / '${stdenv.hostPlatform.rust.cargoShortTarget}' / rust_target / meson.project_name()"
+      "cargo_target / rust_target / meson.project_name()," \
+      "cargo_target / '${stdenv.hostPlatform.rust.cargoShortTarget}' / rust_target / meson.project_name(),"
   '';
 
   preFixup = ''

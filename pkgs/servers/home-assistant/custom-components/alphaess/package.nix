@@ -7,13 +7,13 @@
 buildHomeAssistantComponent rec {
   owner = "CharlesGillanders";
   domain = "alphaess";
-  version = "0.7.3";
+  version = "0.9.0";
 
   src = fetchFromGitHub {
     owner = "CharlesGillanders";
     repo = "homeassistant-alphaESS";
     tag = "v${version}";
-    hash = "sha256-xLZDmJMomk+C3l8+Of85vkbwrjQUnGlYL/UL31Kn5gc=";
+    hash = "sha256-fwf0Iiebq/CVK8XMDSKlbQDsxv7rCBjhgrSa3Ibf24M=";
   };
 
   dependencies = [

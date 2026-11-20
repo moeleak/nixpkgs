@@ -5,6 +5,8 @@
   pkg-config,
   curl,
   openssl,
+  libgit2,
+  sqlite,
   stdenv,
   libiconv,
   rav1e,
@@ -12,25 +14,29 @@
 
 let
   # this version may need to be updated along with package version
-  cargoVersion = "0.93.0";
+  cargoVersion = "0.100.0";
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "cargo-c";
-  version = "0.10.19";
+  version = "0.10.26";
+
+  __structuredAttrs = true;
 
   src = fetchCrate {
     inherit (finalAttrs) pname;
     version = "${finalAttrs.version}+cargo-${cargoVersion}";
-    hash = "sha256-PrBmB+0tmU2MAUnRr+wx4g9hu0Y9i6WfR8U89bwiLVY=";
+    hash = "sha256-rt7LegE5DEOF/BP7OCSkl8hcziUpz7dJr7kMNDwXw1c=";
   };
 
-  cargoHash = "sha256-EM/vAfW/ucOfK/XmAQn9Zk75eFb7pp8uZoByKbALCyo=";
+  cargoHash = "sha256-j4PIJnPy04vEzTPTo2aD5xMKLUTeyXt13+YdZaqCm2E=";
 
   nativeBuildInputs = [
     pkg-config
     (lib.getDev curl)
   ];
   buildInputs = [
+    sqlite
+    libgit2
     openssl
     curl
   ]

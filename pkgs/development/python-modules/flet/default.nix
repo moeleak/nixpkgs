@@ -37,12 +37,9 @@ buildPythonPackage rec {
 
   build-system = [ setuptools ];
 
-  makeWrapperArgs = [
-    "--prefix"
-    "PYTHONPATH"
-    ":"
-    "$PYTHONPATH"
-  ];
+  preFixup = ''
+    makeWrapperArgs+=(--prefix PYTHONPATH : "$PYTHONPATH")
+  '';
 
   _flet_version = ''
     flet_version = "${version}"
@@ -93,7 +90,6 @@ buildPythonPackage rec {
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [
       heyimnova
-      lucasew
     ];
     mainProgram = "flet";
   };

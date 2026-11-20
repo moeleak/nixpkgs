@@ -9,13 +9,13 @@
 buildHomeAssistantComponent rec {
   owner = "dckiller51";
   domain = "bodymiscale";
-  version = "2026.5.5";
+  version = "2026.11.1";
 
   src = fetchFromGitHub {
     inherit owner;
     repo = domain;
     rev = version;
-    hash = "sha256-O+6+aUmMULEv+Xmh/Gw8iHfSrJkUZ8h0SHvOsQFjpFw=";
+    hash = "sha256-vHt2+TPjGuW6RMNcHTABCTeyjsQQd9jM9oynACY9SiU=";
   };
 
   dependencies = [
@@ -29,7 +29,7 @@ buildHomeAssistantComponent rec {
   meta = {
     description = "Home Assistant custom component providing body metrics for Xiaomi Mi Scale 1 and 2";
     homepage = "https://github.com/dckiller51/bodymiscale";
-    license = with lib.licenses; [ asl20 ];
+    license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ justinas ];
   };
 }

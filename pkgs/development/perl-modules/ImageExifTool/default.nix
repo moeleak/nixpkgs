@@ -12,13 +12,13 @@
 
 buildPerlPackage rec {
   pname = "Image-ExifTool";
-  version = "13.58";
+  version = "13.60";
 
   src = fetchFromGitHub {
     owner = "exiftool";
     repo = "exiftool";
     tag = version;
-    hash = "sha256-Mzn1m26uBlulwlfkW+CSRBR8CVqy5oL8cv+85NGgwRc=";
+    hash = "sha256-o2qO1pL+XFRC8Xvr1YKG29nFblhqZit1x0He5fv40zA=";
   };
 
   postPatch = ''
@@ -55,10 +55,12 @@ buildPerlPackage rec {
     '';
     homepage = "https://exiftool.org/";
     changelog = "https://exiftool.org/history.html";
-    license = with lib.licenses; [
-      gpl1Plus # or
-      artistic2
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        gpl1Plus
+        artistic2
+      ];
     maintainers = with lib.maintainers; [
       anthonyroussel
     ];

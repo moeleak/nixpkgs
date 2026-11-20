@@ -10,7 +10,6 @@
   libarchive,
   libpcap,
   libslirp,
-  pipewire,
   pkg-config,
   qt6,
   stdenv,
@@ -29,13 +28,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "melonds";
-  version = "1.1-unstable-2026-05-11";
+  version = "1.1-unstable-2026-11-04";
 
   src = fetchFromGitHub {
     owner = "melonDS-emu";
     repo = "melonDS";
-    rev = "889e26e9490c828b039387e8a2ef04079b86801d";
-    hash = "sha256-mMeBDsZcljG4FAhkpYlQwfUjA0HMZKNlIx6ndkhn4C0=";
+    rev = "497aa6cdd26f45f8064b78916b00a773eab4ded7";
+    hash = "sha256-YTyhKGursjmOSrP1rjtRT7V13+3T227mEZlygAoEq6Y=";
   };
 
   nativeBuildInputs = [
@@ -68,16 +67,19 @@ stdenv.mkDerivation (finalAttrs: {
 
   qtWrapperArgs =
     lib.optionals stdenv.hostPlatform.isLinux [
-      "--prefix LD_LIBRARY_PATH : ${
-        lib.makeLibraryPath [
-          libpcap
-          pipewire
-          wayland
-        ]
-      }"
+      "--prefix"
+      "LD_LIBRARY_PATH"
+      ":"
+      (lib.makeLibraryPath [
+        libpcap
+        wayland
+      ])
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
-      "--prefix DYLD_LIBRARY_PATH : ${lib.makeLibraryPath [ libpcap ]}"
+      "--prefix"
+      "DYLD_LIBRARY_PATH"
+      ":"
+      (lib.makeLibraryPath [ libpcap ])
     ];
 
   passthru = {
@@ -104,7 +106,7 @@ stdenv.mkDerivation (finalAttrs: {
       - (WIP) GBA slot add-ons
       - and more are planned!
     '';
-    license = with lib.licenses; [ gpl3Plus ];
+    license = lib.licenses.gpl3Plus;
     mainProgram = "melonDS";
     maintainers = with lib.maintainers; [
       artemist

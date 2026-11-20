@@ -10,23 +10,18 @@
 
 let
   pname = "osu-lazer-bin";
-  version = "2026.429.0";
+  version = "2026.1115.0";
 
   src =
     {
       aarch64-darwin = fetchzip {
         url = "https://github.com/ppy/osu/releases/download/${version}-lazer/osu.app.Apple.Silicon.zip";
-        hash = "sha256-So87dCg3exApEEnzj0tMi30+OFHhcPHlb3M2uwEyZgU=";
-        stripRoot = false;
-      };
-      x86_64-darwin = fetchzip {
-        url = "https://github.com/ppy/osu/releases/download/${version}-lazer/osu.app.Intel.zip";
-        hash = "sha256-n2XkyzBsgiY65yrd5Jd0zvByaJ0EZ3C4URTb2Z6n5Fc=";
+        hash = "sha256-WCvQ4Hn0p5c8pjCx3Vt9JrL8EJ9K8+uf3Se1ZL5XxEs=";
         stripRoot = false;
       };
       x86_64-linux = fetchurl {
         url = "https://github.com/ppy/osu/releases/download/${version}-lazer/osu.AppImage";
-        hash = "sha256-3yBDCMffgWQKmBHETYl7IrvT5BOE6vN+sH8dGg+w//s=";
+        hash = "sha256-ROqHd7gjAHqg7bibdOF/V7BpiomsAXdH9ysBE1Me754=";
       };
     }
     .${stdenvNoCC.system} or (throw "osu-lazer-bin: ${stdenvNoCC.system} is unsupported.");
@@ -34,6 +29,7 @@ let
   meta = {
     description = "Rhythm is just a *click* away (AppImage version for score submission and multiplayer, and binary distribution for Darwin systems)";
     homepage = "https://osu.ppy.sh";
+    changelog = "https://osu.ppy.sh/home/changelog/lazer/${version}";
     license = with lib.licenses; [
       mit
       cc-by-nc-40
@@ -48,7 +44,6 @@ let
     mainProgram = "osu!";
     platforms = [
       "aarch64-darwin"
-      "x86_64-darwin"
       "x86_64-linux"
     ];
   };
@@ -79,7 +74,7 @@ if stdenvNoCC.hostPlatform.isDarwin then
     '';
   }
 else
-  appimageTools.wrapType2 {
+  appimageTools.wrapType2 (finalAttrs: {
     inherit
       pname
       version
@@ -90,26 +85,17 @@ else
 
     extraPkgs = pkgs: with pkgs; [ icu ];
 
-    # fix OpenGL renderer on nvidia + wayland
-    extraBwrapArgs = [
-      "--ro-bind-try /etc/egl/egl_external_platform.d /etc/egl/egl_external_platform.d"
-    ];
+    extraInstallCommands = ''
+      . ${makeWrapper}/nix-support/setup-hook
+      mv -v $out/bin/${pname} $out/bin/osu!
 
-    extraInstallCommands =
-      let
-        contents = appimageTools.extract { inherit pname version src; };
-      in
-      ''
-        . ${makeWrapper}/nix-support/setup-hook
-        mv -v $out/bin/${pname} $out/bin/osu!
+      wrapProgram $out/bin/osu! \
+        ${lib.optionalString nativeWayland "--set SDL_VIDEODRIVER wayland"} \
+        --set OSU_EXTERNAL_UPDATE_PROVIDER 1
 
-        wrapProgram $out/bin/osu! \
-          ${lib.optionalString nativeWayland "--set SDL_VIDEODRIVER wayland"} \
-          --set OSU_EXTERNAL_UPDATE_PROVIDER 1
-
-        install -m 444 -D ${contents}/osu!.desktop -t $out/share/applications
-        for i in 16 32 48 64 96 128 256 512 1024; do
-          install -D ${contents}/osu.png $out/share/icons/hicolor/''${i}x$i/apps/osu.png
-        done
-      '';
-  }
+      install -m 444 -D ${finalAttrs.contents}/osu!.desktop -t $out/share/applications
+      for i in 16 32 48 64 96 128 256 512 1024; do
+        install -D ${finalAttrs.contents}/osu.png $out/share/icons/hicolor/''${i}x$i/apps/osu.png
+      done
+    '';
+  })

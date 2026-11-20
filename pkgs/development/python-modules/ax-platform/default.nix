@@ -1,6 +1,5 @@
 {
   lib,
-  stdenv,
   buildPythonPackage,
   fetchFromGitHub,
 
@@ -22,22 +21,25 @@
   sympy,
 
   # tests
+  jax,
+  numpyro,
   pyfakefs,
   pytestCheckHook,
   sqlalchemy,
   tabulate,
+  tensorboard,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "ax-platform";
-  version = "1.2.4";
+  version = "1.3.1";
   pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "facebook";
+    owner = "meta";
     repo = "ax";
     tag = finalAttrs.version;
-    hash = "sha256-ZeYoLOPF2D1bk89V5/WO/v0UCtDisbAOOL/Su9sB2Fg=";
+    hash = "sha256-8Q/p74rzMAciNUjaTJtf6duslc3TXT7MIjcHt2sffqI=";
   };
 
   env.ALLOW_BOTORCH_LATEST = "1";
@@ -63,10 +65,13 @@ buildPythonPackage (finalAttrs: {
   ++ botorch.optional-dependencies.pymoo;
 
   nativeCheckInputs = [
+    jax
+    numpyro
     pyfakefs
     pytestCheckHook
     sqlalchemy
     tabulate
+    tensorboard
   ];
 
   disabledTestPaths = [
@@ -119,10 +124,11 @@ buildPythonPackage (finalAttrs: {
     "test_convert_observations"
     # broken with sqlalchemy 2
     "test_sql_storage"
-  ]
-  ++ lib.optionals (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64) [
-    # flaky
-    "test_gen_with_expanded_parameter_space"
+    # AssertionError
+    "test_online"
+    # Timeout
+    "test_efficient_loo_cv_with_fully_bayesian_model"
+    "test_fitting_auxiliary_experiment_dataset"
   ];
 
   pythonImportsCheck = [ "ax" ];
@@ -130,7 +136,7 @@ buildPythonPackage (finalAttrs: {
   meta = {
     description = "Platform for understanding, managing, deploying, and automating adaptive experiments";
     homepage = "https://ax.dev/";
-    changelog = "https://github.com/facebook/Ax/releases/tag/${finalAttrs.src.tag}";
+    changelog = "https://github.com/meta/Ax/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ veprbl ];
   };

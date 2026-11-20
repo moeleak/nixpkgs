@@ -1,20 +1,21 @@
 {
-  buildGo126Module,
+  stdenv,
+  buildGo127Module,
   lib,
   fetchFromGitHub,
   nix-update-script,
   buildNpmPackage,
   nixosTests,
 }:
-buildGo126Module (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "beszel";
-  version = "0.18.7";
+  version = "0.21.2";
 
   src = fetchFromGitHub {
     owner = "henrygd";
     repo = "beszel";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-pVZ1ru9++BypZ3EwoE8clqJowXj1/CMiJxKaC+UY9VE=";
+    hash = "sha256-O5RtDg6V7RBjV7Pe75YppGz8JSVziwfvLBYDD/l6ZAc=";
   };
 
   webui = buildNpmPackage {
@@ -48,12 +49,12 @@ buildGo126Module (finalAttrs: {
 
     sourceRoot = "${finalAttrs.src.name}/internal/site";
 
-    npmDepsHash = "sha256-mYAD8FrQwa+F/VgGxFpe8vqucfZaM0PmY+gJJqw1IKk=";
+    npmDepsHash = "sha256-pL4Qmi17CC4t6G/Mw/AgZUPf6cl0UPm75zfHVfrkoKI=";
   };
 
-  vendorHash = "sha256-TVpZbK9V9/GqpVFcjF7QGD5XJJHzRgjVXZOImHQTR1k=";
+  tags = [ "no_self_update" ];
 
-  tags = [ "testing" ];
+  vendorHash = "sha256-VDFdCoVIB1idUo1Buek6Im4uwYMduYY/PEdSJFgLuFo=";
 
   preBuild = ''
     mkdir -p internal/site/dist
@@ -64,16 +65,34 @@ buildGo126Module (finalAttrs: {
     let
       skippedTests = [
         "TestCollectorStartHelpers/nvtop_collector"
-        "TestApiRoutesAuthentication/GET_/update_-_shouldn't_exist_without_CHECK_UPDATES_env_var"
-        "TestConfigSyncWithTokens"
+        "TestCollectorStartHelpers/rocm-smi_collector"
+        "TestIoctlDeviceSizeFailure"
+        # This subtest assumes enough host CPUs for an 8s CPU delta over 1s to stay below 100%.
+        "TestServiceUpdateCPUPercent/subsequent_call_calculates_CPU_percentage"
+      ]
+      ++ lib.optionals stdenv.hostPlatform.isDarwin [
+        "TestCollectorStartHelpers/nvidia-smi_collector"
+        "TestCollectorStartHelpers/tegrastats_collector"
+        "TestNewGPUManagerPriorityNvtopFallback"
+        "TestNewGPUManagerPriorityMixedCollectors"
+        "TestNewGPUManagerPriorityNvmlFallbackToNvidiaSmi"
+        "TestNewGPUManagerConfiguredCollectorsMustStart"
+        "TestNewGPUManagerConfiguredNvmlBypassesCapabilityGate"
+        "TestNewGPUManagerJetsonIgnoresCollectorConfig"
+        "TestMonitorTCPAddressFallback/first_address_fails"
       ];
     in
-    [ "-skip=^${builtins.concatStringsSep "$|^" skippedTests}$" ];
+    [
+      "-skip=^${builtins.concatStringsSep "$|^" skippedTests}$"
+      "-tags=testing,no_ui,no_self_update"
+    ];
 
   postInstall = ''
     mv $out/bin/agent $out/bin/beszel-agent
     mv $out/bin/hub $out/bin/beszel-hub
   '';
+
+  __darwinAllowLocalNetworking = true;
 
   passthru = {
     updateScript = nix-update-script {

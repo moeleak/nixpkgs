@@ -20,9 +20,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   meta = {
     description = "Wayland clipboard manager that will make you clap";
     homepage = "https://github.com/bjesus/clapboard";
-    license = lib.licenses.mit;
+    license = lib.licenses.gpl3Only;
     maintainers = with lib.maintainers; [
-      dit7ya
       bjesus
     ];
     platforms = lib.platforms.linux;

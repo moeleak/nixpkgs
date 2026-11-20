@@ -11,21 +11,28 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "yara-x";
-  version = "1.16.0";
+  version = "1.23.0";
 
   src = fetchFromGitHub {
     owner = "VirusTotal";
     repo = "yara-x";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-n/AhEKlQmjbTtPncal6NDn7BcXb4HfnkuJctvDjW2V0=";
+    hash = "sha256-wLgciyPaDeashJhnlpsKEDFN6H3GdZnTKNiiVLCfD4g=";
   };
 
-  cargoHash = "sha256-MbMjrrPN1ctlYoE6R5p8g354OOmu4NplcGwSm3IcHRI=";
+  cargoHash = "sha256-MGFtimHxaGe6kJZWIKCD/gGo4gW0yw11zNn7GPL8i70=";
 
   env = {
     CARGO_PROFILE_RELEASE_LTO = "fat";
     CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "1";
   };
+
+  # Python bindings are built in python3Packages.yara-x
+  cargoBuildFlags = [
+    "--workspace"
+    "--exclude=yara-x-py"
+  ];
+  cargoTestFlags = finalAttrs.cargoBuildFlags;
 
   nativeBuildInputs = [
     installShellFiles
@@ -33,11 +40,11 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
 
   postBuild = ''
-    ${buildPackages.rust.envVars.setEnv} cargo cbuild --release --frozen --prefix=${placeholder "out"} --target ${stdenv.hostPlatform.rust.rustcTarget}
+    ${buildPackages.rust.envVars.setEnv} cargo cbuild --package yara-x-capi --release --frozen --prefix=${placeholder "out"} --target ${stdenv.hostPlatform.rust.rustcTarget}
   '';
 
   postInstall = ''
-    ${buildPackages.rust.envVars.setEnv} cargo cinstall --release --frozen --prefix=${placeholder "out"} --target ${stdenv.hostPlatform.rust.rustcTarget}
+    ${buildPackages.rust.envVars.setEnv} cargo cinstall --package yara-x-capi --release --frozen --prefix=${placeholder "out"} --target ${stdenv.hostPlatform.rust.rustcTarget}
   ''
   + lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd yr \

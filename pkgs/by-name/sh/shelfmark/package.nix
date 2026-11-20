@@ -34,16 +34,20 @@ let
     qbittorrent-api
     transmission-rpc
     authlib
+    joserfc
     apprise
+    httpx
+    h2
+    publicsuffixlist
   ];
 
-  version = "1.2.3";
+  version = "1.6.1";
 
   src = fetchFromGitHub {
     owner = "calibrain";
     repo = "shelfmark";
     tag = "v${version}";
-    hash = "sha256-abRM2ZWfA5nyD0YF7BVmZ6AU37+qd7osjQVGqhjdEV0=";
+    hash = "sha256-/AF+Uzu+P7yKFiC8lIN6EBbDVdbqs174HMkivb9/+gE=";
   };
 
   frontend = buildNpmPackage (finalAttrs: {
@@ -52,7 +56,7 @@ let
 
     sourceRoot = "${finalAttrs.src.name}/src/frontend";
 
-    npmDepsHash = "sha256-c/KDGUe+X4dfzbDXpkzYsEzvBxJjq46PTzqbgoCdGgw=";
+    npmDepsHash = "sha256-YhYzzLRJkRG56N1xmRC8GHIaiJP3rQakO4RSYK0mZWA=";
 
     installPhase = ''
       runHook preInstall
@@ -64,6 +68,8 @@ in
 stdenv.mkDerivation (finalAttrs: {
   pname = "shelfmark";
   inherit version src;
+
+  strictDeps = true;
 
   nativeBuildInputs = [
     python3Packages.wrapPython

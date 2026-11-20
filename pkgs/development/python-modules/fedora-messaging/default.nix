@@ -6,6 +6,7 @@
 
   # build-system
   poetry-core,
+  pythonRelaxDepsHook,
 
   # dependencies
   blinker,
@@ -27,17 +28,28 @@
 
 buildPythonPackage rec {
   pname = "fedora-messaging";
-  version = "3.9.0";
+  version = "3.9.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "fedora-infra";
     repo = "fedora-messaging";
     tag = "v${version}";
-    hash = "sha256-eQ0grcp/Cd9yKNbeUtftSmqv3uwOJCh36E6CC1Si1aY=";
+    hash = "sha256-384pvF/MgOReA52bfifa4Fuo79b9zUe+AK7vfIkFSf8=";
   };
 
   build-system = [ poetry-core ];
+
+  nativeBuildInputs = [
+    pythonRelaxDepsHook
+  ];
+
+  pythonRelaxDeps = [
+    # python3.14-fedora-messaging> packaging._tokenizer.ParserSyntaxError: Expected matching RIGHT_PARENTHESIS for LEFT_PARENTHESIS, after version specifier
+    # python3.14-fedora-messaging>     jsonschema (>=3.2.0,<4.0.0 || >=4.0.0,<5.0.0)
+    # python3.14-fedora-messaging>                ~~~~~~~~~~~~~~~~^
+    "jsonschema"
+  ];
 
   dependencies = [
     blinker

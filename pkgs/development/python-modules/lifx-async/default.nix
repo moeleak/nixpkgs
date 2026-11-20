@@ -1,6 +1,7 @@
 {
   lib,
   buildPythonPackage,
+  coverage,
   fetchFromGitHub,
   hatchling,
   lifx-emulator-core,
@@ -9,20 +10,19 @@
   pytest-cov-stub,
   pytest-retry,
   pytest-timeout,
-  pytest-xdist,
   pytestCheckHook,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "lifx-async";
-  version = "5.4.8";
+  version = "7.13.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Djelibeybi";
     repo = "lifx-async";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-392gHHekZ+rfZzR21ISUqdFiLGFoQSkJeyn3oRSs3+g=";
+    hash = "sha256-eK1raoy/LqmrzcejElnaCyv6Wf248oZ8/z+dDiPUYiQ=";
   };
 
   build-system = [ hatchling ];
@@ -30,14 +30,22 @@ buildPythonPackage (finalAttrs: {
   __darwinAllowLocalNetworking = true;
 
   nativeCheckInputs = [
+    coverage # undocumented, indirect dependency of pytest-cov
     lifx-emulator-core
     pytest-asyncio
     pytest-benchmark
     pytest-cov-stub
     pytest-retry
     pytest-timeout
-    pytest-xdist
     pytestCheckHook
+  ];
+
+  disabledTestPaths = [
+    # those tests require ruff formatter
+    "tests/test_products/test_product_generator.py::TestFormatGeneratedFiles::test_formats_generated_file_in_place"
+    "tests/test_protocol/test_protocol_generator.py::TestFormatGeneratedFiles::test_formats_generated_file_in_place"
+    "tests/test_theme/test_theme_generator.py::TestMainAtomicWrite::test_success_replaces_target_and_leaves_no_stray_file"
+    "tests/test_theme/test_theme_generator.py::TestMainAtomicWrite::test_generated_module_is_world_readable_under_any_umask"
   ];
 
   pythonImportsCheck = [ "lifx" ];

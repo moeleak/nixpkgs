@@ -23,15 +23,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "rq";
-  version = "2.8";
+  version = "2.12";
   pyproject = true;
-  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "rq";
     repo = "rq";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-ZO67rsqub9hBUt4XMqrx+P7Dj1dEKD9zp4O5x1Kehe0=";
+    hash = "sha256-EGgOeATfuRONPxfbgBqrgK8tk4Ehg9El7bTGOVX4cLY=";
   };
 
   build-system = [ hatchling ];
@@ -56,8 +55,7 @@ buildPythonPackage (finalAttrs: {
 
   __darwinAllowLocalNetworking = true;
 
-  # redisTestHook does not work on darwin-x86_64
-  doCheck = !(stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64);
+  doCheck = true;
 
   disabledTests =
     lib.optionals
@@ -76,6 +74,10 @@ buildPythonPackage (finalAttrs: {
       # PermissionError: [Errno 13] Permission denied: '/tmp/rq-tests.txt'
       "test_deleted_jobs_arent_executed"
       "test_suspend_worker_execution"
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isLinux [
+      # no delay between reaping worker and checking; racy
+      "test_reap_workers"
     ];
 
   pythonImportsCheck = [ "rq" ];

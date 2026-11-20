@@ -2,6 +2,7 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  substitute,
   yarn-berry_4,
   nodejs,
   jq,
@@ -10,19 +11,30 @@
   python3,
 }:
 let
-  version = "18.7.0";
+  version = "27.2.0";
   src = fetchFromGitHub {
     owner = "expo";
     repo = "eas-cli";
     rev = "v${version}";
-    hash = "sha256-Z+PtS88Rv9Vv6FA15KxSBWCmOtwmTqO1etgCV7WaTXo=";
+    hash = "sha256-esdKou1O5ZiJqUsd8bFVmz8mVqq7wJdV7Lj6FdxB7kY=";
+
+    # Remove after upstream updates to Yarn 4.15
+    # https://github.com/expo/eas-cli/blob/main/package.json#L38
+    postFetch = ''
+      cd $out
+      patch -p1 < ${
+        (substitute {
+          src = ./yarn-fix.patch;
+          substitutions = [
+            "--replace-fail"
+            "YARN_LOCKFILE_VERSION_PLACEHOLDER"
+            yarn-berry_4.lockfileVersion
+          ];
+        })
+      }
+    '';
   };
   missingHashes = ./missing-hashes.json;
-  patches = [
-    # Remove after upstream updates to Yarn 4.14
-    # https://github.com/expo/eas-cli/blob/v18.7.0/package.json#L37
-    ./yarn-4.14-support.patch
-  ];
 in
 # cc is necessary because of building an npm package without a prebuilt binary
 #  for ARM. See comment in nativeBuildInputs below.
@@ -32,12 +44,11 @@ stdenv.mkDerivation (finalAttrs: {
     src
     version
     missingHashes
-    patches
     ;
 
   yarnOfflineCache = yarn-berry_4.fetchYarnBerryDeps {
-    inherit src missingHashes patches;
-    hash = "sha256-KtFLJc2bEBS0sgTqbF68574fFMxwSlaSKcR0RedVJ4k=";
+    inherit src missingHashes;
+    hash = "sha256-cvr/hSI7VZepRt6uz7J2gkzPaWXq9kjJImTDM+dfOGs=";
   };
 
   nativeBuildInputs = [
@@ -62,6 +73,19 @@ stdenv.mkDerivation (finalAttrs: {
     tmpfile="$(mktemp)"
     jq '.useNx = false' lerna.json > "$tmpfile"
     mv "$tmpfile" lerna.json
+  '';
+
+  buildPhase = ''
+    runHook preBuild
+
+    yarn build
+
+    runHook postBuild
+  '';
+
+  # Prune to only production deps to save space
+  preInstall = ''
+    yarn workspaces focus -A --production
   '';
 
   # yarnInstallHook strips out build outputs within packages/eas-cli resulting in most commands missing from eas-cli.

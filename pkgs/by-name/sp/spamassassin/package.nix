@@ -67,12 +67,19 @@ perlPackages.buildPerlPackage rec {
       openssl
     ];
 
+  strictDeps = true;
+
   makeFlags = [
     "PERL_BIN=${perlPackages.perl}/bin/perl"
     "ENABLE_SSL=yes"
   ];
 
-  makeMakerFlags = [ "SYSCONFDIR=/etc LOCALSTATEDIR=/var/lib/spamassassin" ];
+  makeMakerFlags = [
+    "SYSCONFDIR=/etc"
+    "LOCALSTATEDIR=/var/lib/spamassassin"
+  ];
+
+  __darwinAllowLocalNetworking = true;
 
   checkInputs =
     (with perlPackages; [
@@ -89,7 +96,7 @@ perlPackages.buildPerlPackage rec {
     ];
   preCheck = ''
     substituteInPlace t/spamc_x_e.t \
-      --replace "/bin/echo" "${coreutils}/bin/echo"
+      --replace-fail "/bin/echo" "${coreutils}/bin/echo"
     export C_INCLUDE_PATH='${lib.makeSearchPathOutput "include" "include" [ libxcrypt ]}'
     export HARNESS_OPTIONS="j''${NIX_BUILD_CORES}"
 
@@ -97,8 +104,11 @@ perlPackages.buildPerlPackage rec {
     mkdir -p $HOME
     mkdir t/log  # pre-create to avoid race conditions
 
+    #401737: Sometimes we get: Failed tests:  2, 4-5, 7-9
+    rm t/spamd_ssl.t
+
     # https://bz.apache.org/SpamAssassin/show_bug.cgi?id=8068
-    checkFlagsArray+=(TEST_FILES='$(shell find t -name *.t -not -name spamd_ssl_accept_fail.t)')
+    checkFlags+=(TEST_FILES='$(shell find t -name *.t -not -name spamd_ssl_accept_fail.t)')
   '';
 
   postInstall = ''
@@ -131,6 +141,8 @@ perlPackages.buildPerlPackage rec {
         --prefix C_INCLUDE_PATH : ${lib.makeSearchPathOutput "include" "include" [ libxcrypt ]}
     done
   '';
+
+  __structuredAttrs = true;
 
   meta = {
     homepage = "https://spamassassin.apache.org/";

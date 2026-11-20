@@ -20,14 +20,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "google-cloud-asset";
-  version = "4.2.0";
+  version = "4.4.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "googleapis";
     repo = "google-cloud-python";
     tag = "google-cloud-asset-v${finalAttrs.version}";
-    sha256 = "sha256-dVgcnnInqjUjySL7wjxGzI33t1YZJ8e9mSsmjAJ+fBI=";
+    hash = "sha256-M/7uDWWz4YCfxa4gyM9BaAo10iyTMvtR2MhNpdFYnis=";
   };
 
   sourceRoot = "${finalAttrs.src.name}/packages/google-cloud-asset";
@@ -61,6 +61,11 @@ buildPythonPackage (finalAttrs: {
     pytestCheckHook
   ];
 
+  disabledTests = [
+    # AssertionError: assert None is <Mock id='...
+    "test_asset_service_client_get_mtls_endpoint_and_cert_source"
+  ];
+
   pythonImportsCheck = [
     "google.cloud.asset"
     "google.cloud.asset_v1"
@@ -74,7 +79,7 @@ buildPythonPackage (finalAttrs: {
     skipBulkUpdate = true;
     updateScript = nix-update-script {
       extraArgs = [
-        "--version-regexp"
+        "--version-regex"
         "^google-cloud-asset: v([0-9.]+)"
       ];
     };

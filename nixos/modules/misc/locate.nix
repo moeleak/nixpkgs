@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  utils,
   pkgs,
   ...
 }:
@@ -9,6 +10,8 @@ let
   cfg = config.services.locate;
   isMLocate = lib.hasPrefix "mlocate" cfg.package.name;
   isPLocate = lib.hasPrefix "plocate" cfg.package.name;
+
+  package = if isPLocate then cfg.package.override { dbPath = cfg.output; } else cfg.package;
 in
 {
   imports = [
@@ -59,10 +62,13 @@ in
     };
 
     output = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.externalPath;
       default = "/var/cache/locatedb";
       description = ''
         The database file to build.
+
+        When using plocate, this is also compiled in as the default database
+        of {command}`updatedb` and {command}`locate`.
       '';
     };
 
@@ -213,11 +219,11 @@ in
         };
         mlocate = lib.mkIf isMLocate {
           group = "mlocate";
-          source = "${cfg.package}/bin/locate";
+          source = "${package}/bin/locate";
         };
         plocate = lib.mkIf isPLocate {
           group = "plocate";
-          source = "${cfg.package}/bin/plocate";
+          source = "${package}/bin/plocate";
         };
       in
       {
@@ -243,33 +249,41 @@ in
         PRUNE_BIND_MOUNTS="${lib.boolToYesNo cfg.pruneBindMounts}"
       '';
 
-      systemPackages = [ cfg.package ];
+      systemPackages = [ package ];
     };
 
     systemd.services.update-locatedb = {
       description = "Update Locate Database";
 
-      # mlocate's updatedb takes flags via a configuration file or
-      # on the command line, but not by environment variable.
-      script =
-        let
-          toFlags =
-            x: lib.optional (cfg.${x} != [ ]) "--${lib.toLower x} '${lib.concatStringsSep " " cfg.${x}}'";
-          args = lib.concatLists (
-            map toFlags [
+      serviceConfig = {
+        # mlocate's updatedb takes flags via a configuration file or
+        # on the command line, but not by environment variable.
+        ExecStart =
+          let
+            toFlags =
+              x:
+              lib.optionals (cfg.${x} != [ ]) [
+                "--${lib.toLower x}"
+                (lib.concatStringsSep " " cfg.${x})
+              ];
+            args = lib.concatMap toFlags [
               "pruneFS"
               "pruneNames"
               "prunePaths"
+            ];
+          in
+          utils.escapeSystemdExecArgs (
+            [
+              (lib.getExe' package "updatedb")
+              "--output"
+              cfg.output
+              "--prune-bind-mounts"
+              (lib.boolToYesNo cfg.pruneBindMounts)
             ]
+            ++ args
+            ++ cfg.extraFlags
           );
-        in
-        ''
-          exec ${cfg.package}/bin/updatedb \
-            --output ${toString cfg.output} ${lib.concatStringsSep " " args} \
-            --prune-bind-mounts ${lib.boolToYesNo cfg.pruneBindMounts} \
-            ${lib.concatStringsSep " " cfg.extraFlags}
-        '';
-      serviceConfig = {
+
         CapabilityBoundingSet = "CAP_DAC_READ_SEARCH CAP_CHOWN";
         Nice = 19;
         IOSchedulingClass = "idle";

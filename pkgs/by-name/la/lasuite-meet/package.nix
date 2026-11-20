@@ -4,16 +4,15 @@
   fetchFromGitHub,
   nixosTests,
   python3,
-  stdenv,
 }:
 let
-  version = "1.15.0";
+  version = "1.36.3";
 
   src = fetchFromGitHub {
     owner = "suitenumerique";
     repo = "meet";
     tag = "v${version}";
-    hash = "sha256-18DcrrEvqWR6caEVZYxQlSnKcxItEpNE+bMhtS4Aa0M=";
+    hash = "sha256-lBo+fNusOI0mIBGQmjZ+s2JmEOIIie+khtMGBuoTxPM=";
   };
 
   meta = {
@@ -21,7 +20,7 @@ let
     changelog = "https://github.com/suitenumerique/meet/blob/${src.tag}/CHANGELOG.md";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ soyouzpanda ];
-    platforms = lib.platforms.all;
+    platforms = lib.platforms.linux;
   };
 
   mail = callPackage ./mail.nix { inherit src version meta; };
@@ -30,7 +29,12 @@ let
 
   python = python3.override {
     self = python3;
-    packageOverrides = (self: super: { django = super.django_5; });
+    packageOverrides = (
+      self: super: {
+        django = self.django_5;
+        mcp = self.mcp_1;
+      }
+    );
   };
 in
 python.pkgs.buildPythonApplication (finalAttrs: {
@@ -41,23 +45,14 @@ python.pkgs.buildPythonApplication (finalAttrs: {
   sourceRoot = "${finalAttrs.src.name}/src/backend";
 
   patches = [
-    # Support configuration throught environment variables for SECURE_*
+    # Support configuration through environment variables for SECURE_*
     ./secure_settings.patch
   ];
 
   postPatch = ''
     substituteInPlace pyproject.toml \
-      --replace-fail "uv_build>=0.10.9,<0.11.0" "uv_build"
-  ''
-  # Otherwise fails with:
-  # socket.gaierror: [Errno 8] nodename nor servname provided, or not known
-  + (lib.optionalString stdenv.hostPlatform.isDarwin ''
-    substituteInPlace impress/settings.py \
-      --replace-fail \
-        "gethostname()" \
-        "gethostname() + '.local'"
-  '');
-  __darwinAllowLocalNetworking = true;
+      --replace-fail "uv_build>=0.12.6,<0.13.0" "uv_build"
+  '';
 
   build-system = with python.pkgs; [ uv-build ];
 
@@ -93,8 +88,11 @@ python.pkgs.buildPythonApplication (finalAttrs: {
       june-analytics-python
       livekit-api
       markdown
+      menshen-client
       mozilla-django-oidc
       nested-multipart-parser
+      phonenumbers
+      posthog
       psycopg
       pydantic
       pyjwt

@@ -9,19 +9,20 @@
   pillow,
   poetry-core,
   pyquaternion,
+  loguru,
+  hatchling,
 }:
 
 buildPythonPackage {
   pname = "bbox";
-  version = "0.9.4";
+  version = "0.9.4-unstable-2025-10-21";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "varunagrawal";
     repo = "bbox";
-    # matches 0.9.4 on PyPi + tests
-    rev = "d3f07ed0e38b6015cf4181e3b3edae6a263f8565";
-    hash = "sha256-FrJ8FhlqwmnEB/QvPlkDfqZncNGPhwY9aagM9yv1LGs=";
+    rev = "ac3bc3036415337722dcaf46ab59f83b38d19828";
+    hash = "sha256-IikvXxIhuZRkODMEiGUsu16GKiwfe62NxE5hOf5OfWk=";
   };
 
   nativeBuildInputs = [ poetry-core ];
@@ -31,9 +32,14 @@ buildPythonPackage {
       --replace-warn round_ round
   '';
 
+  build-system = [
+    hatchling
+  ];
+
   propagatedBuildInputs = [
     pyquaternion
     numpy
+    loguru
   ];
 
   nativeCheckInputs = [
@@ -56,6 +62,6 @@ buildPythonPackage {
     description = "Python library for 2D/3D bounding boxes";
     homepage = "https://github.com/varunagrawal/bbox";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ lucasew ];
+    maintainers = [ ];
   };
 }

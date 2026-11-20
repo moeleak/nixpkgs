@@ -1,5 +1,4 @@
 {
-  config,
   lib,
   stdenv,
   fetchurl,
@@ -13,7 +12,7 @@
   lame,
   libxml2_13,
   libjack2,
-  ffmpeg_4-headless,
+  ffmpeg-headless,
   vlc,
   xdg-utils,
   xdotool,
@@ -22,7 +21,7 @@
 
   jackSupport ? stdenv.hostPlatform.isLinux,
   jackLibrary ? libjack2, # Another option is "pipewire.jack"
-  pulseaudioSupport ? config.pulseaudio or stdenv.hostPlatform.isLinux,
+  pulseaudioSupport ? stdenv.hostPlatform.isLinux,
   libpulseaudio,
 }:
 
@@ -40,17 +39,17 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "reaper";
-  version = "7.71";
+  version = "7.86";
 
   src = fetchurl {
     url = url_for_platform finalAttrs.version stdenv.hostPlatform.qemuArch;
     hash =
       if stdenv.hostPlatform.isDarwin then
-        "sha256-78TB6NNr9KemIra8w/87suP9RrlWhrCAW6d5sTrEL4E="
+        "sha256-JZ8UDszZGbV9H69bKFGjXKB33ZmTynzF6yjW1Xt3eGY="
       else
         {
-          x86_64-linux = "sha256-OozJHud6PMOkFU2wMmdOYS0PKfyaAV+HHhROJfSr0GM=";
-          aarch64-linux = "sha256-59Divnr+4NVml9sYlFSlL7FLk1uHRVirAThODLbeAjk=";
+          x86_64-linux = "sha256-wvnYYWvR3GF1mTuCRR4cbjUsZ2Hnrm1yQAo/PfsDvts=";
+          aarch64-linux = "sha256-WzO1HbXawfdBcrRJ63Zbl3jfTb3LFk2TCpR9jLNHZlY=";
         }
         .${stdenv.hostPlatform.system};
   };
@@ -120,7 +119,7 @@ stdenv.mkDerivation (finalAttrs: {
               curl
               lame
               libxml2_13
-              ffmpeg_4-headless
+              ffmpeg-headless
               vlc
               xdotool
               stdenv.cc.cc
@@ -148,7 +147,6 @@ stdenv.mkDerivation (finalAttrs: {
     platforms = [
       "x86_64-linux"
       "aarch64-linux"
-      "x86_64-darwin"
       "aarch64-darwin"
     ];
     maintainers = with lib.maintainers; [

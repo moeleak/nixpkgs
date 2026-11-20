@@ -99,11 +99,6 @@ buildPythonPackage rec {
     "test_sys_info_basic"
   ];
 
-  pytestFlag = [
-    # removes 700k lines from pytest log, remove this when scipy is at v1.17.0
-    "--disable-warnings"
-  ];
-
   disabledTestMarks = [
     "slowtest"
     "ultraslowtest"

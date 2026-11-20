@@ -8,16 +8,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "fsrx";
-  version = "1.0.2";
+  version = "1.1.2";
 
   src = fetchFromGitHub {
-    owner = "thatvegandev";
+    owner = "jrnxf";
     repo = "fsrx";
     rev = "v${finalAttrs.version}";
-    sha256 = "sha256-hzfpjunP20WCt3erYu7AO7A3nz+UMKdFzWUA5jASbVA=";
+    sha256 = "sha256-iiVY1p0Yn9+JHUoUvPVKJmh+6JhSUvbcvWlRYWNRsCU=";
   };
 
-  cargoHash = "sha256-hOE05t3gjul7uOt14vr5hAmGHTPgxJk7EOKJhZ4XgCo=";
+  cargoHash = "sha256-Fr/HIaHmmKW9y+NAsGM+VHcnfoLi6t4GZblmW5OunOY=";
 
   passthru = {
     tests.version = testers.testVersion {
@@ -27,7 +27,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   meta = {
     description = "Flow state reader in the terminal";
-    homepage = "https://github.com/thatvegandev/fsrx";
+    homepage = "https://github.com/jrnxf/fsrx";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ MoritzBoehme ];
     mainProgram = "fsrx";

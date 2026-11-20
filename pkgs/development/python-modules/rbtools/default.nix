@@ -8,6 +8,7 @@
   texttable,
   tqdm,
   certifi,
+  nix-update-script,
   housekeeping,
   puremagic,
   pydiffx,
@@ -35,6 +36,10 @@ buildPythonPackage rec {
     tag = "release-${version}";
     hash = "sha256-Ci9lHlP2X95y7ldHBbqb5qWozPj3TJ0AxeVhqzVsdFA=";
   };
+
+  postPatch = ''
+    substituteInPlace setup.cfg --replace-fail "tag_build = .dev" "tag_build ="
+  '';
 
   build-system = [ setuptools ];
 
@@ -72,12 +77,21 @@ buildPythonPackage rec {
     "rbtools/diffs/tests/test_apple_diff_tool.py::AppleDiffToolTests::test_run_diff_file_with_text_differences" # AssertionError: b'---[38 chars]0000 +0000\n+++ /path2.txt\t2022-09-26 10:20:3[42 chars]ar\n' != b'---[38 chars]0000 -0700\n+++ /path2.txt\t2022-09-26 10:20:3[42 chars]ar\n'
     # rbtools.utils.process.RunProcessError: Unexpected error executing the command: svn co file:///build/source/rbtools/clients/tests/testdata/svn-repo /build/rbtools._bw2ih4g/working/svn-repo
     "rbtools/clients/tests/test_svn.py"
+    "rbtools/clients/tests/test_git.py::GitSubversionClientTests"
     "rbtools/utils/tests/test_source_tree.py"
     "rbtools/clients/tests/test_scanning.py::ScanningTests::test_scanning_nested_repos_1"
     "rbtools/clients/tests/test_scanning.py::ScanningTests::test_scanning_nested_repos_2"
   ];
 
+  passthru.updateScript = nix-update-script {
+    extraArgs = [
+      "--version-regex"
+      "release-(.*)"
+    ];
+  };
+
   meta = {
+    changelog = "https://github.com/reviewboard/rbtools/blob/release-${version}/docs/releasenotes/${version}.rst";
     homepage = "https://www.reviewboard.org/docs/rbtools/dev/";
     description = "RBTools is a set of command line tools for working with Review Board and RBCommons";
     mainProgram = "rbt";

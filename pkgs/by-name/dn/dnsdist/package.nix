@@ -1,6 +1,7 @@
 {
   boost,
   cargo,
+  fetchpatch,
   fetchurl,
   fstrm,
   lib,
@@ -8,7 +9,7 @@
   libcap,
   libedit,
   libsodium,
-  lua,
+  lua5_2_compat,
   net-snmp,
   nghttp2,
   nixosTests,
@@ -22,16 +23,37 @@
   systemd,
   xdp-tools,
   zlib,
+  removeReferencesTo,
 }:
+let
+  lua = lua5_2_compat;
+in
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "dnsdist";
-  version = "2.0.5";
+  version = "2.1.3";
 
   src = fetchurl {
     url = "https://downloads.powerdns.com/releases/dnsdist-${finalAttrs.version}.tar.xz";
-    hash = "sha256-I8Z9usIeVWTflbZ4merP7sfXwZQRiqv5jODnY8zVx64=";
+    hash = "sha256-QcwiSBf/D3dTtG/luBTduSId2dv3bp6xoJ8Bw8XLtKo=";
   };
+
+  patches = [
+    # Fix build without hostname
+    # https://github.com/PowerDNS/pdns/pull/18271 - should become part of 2.1.4
+    (fetchpatch {
+      url = "https://github.com/PowerDNS/pdns/commit/a9833e04ce84a8ebeed4039c7ec5e0e75516406d.patch";
+      relative = "pdns/dnsdistdist";
+      hash = "sha256-aM2xhk8Jesvbn5t+lu8tlb11lHM8thQ3Qf//VTcjri0=";
+    })
+  ];
+
+  # Avoid embedding /nix/store paths
+  postConfigure = ''
+    sed -i -E \
+      '/PKG_CONFIG_PATH=/ s#/nix/store/[0-9a-z]{32}-#/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-#g' \
+      config.h
+  '';
 
   nativeBuildInputs = [
     cargo
@@ -40,6 +62,7 @@ stdenv.mkDerivation (finalAttrs: {
     python3
     python3.pkgs.pyyaml
     rustPlatform.cargoSetupHook
+    removeReferencesTo
   ];
 
   buildInputs = [
@@ -80,7 +103,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   cargoDeps = rustPlatform.fetchCargoVendor {
     inherit (finalAttrs) cargoRoot src;
-    hash = "sha256-0CfOkjMe3p7xg62jlS3ASZRlr+/nqIJLRyRT+jcDiHQ=";
+    hash = "sha256-GSfn3qu/LqBP5xtt9CaY4h8GjaIVtlMZe+Mf2bz9KNs=";
   };
 
   cargoRoot = "dnsdist-rust-lib/rust";
@@ -89,11 +112,14 @@ stdenv.mkDerivation (finalAttrs: {
 
   enableParallelBuilding = true;
 
-  passthru.tests = {
-    inherit (nixosTests) dnsdist;
-  };
+  postFixup = ''
+    remove-references-to -t ${boost.dev} $out/bin/dnsdist
+  '';
+
+  passthru.tests = nixosTests.dnsdist;
 
   meta = {
+    changelog = "https://www.dnsdist.org/changelog.html";
     description = "DNS Loadbalancer";
     mainProgram = "dnsdist";
     homepage = "https://dnsdist.org";

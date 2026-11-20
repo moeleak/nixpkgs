@@ -18,8 +18,17 @@ let
       postPatch ? null,
       pname,
       version,
-      mvnJdk ? jdk,
+      mvnJdk ? maven.jdk or jdk,
       mvnHash ? "",
+      /**
+        Maven goal to execute. Normally the the default should be used, but some special cases need other goals.
+      */
+      mvnGoal ? "package",
+      /**
+        Set the Maven offline argument, `-o`. Normally the default is preferred, but to call `mvn deploy` with
+        a directory destination `-o` must be removed. In that case we rely on the Nix sandbox to keep things hermetic.
+      */
+      mvnOffline ? true,
       mvnFetchExtraArgs ? { },
       mvnDepsParameters ? "",
       manualMvnArtifacts ? [ ],
@@ -74,7 +83,7 @@ let
             # handle cacert by populating a trust store on the fly
             if [[ -n "''${NIX_SSL_CERT_FILE-}" ]] && [[ "''${NIX_SSL_CERT_FILE-}" != "/no-cert-file.crt" ]];then
               echo "using ''${NIX_SSL_CERT_FILE-} as trust store"
-              ${jre-generate-cacerts} ${lib.getBin jdk}/bin/keytool $NIX_SSL_CERT_FILE
+              ${jre-generate-cacerts} ${lib.getBin mvnJdk}/bin/keytool $NIX_SSL_CERT_FILE
 
               MAVEN_EXTRA_ARGS="$MAVEN_EXTRA_ARGS -Djavax.net.ssl.trustStore=cacerts -Djavax.net.ssl.trustStorePassword=changeit"
             fi
@@ -103,7 +112,8 @@ let
             runHook postBuild
           '';
 
-          # keep only *.{pom,jar,sha1,nbm} and delete all ephemeral files with lastModified timestamps inside
+          # Preserve .meta because Tycho needs p2-artifacts.properties for offline builds.
+          # Maven Resolver's cached prefix indexes are volatile, so remove them and their checksums.
           installPhase = ''
             runHook preInstall
 
@@ -112,6 +122,7 @@ let
               -o -name resolver-status.properties \
               -o -name _remote.repositories \) \
               -delete
+            rm -f "$out"/.m2/.meta/prefixes-*.txt{,.*}
 
             runHook postInstall
           '';
@@ -130,6 +141,9 @@ let
       // {
         inherit fetchedMavenDeps;
 
+        strictDeps = args.strictDeps or true;
+        __structuredAttrs = args.__structuredAttrs or true;
+
         nativeBuildInputs = args.nativeBuildInputs or [ ] ++ [
           maven
         ];
@@ -143,7 +157,9 @@ let
 
           mvnDeps=$(cp -dpR ${fetchedMavenDeps}/.m2 ./ && chmod +w -R .m2 && pwd)
           runHook afterDepsSetup
-          mvn package -o -nsu "-Dmaven.repo.local=$mvnDeps/.m2" ${mvnSkipTests} ${mvnParameters}
+          mvn ${mvnGoal} ${
+            if mvnOffline then "-o" else ""
+          } -nsu "-Dmaven.repo.local=$mvnDeps/.m2" ${mvnSkipTests} ${mvnParameters}
 
           runHook postBuild
         '';

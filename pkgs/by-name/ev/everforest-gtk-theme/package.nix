@@ -2,9 +2,8 @@
   lib,
   stdenvNoCC,
   fetchFromGitHub,
-  gnome-themes-extra,
-  gtk-engine-murrine,
   gtk3,
+  nix-update-script,
   sassc,
 }:
 
@@ -23,14 +22,13 @@ stdenvNoCC.mkDerivation {
     # remove when merged
     # https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme/pull/34
     ./fix-install-script.patch
-  ];
-
-  propagatedUserEnvPkgs = [
-    gtk-engine-murrine
-  ];
-
-  buildInputs = [
-    gnome-themes-extra
+    # remove when merged
+    # https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme/pull/35
+    ./gtk3-remove-border-spacing.patch
+    # The GTK2 themes need an engine that is no longer packaged.
+    # Replace with --no-gtk2 once merged:
+    # https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme/pull/36
+    ./remove-gtk2.patch
   ];
 
   nativeBuildInputs = [
@@ -38,6 +36,10 @@ stdenvNoCC.mkDerivation {
     sassc
   ];
 
+  __structuredAttrs = true;
+  strictDeps = true;
+
+  dontConfigure = true;
   dontBuild = true;
   dontFixup = true;
   dontDropIconThemeCache = true;
@@ -64,11 +66,13 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
+  passthru.updateScript = nix-update-script { extraArgs = [ "--version=branch" ]; };
+
   meta = {
     description = "Everforest colour palette for GTK";
     homepage = "https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme";
     license = lib.licenses.gpl3Only;
-    maintainers = with lib.maintainers; [ jn-sena ];
-    platforms = lib.platforms.unix;
+    maintainers = with lib.maintainers; [ poz ];
+    platforms = lib.platforms.all;
   };
 }

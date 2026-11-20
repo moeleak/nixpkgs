@@ -41,12 +41,19 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "groff";
-  version = "1.24.1";
+  version = "1.24.2";
 
   src = fetchurl {
     url = "mirror://gnu/groff/groff-${finalAttrs.version}.tar.gz";
-    hash = "sha256-dOKBl5W2r/QxrqyYPWOpyJaO6roqLrp9+LpMe0Hnz9g=";
+    hash = "sha256-+cHv1b6743/G4QY9t0c86N8ePgvk/w9DzgT85X6cXdk=";
   };
+
+  patches = [
+    # This revert a upstream refactor in continuous rendering mode, but this
+    # causes a big performance regression for big manpages like
+    # `man 5 configuration.nix`.
+    ./0001-Revert-man-Fix-Savannah-65190.patch
+  ];
 
   outputs = [
     "out"
@@ -185,6 +192,7 @@ stdenv.mkDerivation (finalAttrs: {
     license = lib.licenses.gpl3Plus;
     platforms = lib.platforms.all;
     maintainers = with lib.maintainers; [ pSub ];
+    mainProgram = "groff";
 
     longDescription = ''
       groff is the GNU implementation of troff, a document formatting

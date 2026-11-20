@@ -10,16 +10,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "cargo-edit";
-  version = "0.13.10";
+  version = "0.13.14";
 
   src = fetchFromGitHub {
     owner = "killercup";
     repo = "cargo-edit";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-9CmbOIRHgYlc/bAN8BS5NyzfgRIzyneh/LC/sZFZUuo=";
+    hash = "sha256-Hp4hAaVVTBUwPMdCD27uqLUpj40zLN1RNaee1IsFVSY=";
   };
 
-  cargoHash = "sha256-O1tY0RVH4FHr7kWJ8+BUyD7LzzqlaObO0dHwrsX2biQ=";
+  cargoHash = "sha256-bDYIsDj5+t55ET9CE7DTyKqIv8Jp0ghPGMkDTTH6cQU=";
 
   nativeBuildInputs = [ pkg-config ];
 
@@ -36,10 +36,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     description = "Utility for managing cargo dependencies from the command line";
     homepage = "https://github.com/killercup/cargo-edit";
     changelog = "https://github.com/killercup/cargo-edit/blob/v${finalAttrs.version}/CHANGELOG.md";
-    license = with lib.licenses; [
-      asl20 # or
-      mit
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        asl20
+        mit
+      ];
     mainProgram = "cargo-edit";
     maintainers = with lib.maintainers; [
       gerschtli

@@ -9,7 +9,8 @@
   nodejs,
   fetchPnpmDeps,
   pnpmConfigHook,
-  pnpm_10,
+  pnpmBuildHook,
+  pnpm_12,
   prisma_7,
   prisma-engines_7,
   openssl,
@@ -20,7 +21,7 @@
   basePath ? "",
 }:
 let
-  pnpm = pnpm_10;
+  pnpm = pnpm_12;
 
   sources = lib.importJSON ./sources.json;
 
@@ -44,45 +45,55 @@ let
 
   # Pin the specific version of prisma to the one used by upstream
   # to guarantee compatibility.
-  prisma-engines' = prisma-engines_7.overrideAttrs (old: rec {
-    version = "7.6.0";
-    src = fetchFromGitHub {
-      owner = "prisma";
-      repo = "prisma-engines";
-      tag = version;
-      hash = "sha256-NMoAaiTa68i51lR6iMCyHyCAsFuuhPx2+tHFSSoqWqA=";
-    };
-    cargoHash = "sha256-uiFvzxwVJXCW9LUDFRC6ZkzSa7LQk+9ZJcaJw8mrBX4=";
+  prisma-engines' = prisma-engines_7.overrideAttrs (
+    finalAttrs: prevAttrs: {
+      version = "7.10.0";
+      src = fetchFromGitHub {
+        owner = "prisma";
+        repo = "prisma-engines";
+        tag = finalAttrs.version;
+        hash = "sha256-GRpfrAZrpAgW06v5IaY44JguA1fGyJJ3fxC+pCfg18c=";
+      };
+      cargoHash = "sha256-zLl2ErsCTXZVShPFLH94GLJ0q2FrMnfnecnfKD7VDL4=";
 
-    cargoDeps = rustPlatform.fetchCargoVendor {
-      inherit (old) pname;
-      inherit src version;
-      patches = old.cargoDeps.vendorStaging.patches or [ ];
-      hash = cargoHash;
-    };
-  });
-  prisma' = (prisma_7.override { prisma-engines_7 = prisma-engines'; }).overrideAttrs (old: rec {
-    version = "7.6.0";
-    src = fetchFromGitHub {
-      owner = "prisma";
-      repo = "prisma";
-      tag = version;
-      hash = "sha256-BesX2ySfgew6+9Q6fnhZ8gMnnxh4D4fefaA5BhehlHE=";
-    };
-    pnpmDeps = old.pnpmDeps.override {
-      inherit src version;
-      hash = "sha256-ZOpNt+W5b1troicfkCi4wCCDtwhTB4VlPgxYMZetcs0=";
-    };
-  });
+      cargoDeps = rustPlatform.fetchCargoVendor {
+        inherit (prevAttrs) pname;
+        inherit (finalAttrs) src version;
+        patches = prevAttrs.cargoDeps.vendorStaging.patches or [ ];
+        hash = finalAttrs.cargoHash;
+      };
+    }
+  );
+  prisma' =
+    (prisma_7.override {
+      prisma-engines_7 = prisma-engines';
+    }).overrideAttrs
+      (
+        finalAttrs: prevAttrs: {
+          version = "7.10.0";
+          src = fetchFromGitHub {
+            owner = "prisma";
+            repo = "prisma";
+            tag = finalAttrs.version;
+            hash = "sha256-VOKqrTD18XaCDQ2l5AgND4L8r4OJ3JXJvFgQJ+h1xUw=";
+          };
+          pnpmDeps = prevAttrs.pnpmDeps.override {
+            inherit (finalAttrs) src version;
+            fetcherVersion = 4;
+            hash = "sha256-mhE2TwouRdtg8XTTFCfx8SwImo3vNd5GVcHg01+Xhl0=";
+          };
+        }
+      );
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "umami";
-  version = "3.1.0";
+  version = "3.5.0";
 
   nativeBuildInputs = [
     makeWrapper
     nodejs
     pnpmConfigHook
+    pnpmBuildHook
     pnpm
   ];
 
@@ -90,17 +101,25 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     owner = "umami-software";
     repo = "umami";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-EH3ebwTbajcNasn25ets2w068ZmCQRYUY2XON39J5HA=";
+    hash = "sha256-W3y4o5Jre/3VjhxRD2UJHSaLrBlEji9slhL732MEiOE=";
   };
 
-  # Umami uses next/font/google, which tries to download from Google Fonts at build time.
-  # Replace that code with a copy of the required font(s) from nixpkgs instead.
   postPatch = ''
+    # Umami uses next/font/google, which tries to download from Google Fonts at build time.
+    # Replace that code with a copy of the required font(s) from nixpkgs instead.
     substituteInPlace ./src/app/layout.tsx \
       --replace-fail "import { Inter } from 'next/font/google';" "import localFont from 'next/font/local';" \
       --replace-fail 'const inter = Inter({' "const inter = localFont({ src: './Inter.ttf',"
 
     cp "${inter}/share/fonts/truetype/InterVariable.ttf" src/app/Inter.ttf
+
+    # Biome executable needs to be patched to run, but we don't need to format code anyway, so just skip it.
+    # Also, increase test timeout as some tests may take longer on resource-constrained machines.
+    substituteInPlace ./package.json \
+      --replace-fail ' && biome format --write src/tracker/index.d.ts src/tracker/errors.d.ts src/tracker/error-utils.d.ts"' '"' \
+      --replace-fail '"vitest run"' '"vitest run --test-timeout=10000"'
+    substituteInPlace ./scripts/generate-api-client.ts \
+      --replace-fail 'await format(written);' ""
   '';
 
   pnpmDeps = fetchPnpmDeps {
@@ -110,11 +129,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       src
       ;
     inherit pnpm;
-    fetcherVersion = 3;
-    hash = "sha256-QNWmCsVFh8xpsO4ZPTaKGszwuRaxTrWLMVh/6VV5oIw=";
+    fetcherVersion = 4;
+    hash = "sha256-oVHfFS1LQSnUm2z2STz6IjPnIfwsAjrud85/9w0l08w=";
   };
 
-  env.CYPRESS_INSTALL_BINARY = "0";
   env.NODE_ENV = "production";
   env.NEXT_TELEMETRY_DISABLED = "1";
 
@@ -135,18 +153,12 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   env.PRISMA_QUERY_ENGINE_LIBRARY = "${finalAttrs.passthru.prisma-engines}/lib/libquery_engine.node";
   env.PRISMA_SCHEMA_ENGINE_BINARY = "${finalAttrs.passthru.prisma-engines}/bin/schema-engine";
 
-  buildPhase = ''
-    runHook preBuild
-
-    pnpm build
-
-    runHook postBuild
-  '';
-
   checkPhase = ''
     runHook preCheck
 
-    pnpm test
+    # Tests fail if NODE_ENV=production
+    # Logging is much more readable when CI=1
+    NODE_ENV=development CI=1 pnpm test
 
     runHook postCheck
   '';

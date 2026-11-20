@@ -2,22 +2,21 @@
   lib,
   buildGoModule,
   fetchFromGitHub,
-  testers,
-  sish,
+  versionCheckHook,
 }:
 
 buildGoModule (finalAttrs: {
   pname = "sish";
-  version = "2.22.1";
+  version = "4.1.1";
 
   src = fetchFromGitHub {
     owner = "antoniomika";
     repo = "sish";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-sLryMoGnxTinMsf4DXyM37MjZ5TaJI+ldYxKiCB6ny0=";
+    hash = "sha256-wT3mjV5k4cQjXq2UWVdxZpqAvs42RgsRxN4rn+pH01E=";
   };
 
-  vendorHash = "sha256-3Imp9g0/Ory7ECw4pkrIltau9G1Aw3uRP5A+zWCz0mE=";
+  vendorHash = "sha256-iEm9nYsXVLkEJWtGBQ5B909T/X1h2+0ySuS82m/of38=";
 
   ldflags = [
     "-s"
@@ -27,17 +26,15 @@ buildGoModule (finalAttrs: {
     "-X=github.com/antoniomika/sish/cmd.Version=${finalAttrs.version}"
   ];
 
-  passthru.tests = {
-    version = testers.testVersion {
-      package = sish;
-    };
-  };
+  nativeInstallCheckInputs = [ versionCheckHook ];
+
+  doInstallCheck = true;
 
   meta = {
     description = "HTTP(S)/WS(S)/TCP Tunnels to localhost";
     homepage = "https://github.com/antoniomika/sish";
     changelog = "https://github.com/antoniomika/sish/releases/tag/v${finalAttrs.version}";
-    license = with lib.licenses; [ mit ];
+    license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ fab ];
     mainProgram = "sish";
   };

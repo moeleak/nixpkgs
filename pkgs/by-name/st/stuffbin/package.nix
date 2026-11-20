@@ -1,10 +1,9 @@
 {
   lib,
-  buildGoModule,
+  buildGo126Module,
   fetchFromGitHub,
 }:
-
-buildGoModule (finalAttrs: {
+buildGo126Module (finalAttrs: {
   pname = "stuffbin";
   version = "1.3.0";
 
@@ -27,7 +26,7 @@ buildGoModule (finalAttrs: {
     description = "Compress and embed static files and assets into Go binaries and access them with a virtual file system in production";
     homepage = "https://github.com/knadh/stuffbin";
     changelog = "https://github.com/knadh/stuffbin/releases/tag/v${finalAttrs.version}";
-    maintainers = with lib.maintainers; [ raitobezarius ];
+    maintainers = [ ];
     license = lib.licenses.mit;
   };
 })

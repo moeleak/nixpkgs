@@ -11,13 +11,13 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "gex";
-  version = "0.6.4";
+  version = "0.6.8";
 
   src = fetchFromCodeberg {
     owner = "Piturnah";
     repo = "gex";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Xer7a3UtFIv3idchI7DfZ5u6qgDW/XFWi5ihtcREXqo=";
+    hash = "sha256-UMLWZuAQq0mJKbHzxwpcZA3xhg7MVwPGeVXnwwqX8pM=";
   };
 
   nativeBuildInputs = [ pkg-config ];
@@ -33,20 +33,18 @@ rustPlatform.buildRustPackage (finalAttrs: {
     LIBGIT2_NO_VENDOR = 1;
   };
 
-  cargoPatches = [
-    ./patch-libgit2.patch
-  ];
-
-  cargoHash = "sha256-4ejtMCuJOwT5bJQZaPQ1OjrB5O70we77yEXk9RmhywE=";
+  cargoHash = "sha256-GiZfSshLDsKW7ZhMuADCW+CV862asrzxpgUXtWX/pV4=";
 
   meta = {
     description = "Git Explorer: cross-platform git workflow improvement tool inspired by Magit";
     homepage = "https://codeberg.org/Piturnah/gex";
     changelog = "https://codeberg.org/Piturnah/gex/releases/tag/${finalAttrs.src.tag}";
-    license = with lib.licenses; [
-      asl20 # or
-      mit
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        asl20
+        mit
+      ];
     maintainers = with lib.maintainers; [
       azd325
       bot-wxt1221

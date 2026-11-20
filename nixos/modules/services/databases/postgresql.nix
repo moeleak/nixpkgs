@@ -204,14 +204,14 @@ in
         type = types.package;
         example = literalExpression "pkgs.postgresql_15";
         defaultText = literalExpression ''
-          if versionAtLeast config.system.stateVersion "25.11" then
+          if versionAtLeast config.system.stateVersion "26.11" then
+            pkgs.postgresql_18
+          else if versionAtLeast config.system.stateVersion "25.11" then
             pkgs.postgresql_17
           else if versionAtLeast config.system.stateVersion "24.11" then
             pkgs.postgresql_16
-          else if versionAtLeast config.system.stateVersion "23.11" then
-            pkgs.postgresql_15
           else
-            pkgs.postgresql_14
+            pkgs.postgresql_15
         '';
         description = ''
           The package being used by postgresql.
@@ -657,14 +657,16 @@ in
           '';
         base =
           # XXX Don't forget to keep `defaultText` of `services.postgresql.package` up to date!
-          if versionAtLeast config.system.stateVersion "25.11" then
+          if versionAtLeast config.system.stateVersion "26.11" then
+            pkgs.postgresql_18
+          else if versionAtLeast config.system.stateVersion "25.11" then
             pkgs.postgresql_17
           else if versionAtLeast config.system.stateVersion "24.11" then
             pkgs.postgresql_16
           else if versionAtLeast config.system.stateVersion "23.11" then
             pkgs.postgresql_15
           else if versionAtLeast config.system.stateVersion "22.05" then
-            pkgs.postgresql_14
+            mkThrow "14"
           else if versionAtLeast config.system.stateVersion "21.11" then
             mkThrow "13"
           else if versionAtLeast config.system.stateVersion "20.03" then
@@ -704,9 +706,6 @@ in
         "@system-service" = true;
         "~@privileged" = true;
         "~@resources" = true;
-      })
-      (mkIf (any extensionInstalled [ "plv8" ]) {
-        "@pkey" = true;
       })
       (mkIf (any extensionInstalled [ "citus" ]) {
         "getpriority" = true;
@@ -807,9 +806,7 @@ in
           PrivateTmp = true;
           ProtectHome = true;
           ProtectSystem = "strict";
-          MemoryDenyWriteExecute = lib.mkDefault (
-            cfg.settings.jit == "off" && (!any extensionInstalled [ "plv8" ])
-          );
+          MemoryDenyWriteExecute = lib.mkDefault (cfg.settings.jit == "off");
           NoNewPrivileges = true;
           LockPersonality = true;
           PrivateDevices = true;

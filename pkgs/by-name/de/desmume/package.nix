@@ -6,22 +6,16 @@
   SDL2,
   agg,
   alsa-lib,
-  desktop-file-utils,
   wrapGAppsHook3,
   gtk3,
-  intltool,
-  libGLU,
-  libxmu,
   libpcap,
-  libtool,
-  lua,
   meson,
   ninja,
   openal,
   pkg-config,
   soundtouch,
-  tinyxml,
   zlib,
+  versionCheckHook,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
@@ -29,7 +23,7 @@ stdenv.mkDerivation (finalAttrs: {
   version = "0.9.13";
 
   src = fetchFromGitHub {
-    owner = "TASVideos";
+    owner = "TASEmulators";
     repo = "desmume";
     rev = "release_${lib.replaceStrings [ "." ] [ "_" ] finalAttrs.version}";
     hash = "sha256-vmjKXa/iXLTwtqnG+ZUvOnOQPZROeMpfM5J3Jh/Ynfo=";
@@ -51,10 +45,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   nativeBuildInputs = [
     wrapGAppsHook3
-    desktop-file-utils
-    intltool
-    libtool
-    lua
     meson
     ninja
     pkg-config
@@ -65,12 +55,9 @@ stdenv.mkDerivation (finalAttrs: {
     agg
     alsa-lib
     gtk3
-    libGLU
-    libxmu
     libpcap
     openal
     soundtouch
-    tinyxml
     zlib
   ];
 
@@ -81,13 +68,19 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   mesonFlags = [
-    "-Db_pie=true"
     "-Dopenal=true"
     "-Dwifi=true"
+    "-Dgdb-stub=true"
   ];
 
+  nativeInstallCheckInputs = [
+    versionCheckHook
+  ];
+
+  doInstallCheck = true;
+
   meta = {
-    homepage = "https://www.github.com/TASVideos/desmume/";
+    homepage = "https://www.github.com/TASEmulators/desmume/";
     description = "Open-source Nintendo DS emulator";
     longDescription = ''
       DeSmuME is a freeware emulator for the NDS roms & Nintendo DS Lite games
@@ -96,6 +89,7 @@ stdenv.mkDerivation (finalAttrs: {
       demo nds roms. DeSmuME is also able to emulate nearly all of the
       commercial nds rom titles which other DS Emulators aren't.
     '';
+    mainProgram = "desmume";
     license = lib.licenses.gpl2Plus;
     maintainers = [ ];
     platforms = lib.platforms.unix;

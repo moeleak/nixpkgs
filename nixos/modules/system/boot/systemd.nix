@@ -40,6 +40,7 @@ let
     "network-online.target"
     "nss-lookup.target"
     "nss-user-lookup.target"
+    "time-set.target"
     "time-sync.target"
     "first-boot-complete.target"
   ]
@@ -64,6 +65,7 @@ let
     # Udev.
     "systemd-udevd-control.socket"
     "systemd-udevd-kernel.socket"
+    "systemd-udevd-varlink.socket"
     "systemd-udevd.service"
   ]
   ++ (optional (!config.boot.isContainer) "systemd-udev-trigger.service")
@@ -87,6 +89,7 @@ let
     "systemd-fsck-root.service"
     "systemd-growfs@.service"
     "systemd-growfs-root.service"
+    "systemd-loop@.service"
     "systemd-remount-fs.service"
     "systemd-pstore.service"
     "local-fs.target"
@@ -156,6 +159,8 @@ let
     "systemd-ask-password-wall.service"
 
     # Varlink APIs
+    "systemd-ask-password@.service"
+    "systemd-ask-password.socket"
   ]
   ++ lib.optionals cfg.package.withBootloader [
     "systemd-bootctl@.service"
@@ -177,11 +182,13 @@ let
   ]
   ++ optionals cfg.package.withImportd [
     "systemd-importd.service"
+    "systemd-importd.socket"
   ]
   ++ optionals cfg.package.withMachined [
     "machine.slice"
     "machines.target"
     "systemd-machined.service"
+    "systemd-machined.socket"
   ]
   ++ optionals cfg.package.withNspawn [
     "systemd-nspawn@.service"
@@ -190,6 +197,9 @@ let
     # Misc.
     "systemd-sysctl.service"
     "systemd-machine-id-commit.service"
+
+    "systemd-mute-console@.service"
+    "systemd-mute-console.socket"
   ]
   ++ optionals cfg.package.withTimedated [
     "dbus-org.freedesktop.timedate1.service"
@@ -208,6 +218,11 @@ let
     "dbus-org.freedesktop.portable1.service"
     "systemd-portabled.service"
   ]
+  ++ optionals cfg.package.withRepart [
+    # Varlink APIs
+    "systemd-repart@.service"
+    "systemd-repart.socket"
+  ]
   ++ [
     "systemd-exit.service"
     "systemd-update-done.service"
@@ -220,6 +235,8 @@ let
     "factory-reset.target"
     "systemd-factory-reset-request.service"
     "systemd-factory-reset-reboot.service"
+    "systemd-factory-reset@.service"
+    "systemd-factory-reset.socket"
   ]
   ++ cfg.additionalUpstreamSystemUnits;
 
@@ -243,7 +260,23 @@ in
 
   options.systemd = {
 
-    package = mkPackageOption pkgs "systemd" { };
+    package = mkPackageOption pkgs "systemd" { } // {
+      # HORRIBLE HACK
+      # Put back the patch that completely broke most networkd setups.
+      # This needs to be reverted and either reinstated in the package
+      # proper, or fixed within the networkd NixOS module, but right now
+      # we just need things to stop being on fire. -K900
+      #
+      # DO NOT remove this without verifying at least
+      # nixosTests.predictable-interface-names.predictableNetworkdSystemdStage1
+      apply =
+        pkg:
+        pkg.overrideAttrs (prevAttrs: {
+          patches = prevAttrs.patches or [ ] ++ [
+            ./systemd-search-path.patch
+          ];
+        });
+    };
 
     enableStrictShellChecks = mkEnableOption "" // {
       description = ''
@@ -406,6 +439,17 @@ in
       description = ''
         Target that should be started when Ctrl-Alt-Delete is pressed;
         see {manpage}`systemd.special(7)`.
+      '';
+    };
+
+    defaultPath = mkOption {
+      type = types.listOf types.package;
+      default = [ ];
+      description = ''
+        Packages appended to the {env}`PATH` environment variable of all
+        system and user services.
+
+        Individual services can opt out by setting `enableDefaultPath = false`.
       '';
     };
 
@@ -605,6 +649,10 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
+    environment.variables = {
+      SYSTEMD_XKB_DIRECTORY = "/etc/X11/xkb";
+    };
+
     environment.etc =
       let
         # generate contents for /etc/systemd/${dir} from attrset of links and packages
@@ -713,6 +761,15 @@ in
       // listToAttrs (map (withName mountToUnit) cfg.mounts)
       // listToAttrs (map (withName automountToUnit) cfg.automounts);
 
+    # Default path for systemd services. Should be quite minimal.
+    systemd.defaultPath = [
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.gnugrep
+      pkgs.gnused
+      cfg.package
+    ];
+
     # Environment of PID 1
     systemd.managerEnvironment = {
       # Doesn't contain systemd itself - everything works so it seems to use the compiled-in value for its tools
@@ -800,9 +857,16 @@ in
     systemd.services.systemd-random-seed.restartIfChanged = false;
     systemd.services.systemd-remount-fs.restartIfChanged = false;
     systemd.services.systemd-update-utmp.restartIfChanged = false;
+    # `systemd-bless-boot good` fails once the current boot has been blessed.
+    systemd.services.systemd-bless-boot = lib.mkIf cfg.package.withBootloader {
+      restartIfChanged = false;
+    };
     systemd.targets.local-fs.unitConfig.X-StopOnReconfiguration = true;
     systemd.targets.remote-fs.unitConfig.X-StopOnReconfiguration = true;
-    systemd.services.systemd-importd.environment = proxy_env;
+    systemd.services.systemd-importd = lib.mkIf cfg.package.withImportd {
+      environment = proxy_env;
+      path = [ pkgs.gnupgMinimal ];
+    };
     systemd.services.systemd-pstore.wantedBy = [ "sysinit.target" ]; # see #81138
 
     # NixOS has kernel modules in a different location, so override that here.
@@ -824,10 +888,12 @@ in
     # because either the overlay is mutable (and users can legitimately change
     # values without them being overridden) or it is immutable and systemd will
     # suggest to only make runtime changes.
-    systemd.services."systemd-localed".environment = lib.mkIf (!config.system.etc.overlay.enable) {
-      SYSTEMD_ETC_LOCALE_CONF = "/etc/static/locale.conf";
-      SYSTEMD_ETC_VCONSOLE_CONF = "/etc/static/vconsole.conf";
-    };
+    systemd.services."systemd-localed".environment =
+      lib.mkIf (!config.system.etc.overlay.enable && !config.i18n.imperativeLocale)
+        {
+          SYSTEMD_ETC_LOCALE_CONF = "/etc/static/locale.conf";
+          SYSTEMD_ETC_VCONSOLE_CONF = "/etc/static/vconsole.conf";
+        };
     systemd.services."systemd-timedated".environment =
       lib.mkIf (!config.system.etc.overlay.enable && config.time.timeZone != null)
         {
@@ -875,7 +941,10 @@ in
     # https://github.com/systemd/systemd/blob/v259.3/src/vmspawn/vmspawn.c#L2662
     # this service is used, for example, when NixOS is started via systemd-vmspawn
     systemd.services."sshd-vsock@" = mkIf config.services.openssh.enable {
-      serviceConfig.ExecSearchPath = "${config.services.openssh.package}/bin";
+      serviceConfig.ExecSearchPath = lib.makeBinPath [
+        config.services.openssh.package
+        cfg.package
+      ];
       overrideStrategy = "asDropin";
     };
 

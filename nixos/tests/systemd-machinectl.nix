@@ -76,7 +76,6 @@ let
   profile-guest-vmspawn = {
     imports = [ ../modules/profiles/qemu-guest.nix ];
 
-    boot.initrd.systemd.enable = true;
     # root is defined by systemd-vmspawn
     boot.initrd.systemd.root = null;
 
@@ -105,6 +104,8 @@ let
         symlink = "/nix/var/nix/profiles/system";
       }
     ];
+
+    extraCommands = "mkdir -p usr";
 
     contents = [
       {
@@ -153,7 +154,7 @@ in
         profile-host-nspawn
         profile-host-vmspawn
       ];
-
+      nix.enable = true;
       # do not try to access cache.nixos.org
       nix.settings.substituters = lib.mkForce [ ];
 
@@ -167,23 +168,24 @@ in
         vmSharedSystem
       ];
 
-      virtualisation.diskSize = 2048;
+      virtualisation.diskSize = 3072;
 
       systemd.tmpfiles.rules = [
         "d /var/lib/machines/shared-decl 0755 root root - -"
+        "d /var/lib/machines/shared-decl/usr 0755 root root - -"
       ];
       systemd.nspawn.shared-decl = {
-        execConfig = {
+        settings.Exec = {
           Boot = false;
           Parameters = "${containerSystem}/init";
         };
-        filesConfig = {
+        settings.Files = {
           BindReadOnly = "/nix/store";
         };
       };
 
       systemd.nspawn.${containerName} = {
-        filesConfig = {
+        settings.Files = {
           # workaround to fix kernel namespaces; needed for Nix sandbox
           # https://github.com/systemd/systemd/issues/27994#issuecomment-1704005670
           Bind = "/proc:/run/proc";
@@ -228,7 +230,7 @@ in
     machine.wait_until_succeeds("systemctl -M shared-decl is-active default.target");
     machine.succeed("machinectl stop shared-decl");
 
-    machine.succeed("mkdir -p ${containerRoot}");
+    machine.succeed("mkdir -p ${containerRoot}/usr");
 
     # start container with shared nix store by using same arguments as for systemd-nspawn@.service
     machine.succeed("systemd-run systemd-nspawn --machine=${containerName} --network-veth -U --bind-ro=/nix/store ${containerSystem}/init")

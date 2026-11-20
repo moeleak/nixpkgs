@@ -3,28 +3,38 @@
   rustPlatform,
   fetchFromGitHub,
   pkg-config,
-  openssl,
+  aws-lc,
+  sqlite,
+  cacert,
   nixosTests,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "rustical";
-  version = "0.12.11";
+  version = "0.19.1";
+  __darwinAllowLocalNetworking = true;
 
   src = fetchFromGitHub {
     owner = "lennart-k";
     repo = "rustical";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-KxECcpXjfqmirJBE1Rzh+KbngXACVUf2DTaKy7+XOSA=";
+    hash = "sha256-dFGol0iXK84j4/3avefdbpq2IdAfgl+piJCNYvikxAM=";
   };
 
-  cargoHash = "sha256-uP1lZarcwQhBKyASQIiNUs053EuxJy112P2e3hy2uZY=";
+  cargoHash = "sha256-4SzRE1gjbH4kdjMUpdJUNgqn/PL41oWPl/nOhZoWYJQ=";
 
   nativeBuildInputs = [ pkg-config ];
 
-  buildInputs = [ openssl ];
+  buildInputs = [
+    aws-lc
+    sqlite
+  ];
 
-  env.OPENSSL_NO_VENDOR = true;
+  env = {
+    AWS_LC_SYS_USE_SYSTEM = true;
+    LIBSQLITE3_SYS_USE_PKG_CONFIG = true;
+    SSL_CERT_FILE = "${cacert}/etc/ssl/certs/ca-bundle.crt";
+  };
 
   passthru.tests = {
     inherit (nixosTests) rustical;

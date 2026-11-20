@@ -48,8 +48,11 @@ let
     "application/ld+json"
     "application/manifest+json"
     "application/rdf+xml"
+    "application/rss+xml" # What the default (mailcap) mime.types maps ".rss" to
+    "application/vnd.api+json"
     "application/vnd.ms-fontobject"
     "application/wasm"
+    "application/x-javascript" # Legacy alias of "application/javascript", still emitted by some upstreams
     "application/x-rss+xml"
     "application/x-web-app-manifest+json"
     "application/xhtml+xml"
@@ -61,6 +64,8 @@ let
     "image/bmp"
     "image/svg+xml"
     "image/vnd.microsoft.icon"
+    "image/x-icon" # What nginx's own mime.types maps ".ico" to, see services.nginx.defaultMimeTypes
+    "image/x-ms-bmp" # What nginx's own mime.types maps ".bmp" to, see services.nginx.defaultMimeTypes
     "text/cache-manifest"
     "text/calendar"
     "text/css"
@@ -72,6 +77,7 @@ let
     "text/vnd.rim.location.xloc"
     "text/vtt"
     "text/x-component"
+    "text/x-cross-domain-policy"
     "text/xml"
   ];
 
@@ -126,6 +132,28 @@ let
     '') (filterAttrs (name: conf: conf.enable) cfg.proxyCachePath)
   );
 
+  # openresty bundles the lua module and resty.core; stock nginx needs them added.
+  packageBundlesLua = p: lib.getName p == "openresty";
+  luaEnv = pkgs.luajit_openresty.withPackages (
+    ps:
+    lib.optional (cfg.lua.enable && !packageBundlesLua cfg.package) ps.lua-resty-core
+    ++ cfg.lua.extraPackages ps
+  );
+  luaVersion = pkgs.luajit_openresty.luaversion;
+  # Lua modules install under lib/lua or share/lua depending on the package; ;; keeps nginx's defaults.
+  luaConfig = ''
+    lua_package_path '${
+      lib.concatMapStringsSep ";" (s: "${luaEnv}/${s}") [
+        "lib/lua/${luaVersion}/?.lua"
+        "lib/lua/${luaVersion}/?/init.lua"
+        "share/lua/${luaVersion}/?.lua"
+        "share/lua/${luaVersion}/?/init.lua"
+      ]
+    };;';
+    lua_package_cpath '${luaEnv}/lib/lua/${luaVersion}/?.so;;';
+    lua_ssl_trusted_certificate ${config.security.pki.caBundle};
+  '';
+
   toUpstreamParameter =
     key: value:
     if builtins.isBool value then lib.optionalString value key else "${key}=${toString value}";
@@ -167,6 +195,13 @@ let
         error_log ${cfg.logError};
         daemon off;
 
+        worker_processes ${toString cfg.workerProcesses};
+
+        # load_module is a main-context directive that must precede events{}/http{}.
+        ${optionalString (
+          (cfg.package.dynamicModules or [ ]) != [ ]
+        ) "include ${cfg.package}/etc/nginx/dynamic-modules.conf;"}
+
         ${optionalString cfg.enableQuicBPF ''
           quic_bpf on;
         ''}
@@ -206,23 +241,23 @@ let
                 if lib.isList cfg.sslCiphers then (lib.concatStringsSep ":" cfg.sslCiphers) else cfg.sslCiphers
               };"
             }
-            ${optionalString (cfg.sslDhparam != false)
-              "ssl_dhparam ${
-                if cfg.sslDhparam == true then config.security.dhparams.params.nginx.path else cfg.sslDhparam
-              };"
-            }
 
             ${optionalString cfg.recommendedTlsSettings ''
-              # Consider https://ssl-config.mozilla.org/#server=nginx&config=intermediate as the lower bound
+              # Consider https://configurator.tlsref.org/#server=nginx&config=intermediate as the lower bound
 
               ssl_conf_command Groups "X25519MLKEM768:X25519:P-256:P-384";
-              ssl_session_timeout 1d;
-              ssl_session_cache shared:SSL:10m;
-              # Breaks forward secrecy: https://github.com/mozilla/server-side-tls/issues/135
-              ssl_session_tickets off;
-              # We don't enable insecure ciphers by default, so this allows
-              # clients to pick the most performant, per https://github.com/mozilla/server-side-tls/issues/260
+
+              # Allow clients to choose the most performant ciphersuite from our safe allowlist
+              # https://github.com/mozilla/server-side-tls/issues/260
               ssl_prefer_server_ciphers off;
+
+              # Support TLS session resumption (cache and tickets)
+              ssl_session_cache shared:SSL:10m; # ~40k sessions
+              ssl_session_timeout 1d;
+            ''}
+
+            ${optionalString cfg.encryptedClientHello.enable ''
+              ssl_ech_file ${cfg.encryptedClientHello.configFile};
             ''}
 
             ${optionalString cfg.recommendedBrotliSettings ''
@@ -260,10 +295,6 @@ let
               proxy_connect_timeout   ${cfg.proxyTimeout};
               proxy_send_timeout      ${cfg.proxyTimeout};
               proxy_read_timeout      ${cfg.proxyTimeout};
-              proxy_http_version      1.1;
-              # don't let clients close the keep-alive connection to upstream. See the nginx blog for details:
-              # https://www.nginx.com/blog/avoiding-top-10-nginx-configuration-mistakes/#no-keepalives
-              proxy_set_header        "Connection" "";
               include ${recommendedProxyConfig};
             ''}
 
@@ -299,6 +330,8 @@ let
             client_max_body_size ${cfg.clientMaxBodySize};
 
             server_tokens ${if cfg.serverTokens then "on" else "off"};
+
+            ${optionalString cfg.lua.enable luaConfig}
 
             ${cfg.commonHttpConfig}
 
@@ -379,6 +412,11 @@ let
 
         hostListen = if vhost.forceSSL then filter (x: x.ssl) defaultListen else defaultListen;
 
+        # If there's any location setting `useGrpcErrorPages`, we need to add the location blocks.
+        locationsWantGrpcErrorPages = builtins.any (location: location.useGrpcErrorPages) (
+          attrValues vhost.locations
+        );
+
         listenString =
           {
             addr,
@@ -393,7 +431,7 @@ let
             "
             listen ${addr}${optionalString (port != null) ":${toString port}"} quic "
             + optionalString vhost.default "default_server "
-            + optionalString vhost.reuseport "reuseport "
+            + optionalString (vhost.reuseport && !(lib.hasPrefix "unix:" addr)) "reuseport "
             + optionalString (extraParameters != [ ]) (
               concatStringsSep " " (
                 let
@@ -419,7 +457,7 @@ let
           + optionalString (ssl && vhost.http2 && oldHTTP2) "http2 "
           + optionalString ssl "ssl "
           + optionalString vhost.default "default_server "
-          + optionalString vhost.reuseport "reuseport "
+          + optionalString (vhost.reuseport && !(lib.hasPrefix "unix:" addr)) "reuseport "
           + optionalString proxyProtocol "proxy_protocol "
           + optionalString (extraParameters != [ ]) (concatStringsSep " " extraParameters)
           + ";";
@@ -496,6 +534,10 @@ let
 
           ${mkBasicAuth vhostName vhost}
 
+          ${optionalString locationsWantGrpcErrorPages ''
+            include ${./grpc-locations.conf};
+          ''}
+
           ${optionalString (vhost.root != null) "root ${vhost.root};"}
 
           ${optionalString (vhost.globalRedirect != null) ''
@@ -540,6 +582,9 @@ let
               optionalAttrs (config.fastcgiParams != { }) (defaultFastcgiParams // config.fastcgiParams)
             )
           )}
+          ${optionalString config.useGrpcErrorPages ''
+            include ${./grpc-error-pages.conf};
+          ''}
           ${optionalString (config.index != null) "index ${config.index};"}
           ${optionalString (config.tryFiles != null) "try_files ${config.tryFiles};"}
           ${optionalString (config.root != null) "root ${config.root};"}
@@ -603,6 +648,43 @@ in
         description = ''
           Enable recommended TLS settings.
         '';
+      };
+
+      encryptedClientHello = {
+        enable = mkEnableOption "Encrypted Client Hello extension for TLS 1.3";
+
+        configFile = mkOption {
+          type = types.pathWith { inStore = false; };
+          default = "/var/lib/nginx/ech.pem";
+          example = "/run/keys/nginx.ech.pem";
+          description = ''
+            Path to the file containing both private key and ECHConfig in PEM
+            format.
+
+            This file will be generated if it does not exist and
+            {option}`services.nginx.encryptedClientHello.publicName` is set.
+
+            ::: {.info}
+            The `ECHConfig` value must be published into a HTTPS resource
+            record ([RFC 9460]) so clients can retrieve it before setting up
+            the TLS socket.
+            :::
+
+            [RFC 9460](https://www.rfc-editor.org/info/rfc9460/)
+          '';
+        };
+
+        publicName = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          example = "ech.example.com";
+          description = ''
+            Public name advertised in the ECHConfig.
+
+            This name is visible in the outer ClientHello. This is not
+            necessarily the hostname of the requested website.
+          '';
+        };
       };
 
       recommendedOptimisation = mkOption {
@@ -675,6 +757,14 @@ in
         example = "20s";
         description = ''
           Change the uwsgi related timeouts in recommendedUwsgiSettings.
+        '';
+      };
+
+      workerProcesses = mkOption {
+        type = types.either types.ints.positive (types.enum [ "auto" ]);
+        default = "auto";
+        description = ''
+          Defines the number of worker processes.
         '';
       };
 
@@ -776,13 +866,17 @@ in
         apply =
           p:
           p.override {
-            modules = lib.unique (p.modules ++ cfg.additionalModules);
+            modules = lib.unique (
+              p.modules
+              ++ cfg.additionalModules
+              ++ lib.optional (cfg.lua.enable && !packageBundlesLua p) pkgs.nginxModules.lua
+            );
           };
         description = ''
           Nginx package to use. This defaults to the stable version. Note
           that the nginx team recommends to use the mainline version which
           available in nixpkgs as `nginxMainline`.
-          Supported Nginx forks include `angie`, `openresty` and `tengine`.
+          Supported Nginx forks include `angie` and `openresty`.
         '';
       };
 
@@ -794,6 +888,36 @@ in
           Additional [third-party nginx modules](https://www.nginx.com/resources/wiki/modules/)
           to install. Packaged modules are available in `pkgs.nginxModules`.
         '';
+      };
+
+      lua = {
+        enable = mkEnableOption ''
+          Lua scripting in nginx via OpenResty's lua-nginx-module,
+          wiring up `lua_package_path`/`lua_package_cpath` for
+          {option}`services.nginx.lua.extraPackages`.
+
+          Use this to add Lua to a stock nginx. For the full OpenResty platform —
+          required by libraries that depend on its bundled lualib (for example
+          `lua-resty-openidc`, which needs `resty.string` and friends) — set
+          {option}`services.nginx.package` to `pkgs.openresty` instead; this option
+          then only sets up the search path and leaves OpenResty's built-in Lua
+          module in place
+        '';
+
+        extraPackages = mkOption {
+          type = types.functionTo (types.listOf types.package);
+          default = ps: [ ];
+          defaultText = literalExpression "ps: [ ]";
+          example = literalExpression ''
+            ps: with ps; [ lua-resty-openidc ]
+          '';
+          description = ''
+            Extra Lua packages to put on `lua_package_path` / `lua_package_cpath`,
+            for both stock nginx and `pkgs.openresty`. Packages are selected from
+            `pkgs.luajit_openresty.pkgs`. `lua-resty-core`, which the Lua module
+            requires to start, is added automatically.
+          '';
+        };
       };
 
       logError = mkOption {
@@ -973,7 +1097,7 @@ in
 
       sslCiphers = mkOption {
         type = types.nullOr (types.either types.str (types.listOf types.str));
-        # Keep in sync with https://ssl-config.mozilla.org/#server=nginx&config=intermediate
+        # Keep in sync with https://configurator.tlsref.org/#server=nginx&config=intermediate
         default = [
           "ECDHE-ECDSA-AES128-GCM-SHA256"
           "ECDHE-RSA-AES128-GCM-SHA256"
@@ -981,9 +1105,6 @@ in
           "ECDHE-RSA-AES256-GCM-SHA384"
           "ECDHE-ECDSA-CHACHA20-POLY1305"
           "ECDHE-RSA-CHACHA20-POLY1305"
-          "DHE-RSA-AES128-GCM-SHA256"
-          "DHE-RSA-AES256-GCM-SHA384"
-          "DHE-RSA-CHACHA20-POLY1305"
         ];
         description = ''
           List of available cipher suites to choose from when negotiating TLS sessions.
@@ -1000,13 +1121,6 @@ in
         default = "TLSv1.2 TLSv1.3";
         example = "TLSv1.3";
         description = "Allowed TLS protocol versions.";
-      };
-
-      sslDhparam = mkOption {
-        type = types.either types.path types.bool;
-        default = false;
-        example = "/path/to/dhparams.pem";
-        description = "Path to DH parameters file, or `true` to generate with `security.dhparms.params.nginx`.";
       };
 
       proxyResolveWhileRunning = mkOption {
@@ -1308,6 +1422,13 @@ in
   };
 
   imports = [
+    (mkRemovedOptionModule [ "services" "nginx" "sslDhparam" ] ''
+      DHE cipher suites have been removed from the default nginx cipher list.
+
+      No additional configuration is required as ECDHE is used by default already.
+
+      If you wish to use Hybrid PQ key exchange, you can set services.nginx.recommendedTlsSettings = true.
+    '')
     (mkRemovedOptionModule [ "services" "nginx" "stateDir" ] ''
       The Nginx log directory has been moved to /var/log/nginx, the cache directory
       to /var/cache/nginx. The option services.nginx.stateDir has been removed.
@@ -1498,6 +1619,28 @@ in
         stopIfChanged = false;
         preStart = ''
           ${cfg.preStart}
+
+          ${lib.optionalString cfg.encryptedClientHello.enable ''
+            if [ ! -e "${cfg.encryptedClientHello.configFile}" ]; then
+              ${
+                if (cfg.encryptedClientHello.publicName != null) then
+                  ''
+                    (
+                      umask 077
+                      ${lib.getExe pkgs.openssl_4_0} ech \
+                        -public_name "${cfg.encryptedClientHello.publicName}" \
+                        -out "${cfg.encryptedClientHello.configFile}"
+                    )
+                  ''
+                else
+                  ''
+                    echo "ECH config file at ${cfg.encryptedClientHello.configFile} is missing and cannot be generated because `publicName` is not set." >&2
+                    exit 1
+                  ''
+              }
+            fi
+          ''}
+
           ${execCommand} -t
         '';
 
@@ -1522,6 +1665,9 @@ in
           # Logs directory and mode
           LogsDirectory = "nginx";
           LogsDirectoryMode = "0750";
+          # State directory and mode
+          StateDirectory = "nginx";
+          StateDirectoryMode = "0700";
           # Proc filesystem
           ProcSubset = "pid";
           ProtectProc = "invisible";
@@ -1564,11 +1710,7 @@ in
           ];
           RestrictNamespaces = true;
           LockPersonality = true;
-          MemoryDenyWriteExecute =
-            !(
-              (builtins.any (mod: (mod.allowMemoryWriteExecute or false)) cfg.package.modules)
-              || (cfg.package == pkgs.openresty)
-            );
+          MemoryDenyWriteExecute = false; # for pcre2 & several plugins
           RestrictRealtime = true;
           RestrictSUIDSGID = true;
           RemoveIPC = true;
@@ -1578,7 +1720,7 @@ in
           SystemCallFilter = [
             "~@cpu-emulation @debug @keyring @mount @obsolete @privileged @setuid"
           ]
-          ++ optional cfg.enableQuicBPF [ "bpf" ];
+          ++ optionals cfg.enableQuicBPF [ "bpf" ];
         };
       };
 
@@ -1641,9 +1783,7 @@ in
       )
     );
 
-    environment.etc."nginx/nginx.conf" = mkIf cfg.enableReload {
-      source = configFile;
-    };
+    environment.etc."nginx/nginx.conf".source = configFile;
 
     security.acme.certs =
       let
@@ -1678,8 +1818,6 @@ in
       in
       listToAttrs acmePairs;
 
-    security.dhparams.params.nginx = lib.mkIf (cfg.sslDhparam == true) { };
-
     users.users = optionalAttrs (cfg.user == "nginx") {
       nginx = {
         group = cfg.group;
@@ -1706,7 +1844,13 @@ in
       rotate = 26;
       compress = true;
       delaycompress = true;
+      # Run postrotate script only once after rotation of all log files:
+      sharedscripts = true;
       postrotate = "[ ! -f /var/run/nginx/nginx.pid ] || kill -USR1 `cat /var/run/nginx/nginx.pid`";
     };
   };
+  meta.maintainers = [
+    lib.maintainers.leona
+    lib.maintainers.ma27
+  ];
 }

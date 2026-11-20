@@ -1,30 +1,54 @@
 {
   lib,
+  stdenv,
   nodejs,
   node-gyp,
   node-pre-gyp,
   pixman,
   fetchFromGitHub,
+  fetchurl,
   buildNpmPackage,
   prisma_6,
   prisma-engines_6,
   vips,
   pkg-config,
+  gzip,
+  autoPatchelfHook,
   cairo,
   pango,
   bash,
   openssl,
+  sqlite,
 }:
 
+let
+  skiaCanvasVersion = "3.0.8-documenso.3";
+  skiaCanvasTriplet =
+    {
+      x86_64-linux = "linux-x64-glibc";
+      aarch64-linux = "linux-arm64-glibc";
+    }
+    .${stdenv.hostPlatform.system}
+      or (throw "unsupported skia-canvas platform ${stdenv.hostPlatform.system}");
+  skiaCanvasPrebuild = fetchurl {
+    url = "https://github.com/documenso/skia-canvas/releases/download/v${skiaCanvasVersion}/${skiaCanvasTriplet}.gz";
+    hash =
+      {
+        x86_64-linux = "sha256-fEmaJ5JM6S/z9pWhhlf8maMVOM9u3/eI7VFmbj/Ns44=";
+        aarch64-linux = "sha256-idJa+u84Cc0SjBcZSOs9sZlAHV81yF8eSOzdP5lmCus=";
+      }
+      .${stdenv.hostPlatform.system};
+  };
+in
 buildNpmPackage (finalAttrs: {
   pname = "documenso";
-  version = "1.12.6";
+  version = "2.21.1";
 
   src = fetchFromGitHub {
     owner = "documenso";
     repo = "documenso";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-1TKjsOKJkv3COFgsE4tPAymI0MdeT+T8HiNgnoWHlAY=";
+    hash = "sha256-Li8tLI995JBCCkCUTY3HCe56Hp7xtGLDVjsS+Dsk98s=";
   };
 
   patches = [
@@ -33,9 +57,12 @@ buildNpmPackage (finalAttrs: {
     ./turbo.json.patch
   ];
 
-  npmDepsHash = "sha256-ZddRSBDasa3mMAS2dqXgXRMOc1nvspdXsuTZ7c+einw=";
+  npmDepsHash = "sha256-5cTOY0yZJGBPfY5eRsCvQR3TeoWBLJDHoTDe1+1ZujE=";
+  npmDepsFetcherVersion = 2;
 
   nativeBuildInputs = [
+    autoPatchelfHook
+    gzip
     pkg-config
     vips
     node-gyp
@@ -47,8 +74,13 @@ buildNpmPackage (finalAttrs: {
     pixman
     cairo
     pango
+    # libquery_engine.node links against system sqlite
+    sqlite
+    stdenv.cc.cc.lib
     vips
   ];
+
+  npmRebuildFlags = [ "--ignore-scripts" ];
 
   env = {
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
@@ -59,6 +91,13 @@ buildNpmPackage (finalAttrs: {
     TURBO_FORCE = "true";
     TURBO_REMOTE_CACHE_ENABLED = "false";
   };
+
+  preBuild = ''
+    mkdir -p node_modules/@documenso/skia-canvas/lib
+    gzip -dc ${skiaCanvasPrebuild} > node_modules/@documenso/skia-canvas/lib/skia.node
+
+    npm exec patch-package
+  '';
 
   buildPhase = ''
     runHook preBuild
@@ -81,7 +120,7 @@ buildNpmPackage (finalAttrs: {
     export PKG_CONFIG_PATH=${lib.getLib openssl.dev}/lib/pkgconfig;
     export PRISMA_QUERY_ENGINE_LIBRARY=${lib.getLib prisma-engines_6}/lib/libquery_engine.node
     export PRISMA_QUERY_ENGINE_BINARY=${lib.getExe' prisma-engines_6 "query-engine"}
-    export PRISMA_SCHEMA_ENGINE_BINARY=${prisma-engines_6}
+    export PRISMA_SCHEMA_ENGINE_BINARY=${lib.getExe' prisma-engines_6 "schema-engine"}
     cd $out/apps/remix
     ${lib.getExe prisma_6} migrate deploy --schema ../../packages/prisma/schema.prisma
     ${lib.getExe nodejs} build/server/main.js
@@ -89,6 +128,14 @@ buildNpmPackage (finalAttrs: {
           chmod +x $out/bin/documenso
 
           runHook postInstall
+  '';
+
+  postInstall = ''
+    # These optional prebuilds are for musl libc and can make autoPatchelf link
+    # glibc addons against incompatible vendored libraries.
+    rm -rf $out/node_modules/*musl* $out/node_modules/@*/*musl*
+    rm -rf $out/node_modules/@datadog/pprof/prebuilds/linuxmusl-*
+    rm -rf $out/node_modules/aws-crt/dist/bin/linux-*-musl
   '';
 
   # cleanup dangling symlinks for workspaces
@@ -118,7 +165,10 @@ buildNpmPackage (finalAttrs: {
     homepage = "https://github.com/documenso/documenso";
     license = lib.licenses.agpl3Only;
     maintainers = with lib.maintainers; [ happysalada ];
-    platforms = lib.platforms.unix;
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     mainProgram = "documenso";
   };
 })

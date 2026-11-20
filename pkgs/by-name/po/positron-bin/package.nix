@@ -2,7 +2,7 @@
   lib,
   _7zz,
   alsa-lib,
-  systemd,
+  systemdLibs,
   wrapGAppsHook4,
   autoPatchelfHook,
   blas,
@@ -18,33 +18,41 @@
   patchelf,
   openssl,
   stdenv,
+  unixodbc,
   libxdamage,
   libxcomposite,
   libx11,
   libxkbfile,
+  libsecret,
+  webkitgtk_4_1,
+  libxtst,
+  libei,
+  libjpeg8,
+  pipewire,
 }:
 let
   pname = "positron-bin";
-  version = "2026.02.1-5";
+  version = "2026.11.1-4";
 in
 stdenv.mkDerivation {
+  dontFixup = stdenv.hostPlatform.isDarwin;
   inherit version pname;
 
   src =
     if stdenv.hostPlatform.isDarwin then
       fetchurl {
         url = "https://cdn.posit.co/positron/releases/mac/arm64/Positron-${version}-arm64.dmg";
-        hash = "sha256-wQ/ctA9q8i5hyi86VKF8cC/mDHVU1DRt1vnFBKdAAJI=";
+        hash = "sha256-UGF/E5BoDyqfEhBEYwLfMlJ5+jE/81Wv5mRCFwtiVH0=";
       }
     else if stdenv.hostPlatform.system == "aarch64-linux" then
       fetchurl {
         url = "https://cdn.posit.co/positron/releases/deb/arm64/Positron-${version}-arm64.deb";
-        hash = "sha256-AW4jueFtdvrmIAm+d5/qjyViaSpue51dbyU4NYs3vaE=";
+        hash = "sha256-5rjkfF3UOEmezcRMGqmPlst7RM+OeaMazpF8jQoHiGc=";
       }
     else
       fetchurl {
         url = "https://cdn.posit.co/positron/releases/deb/x86_64/Positron-${version}-x64.deb";
-        hash = "sha256-aTVzJCsMARXciasGv7l/syFb3V81Ii6gVl6sBrEPFzM=";
+        hash = "sha256-NWmBXtVAg63YGnhW+BszotZLPI40nisM/4FU2PvykQY=";
       };
 
   buildInputs = [
@@ -64,6 +72,13 @@ stdenv.mkDerivation {
     libxcomposite
     libxdamage
     libxkbfile
+    libsecret
+    webkitgtk_4_1
+    libei
+    libjpeg8
+    pipewire
+    libxtst
+    unixodbc
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     blas
@@ -80,24 +95,35 @@ stdenv.mkDerivation {
       _7zz
     ];
 
+  # Don't patch ONNX Runtime providers.
+  autoPatchelfIgnoreMissingDeps = lib.optionals stdenv.hostPlatform.isLinux [
+    "libcublas.so.12"
+    "libcublasLt.so.12"
+    "libcudart.so.12"
+    "libcudnn.so.9"
+    "libcufft.so.11"
+    "libcurand.so.10"
+    "libnvinfer.so.10"
+    "libnvonnxparser.so.10"
+  ];
+
   runtimeDependencies = lib.optionals stdenv.hostPlatform.isLinux [
-    # Needed to fix the "Zygote could not fork" error.
-    (lib.getLib systemd)
+    (lib.getLib systemdLibs) # Needed to fix the "Zygote could not fork" error.
+    (lib.getLib libsecret) # Undeclared `dlopen`, buildInputs can't see it.
   ];
 
   installPhase =
     if stdenv.hostPlatform.isDarwin then
       ''
         runHook preInstall
-        mkdir -p "$out/Applications" "$out/bin"
-        cp -r . "$out/Applications/Positron.app"
+        mkdir -p "$out/Applications/Positron.app" "$out/bin"
+        cp -r Positron.app/. "$out/Applications/Positron.app"
 
         # Positron will use the system version of BLAS if we don't provide the nix version.
-        wrapProgram "$out/Applications/Positron.app/Contents/Resources/app/bin/code" \
+        makeShellWrapper "$out/Applications/Positron.app/Contents/Resources/app/bin/code" "$out/bin/positron" \
           --prefix DYLD_INSERT_LIBRARIES : "${lib.makeLibraryPath [ blas ]}/libblas.dylib" \
           --add-flags "--disable-updates"
 
-        ln -s "$out/Applications/Positron.app/Contents/Resources/app/bin/code" "$out/bin/positron"
         runHook postInstall
       ''
     else
@@ -115,19 +141,19 @@ stdenv.mkDerivation {
           "Icon=$out/share/pixmaps/co.posit.positron.png" \
           --replace-fail \
           "Exec=/usr/share/positron/positron %F" \
-          "Exec=$out/share/positron/.positron-wrapped %F" \
+          "Exec=$out/bin/positron %F" \
           --replace-fail \
           "/usr/share/positron/positron --new-window %F" \
-          "$out/share/positron/.positron-wrapped --new-window %F"
+          "$out/bin/positron --new-window %F"
 
         # Fix libGL.so not found errors.
         wrapProgram "$out/share/positron/positron" \
           --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libglvnd ]}" \
-          --add-flags "--disable-updates"
+          --append-flags "--disable-updates"
 
 
         mkdir -p "$out/bin"
-        ln -s "$out/share/positron/positron" "$out/bin/positron"
+        ln -s "$out/share/positron/bin/positron" "$out/bin/positron"
         runHook postInstall
       '';
 
@@ -140,6 +166,7 @@ stdenv.mkDerivation {
     maintainers = with lib.maintainers; [
       b-rodrigues
       detroyejr
+      hectorgray
     ];
     mainProgram = "positron";
     platforms = [

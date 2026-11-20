@@ -2,7 +2,7 @@
   lib,
   stdenv,
   fetchFromGitHub,
-  fetchpatch2,
+  cacert,
   gitUpdater,
   unstableGitUpdater,
   cctools,
@@ -40,12 +40,12 @@
 
 let
   stable = rec {
-    version = "26.02.0";
+    version = "26.07.0";
     src = fetchFromGitHub {
       owner = "gpac";
       repo = "gpac";
       rev = "v${version}";
-      hash = "sha256-UtL+KG3dsp6dD7cfTK7e17ngt/RHKJL0s5IopTM3VOk=";
+      hash = "sha256-L4GKXCFsKVxWXZJJeiAegXJySoS9+/V+/cuzEJEse+I=";
     };
     updateScript = gitUpdater {
       rev-prefix = "v";
@@ -53,12 +53,12 @@ let
     };
   };
   unstable = {
-    version = "26.02.0-unstable-2026-04-29";
+    version = "26.07.0-unstable-2026-11-06";
     src = fetchFromGitHub {
       owner = "gpac";
       repo = "gpac";
-      rev = "525bf1af642c30af04e4df5345e6d798c0a4d8a1";
-      hash = "sha256-G/4gefsS2hUKo8VEt80YZOaGJSjrzXFrdHO/u33BiDw=";
+      rev = "1b47f9e82a7cad2de292f5ce1e9517fa8c1fc5e2";
+      hash = "sha256-vBdDUI7/d32E55LFw8rKlNcY6bVOYIMGpF7yNQsCCzI=";
     };
     updateScript = unstableGitUpdater {
       tagFormat = "v*";
@@ -111,15 +111,12 @@ stdenv.mkDerivation (finalAttrs: {
     curl
   ];
 
-  patches = lib.optionals (releaseChannel == "stable") [
-    (fetchpatch2 {
-      # CVE-2026-7135 fix
-      url = "https://github.com/gpac/gpac/commit/cf6ac48c972eaaee2af270adc3f36615325deb3e.patch?full_index=1";
-      hash = "sha256-JaJiQAQvzdB74ag2/aZTiQa2NqlgqgMYS1tsk/R+wiI=";
-    })
-  ];
-
   enableParallelBuilding = true;
+
+  postInstall = ''
+    rm $out/share/gpac/res/ca-bundle.crt
+    ln -s ${cacert}/etc/ssl/certs/ca-bundle.crt $out/share/gpac/res/ca-bundle.crt
+  '';
 
   passthru.updateScript = channelToUse.updateScript;
 

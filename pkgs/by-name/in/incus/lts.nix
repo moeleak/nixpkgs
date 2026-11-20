@@ -1,85 +1,138 @@
 import ./generic.nix {
-  hash = "sha256-7s2gc+78O8jKypVe1itaUrsLPa2mLjNgUUrR/cv7ITA=";
-  version = "7.0.0";
-  vendorHash = "sha256-6irMB3hpWcxDuMQBxWXnhMLAOwTAl63JX6JJZMQXf5E=";
-  lts = true;
-  patches = fetchpatch2: [
-    (fetchpatch2 {
-      name = "doc-devices-disk_Fix-broken-link.patch";
-      url = "https://github.com/lxc/incus/commit/faa636b70c05a5cca0346492a0586d5747e4b117.patch?full_index=1";
-      hash = "sha256-UsfzSeLJq0B9xDmd124ITzFBJzg2w1xXNK6TavQ5iMs=";
+  hash = "sha256-LYQ7PFYLjXGqztovhvfJ9XR7xpinPvMvKZgiqsAUvbc=";
+  version = "7.0.2";
+  vendorHash = "sha256-huplVEZrpV5jI2nXJcmtFeY5SPDBSYwoZ1EtvEUY5Q0=";
+  patches = fetchpatch: [
+    # incusd/instance/lxc: Reject line breaks in LXC config values
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/e933b9f920e16af8932c30d4565e293675828dc1.patch";
+      hash = "sha256-ytJM4vhmmVuMZvoYrjjXuJcXojmyxLiGEt1HKXG8MeY=";
+      name = "GHSA-3wxw-5gh2-j2x2.1.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-instance-qemu_Fix-version-detection-for-qemu-kvm.patch";
-      url = "https://github.com/lxc/incus/commit/a5f50d36eaa41580f2233b05936bd29fe1b15100.patch?full_index=1";
-      hash = "sha256-Qwu2oljB7COZB2m3W/9Y5wCCZyxvLj4ZUHcNqtoDGzk=";
+    # incusd/instance/lxc: Only parse config.json for OCI containers
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/084e2d482010fa9b86d20c21312bdeffa8099d31.patch";
+      hash = "sha256-IEmcercBGbTsj+7ws2ThDayBlEoH2Y5/f3nSi/QCILw=";
+      name = "GHSA-3wxw-5gh2-j2x2.2.patch";
     })
-    (fetchpatch2 {
-      name = "incusd_Re-introduce-core-scheduling-detection.patch";
-      url = "https://github.com/lxc/incus/commit/1e6ce18e8cd92b5b3eb4346e7bd27fd4a7d1fb9b.patch?full_index=1";
-      hash = "sha256-RLy8bcod55g8vtXxChte4oalApw7d/gZg8No6BUZQS0=";
+    # incusd/instance/lxc: Keep loader variables out of the forklxc environment
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/e00b75d4ac0393ab46eecd07a7c7abfb697c89f0.patch";
+      hash = "sha256-iayuWDj891XOFgVazMblQULCsAPJW9NXh/QOWan6wxM=";
+      name = "GHSA-3wxw-5gh2-j2x2.3.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-instance-lxc_Fix-swap=false-failure.patch";
-      url = "https://github.com/lxc/incus/commit/5f2cdf7545c5398290dc507313de9ee547fe803f.patch?full_index=1";
-      hash = "sha256-Ux6mm8Y4q68fj//hG7k+bXMjqhGDOxGNm64De1pwcYY=";
+    # incusd/dev_incus: Anchor the cgroup based monitor detection
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/83eaa5e19345a4719df46bcdb2850547d069b88e.patch";
+      hash = "sha256-5bCdkiKjIMezelVBzWiMcxgs9TCRsmlhcDjQZwCQ4FA=";
+      name = "GHSA-v736-5xp3-jghf.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-forknet_Persist-DHCPv6-client-DUID-across-restarts.patch";
-      url = "https://github.com/lxc/incus/commit/47377e345930e77d3fbce29d037fc7dbd6823dcf.patch?full_index=1";
-      hash = "sha256-CWaNaDYuBBLahxkqnM0FQZraVkvBSbrx1+8dcB8Vfbg=";
+    # incusd: Check resource creation against the effective project
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/929041ead77a385d7318e001403d36520fb75b93.patch";
+      hash = "sha256-MuMCCQMiRBZQQfICAggYNvCk0bpvEMTSmg5WpbpWimk=";
+      name = "GHSA-5c64-j5m6-8433.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-forknet_Include-FQDN-in-DHCPv6-INFO-requests.patch";
-      url = "https://github.com/lxc/incus/commit/d7f1c9d75ca33eb2ddb0bf10cec934fd6e352089.patch?full_index=1";
-      hash = "sha256-3zyADLiPUuiGLwdeISj5lUk3tkAayQGaRI+/yBHrvuM=";
+    # incusd/auth/tls: Restrict inherited reads to the certificate's projects
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/131d0f6dcd755bd52957a1a1d25d7930c844420d.patch";
+      hash = "sha256-IknnK/5YMQmrntjYWjAWacpxaZWWYVP4fMPAjTSqxwY=";
+      name = "GHSA-8r3h-vc36-6xpx.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-forknet_Properly-renew-stateful-DHCPv6.patch";
-      url = "https://github.com/lxc/incus/commit/3b127758c17752302b3f4bf907f42e926ab664e4.patch?full_index=1";
-      hash = "sha256-+dcdeZwuyTWH7yfPEDqKOax/lS1Yqvwn9ooqJxKD3jA=";
+    # incusd/operations: Protect token operations from events and cancellation
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/150b8c512f6fc00034b3324406dbf6a4edb3dc52.patch";
+      hash = "sha256-07+/mpq9GBLEOIomDVPVNPelAIr43LcS9xMX925jY9I=";
+      name = "GHSA-cwg9-8mc4-hf7j.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-forknet_Add-jitter-to-DHCPv6-renewal.patch";
-      url = "https://github.com/lxc/incus/commit/2b24a260b6177c033047f270286933563f05a999.patch?full_index=1";
-      hash = "sha256-grMspYyqn4Zl1Kn+hFeUfeIevdwszJc0x2YDC2JILKw=";
+    # incusd/storage/s3: Verify signed payloads without buffering
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/2b589bc682c9e5c76a2947d9cad993035c503277.patch";
+      hash = "sha256-tZz43cqb1vDmR3+KnFYrDvY8SMs5DVViRgH2hOWZy24=";
+      name = "GHSA-8mgx-h4v8-xqv2.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-device-nic_bridged_Fix-swapped-IPv4-IPv6-DNS-record.patch";
-      url = "https://github.com/lxc/incus/commit/33ffcf71745e138dd4f3546839115c293e6be083.patch?full_index=1";
-      hash = "sha256-E8Plz9qdoTt3id9I5jbZYMKQt+kUrKmXmtMJ6IXlRJg=";
+    # incusd/storage: Validate dependent volumes received through migration
+    (fetchpatch {
+      url = "https://salsa.debian.org/go-team/packages/incus/-/raw/380a16d82b8688d45a6693a7cf42fafb9fbba606/debian/patches/104-GHSA-q9fc-p923-6vp7.patch";
+      hash = "sha256-MPq38ZQtoVFvGYIsB5ZKdh0ZDsXepJpYQZaQiKDllTk=";
+      name = "GHSA-q9fc-p923-6vp7.patch";
     })
-    (fetchpatch2 {
-      name = "doc-authorization_Fix-reference-to-old-manager-relation.patch";
-      url = "https://github.com/lxc/incus/commit/c65ac0f4e6e94859b8565bce41bbf1595f4a8085.patch?full_index=1";
-      hash = "sha256-6wEz3uxWauIibBkH+OdB7+VsFySmugt6wk61qMayzYo=";
+    # incusd/storage: Validate snapshot names from the backup index on import
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/f7a97ee92b10e1b2bc3118453e9c0089d2dc17df.patch";
+      hash = "sha256-HdjlSa9Y0Gajb4GBc15Wl31m2jxM7Hcm7EC57a9wxXk=";
+      name = "GHSA-p45f-gqqj-6qq3.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-network-acl_Fix-issue-with-instances-in-different-project-than-ACL.patch";
-      url = "https://github.com/lxc/incus/commit/2a3584b6fccf152be42cf5614e54241bdb13e671.patch?full_index=1";
-      hash = "sha256-CXE5Bowk3ZPup6oVDEJb9ucsJoXhXu/kU7gGCghhtjQ=";
+    # incusd: Only trust the key-proven client certificate
+    (fetchpatch {
+      url = "https://salsa.debian.org/go-team/packages/incus/-/raw/380a16d82b8688d45a6693a7cf42fafb9fbba606/debian/patches/102a-cherry-pick-CheckTrustStateIssuer.patch";
+      hash = "sha256-QLR6mW9gs3TegabKMZErprBhwvNWXsL7sXxYmWlWB2o=";
     })
-    (fetchpatch2 {
-      name = "incusd-projects_Fix-targeting-on-project-delete.patch";
-      url = "https://github.com/lxc/incus/commit/3a104e4dc24897f0d6543136bb1043fcd4a33632.patch?full_index=1";
-      hash = "sha256-kTFkJqbjzdq5jvNxKw8YMPR04WRj4t5IS6ymoGyXDXE=";
+    (fetchpatch {
+      url = "https://salsa.debian.org/go-team/packages/incus/-/raw/380a16d82b8688d45a6693a7cf42fafb9fbba606/debian/patches/102b-GHSA-xg75-xf37-cph9.patch";
+      hash = "sha256-DQdddXdXnS6U5sjz7zjC8jMwsxa3+Fc+Q5tFKH1QS6k=";
+      name = "GHSA-xg75-xf37-cph9.patch";
     })
-    (fetchpatch2 {
-      name = "test-network_acl_Add-test-for-ACL-used-by-instance-in-different-project.patch";
-      url = "https://github.com/lxc/incus/commit/41878729f06e9c31df9d4fac20fb8c384608577c.patch?full_index=1";
-      hash = "sha256-YR2Akus4vp3vNvHEmsJUh/3gbEf3R/cFUOVvt9u/wEU=";
+    # incusd/dev_incus: Pin image export to the instance's project
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/00bb61411e5df26a866288482363e3baf75da563.patch";
+      hash = "sha256-hXup/fYYoxM+k5mkTVz0dCAhOAGenXk/FyA/99UGRRc=";
+      name = "GHSA-f7xp-22ph-v444.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-instance-qemu_Remove-deprecated-QEMU-flag.patch";
-      url = "https://github.com/lxc/incus/commit/c1f18c78fc6bc4850df20574bdcc541e5eefc4ac.patch?full_index=1";
-      hash = "sha256-kbn4Yd/G23FCFA0Ch0+d81HUxCbcoiOzHfZ0MW+VlzE=";
+    # incusd/events: Restrict network-acl events to privileged viewers
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/ed41dec85ffde702bad04270eb9ed844a64acf79.patch";
+      hash = "sha256-BDXTIaQrRXkibyjd6ep88/MnPnj/DxMB2yA/faqJwbQ=";
+      name = "GHSA-9f75-5fjw-5jvv.patch";
     })
-    (fetchpatch2 {
-      name = "incusd-cluster_Re-order-evacuations-to-happen-earlier-on-shutdown.patch";
-      url = "https://github.com/lxc/incus/commit/5b29ecc164ef28239d2e2a874a7c871a2e419083.patch?full_index=1";
-      hash = "sha256-jpyJYjiZvRw/aOGsykEx8uotRBF7p1q5O08PVhyQtvk=";
+    # incusd/instance/lxc: Allocate an idmap when none is set at start
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/e23bcb8b7e1dd223140668a67907b3312c562f42.patch";
+      hash = "sha256-tdBGAcolz6RgdStHU7rVpGqEsQKlUvIofUlObnOa+bg=";
+      name = "GHSA-9c46-v3hw-v6m8.patch";
+    })
+    # incusd: Authorize effective project on resource creation
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/c738b760352413c48c58bd1fbe7bd27ab41c84c1.patch";
+      hash = "sha256-tfrSMkjuK+bRIrjPSEWPal4rSA8MZuCWk4Ky7weMYoA=";
+      name = "GHSA-jcw9-v2ff-8m79.patch";
+    })
+    # incusd: Fix cross-project disclosure in recursive and all-projects listings
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/9721b743bc89baebeb3e0a7a2a306c924256a8c7.patch";
+      hash = "sha256-sKO8ibBLGL3hUg6uBZNDCt32gWPUdxc7ir/3XY4IQrk=";
+      name = "GHSA-pf5w-m8m6-5265.patch";
+    })
+    # incusd/storage: Strip non-regular files from instance metadata
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/724ab0fee1a85b5f741fe58b3e432c5f6b4ef414.patch";
+      hash = "sha256-IQTS1+txrJR/E97rgMOczMDjVA9IbHdZDN/Lp6eWM00=";
+      name = "GHSA-5pgx-q9xx-j3qv.patch";
+    })
+    # incusd/instance/qemu: Confine NBD migration sockets to the run directory
+    (fetchpatch {
+      url = "https://salsa.debian.org/go-team/packages/incus/-/raw/380a16d82b8688d45a6693a7cf42fafb9fbba606/debian/patches/108a-cherry-pick-helpers.patch";
+      hash = "sha256-iDVkR9aw2n9MVdqEuAGFaA8Rf9T4y0DVMmuSbOhpThI=";
+    })
+    (fetchpatch {
+      url = "https://salsa.debian.org/go-team/packages/incus/-/raw/380a16d82b8688d45a6693a7cf42fafb9fbba606/debian/patches/108b-GHSA-3rgf-297m-775x.patch";
+      hash = "sha256-2CL6Rcos94L1wMQKNobsA84eVJi67rFn8Xu14rfyYdI=";
+      name = "GHSA-3rgf-297m-775x.patch";
+    })
+    # incusd: Reject null snapshot entries on backup import
+    (fetchpatch {
+      url = "https://github.com/lxc/incus/commit/dcc80425594819ee1978110aa0071453308f6fa9.patch";
+      hash = "sha256-xxcYsCB4yMfFvge1m6egLoE378fWm4lJ085fiafbM5c=";
+      name = "GHSA-x6pw-mh5w-pq73.patch";
+    })
+    # incusd/operations: Keep websocket secrets out of events and queries
+    (fetchpatch {
+      url = "https://salsa.debian.org/go-team/packages/incus/-/raw/380a16d82b8688d45a6693a7cf42fafb9fbba606/debian/patches/110-GHSA-h2j8-4crh-vhfc.patch";
+      hash = "sha256-/ob+k/eVhuXvSkkk/sErQhtLhLbMfvr102vquUAK/R0=";
+      name = "GHSA-h2j8-4crh-vhfc.patch";
     })
   ];
+  lts = true;
   nixUpdateExtraArgs = [
     "--version-regex=^v(7\\.0\\.[0-9]+)$"
     "--override-filename=pkgs/by-name/in/incus/lts.nix"

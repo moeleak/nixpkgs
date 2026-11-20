@@ -7,14 +7,14 @@
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "nvitop";
-  version = "1.6.2";
+  version = "1.7.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "XuehaiPan";
     repo = "nvitop";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-CaQO20PF/fVGybyrt2OGASYsKAJsmJkOGis1ff/OOIs=";
+    hash = "sha256-Lwtp9VLLk+7hz9o3RBpKhdazacxsWBqkv30k7Fwxdoo=";
   };
 
   build-system = with python3Packages; [ setuptools ];

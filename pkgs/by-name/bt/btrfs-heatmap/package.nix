@@ -4,6 +4,8 @@
   fetchFromGitHub,
   python3,
   installShellFiles,
+  makeBinaryWrapper,
+  nix-update-script,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
@@ -13,7 +15,7 @@ stdenv.mkDerivation (finalAttrs: {
   src = fetchFromGitHub {
     owner = "knorrie";
     repo = "btrfs-heatmap";
-    rev = "v${finalAttrs.version}";
+    tag = "v${finalAttrs.version}";
     sha256 = "sha256-yCkuZqWwxrs2eS7EXY6pAOVVVSq7dAMxJtf581gX8vg=";
   };
 
@@ -21,6 +23,7 @@ stdenv.mkDerivation (finalAttrs: {
   nativeBuildInputs = [
     python3.pkgs.wrapPython
     installShellFiles
+    makeBinaryWrapper
   ];
 
   outputs = [
@@ -31,14 +34,24 @@ stdenv.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    install -Dm 0755 btrfs-heatmap $out/sbin/btrfs-heatmap
+    install -Dm 0755 btrfs-heatmap $out/libexec/btrfs-heatmap
     installManPage man/btrfs-heatmap.1
 
     buildPythonPath ${python3.pkgs.btrfs}
-    patchPythonScript $out/sbin/btrfs-heatmap
+    patchPythonScript $out/libexec/btrfs-heatmap
 
     runHook postInstall
   '';
+
+  strictDeps = true;
+  __structuredAttrs = true;
+  enableParallelBuilding = true;
+
+  postFixup = ''
+    makeBinaryWrapper $out/libexec/btrfs-heatmap $out/bin/btrfs-heatmap
+  '';
+
+  passthru.updateScript = nix-update-script { };
 
   meta = {
     description = "Visualize the layout of a mounted btrfs";
@@ -46,6 +59,8 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://github.com/knorrie/btrfs-heatmap";
     license = lib.licenses.mit;
     platforms = lib.platforms.linux;
-    maintainers = [ ];
+    maintainers = with lib.maintainers; [
+      sandarukasa
+    ];
   };
 })

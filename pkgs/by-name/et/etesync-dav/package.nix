@@ -6,7 +6,15 @@
   fetchFromGitHub,
   radicale,
 }:
-python3Packages.buildPythonApplication (finalAttrs: {
+
+let
+  pythonPackages = python3Packages.overrideScope (
+    final: prev: {
+      peewee = final.peewee_3;
+    }
+  );
+in
+pythonPackages.buildPythonApplication (finalAttrs: {
   pname = "etesync-dav";
   version = "0.35.1";
   pyproject = true;
@@ -23,21 +31,23 @@ python3Packages.buildPythonApplication (finalAttrs: {
     ./radicale-3-6-compat.patch
   ];
 
-  build-system = with python3Packages; [ setuptools ];
+  build-system = with pythonPackages; [ setuptools ];
 
   pythonRelaxDeps = [ "radicale" ];
 
-  dependencies = with python3Packages; [
-    appdirs
-    etebase
-    etesync
-    flask
-    flask-wtf
-    msgpack
-    (python3Packages.toPythonModule (radicale.override { python3 = python; }))
-    requests
-    requests.optional-dependencies.socks
-  ];
+  dependencies =
+    with pythonPackages;
+    [
+      appdirs
+      etebase
+      etesync
+      flask
+      flask-wtf
+      msgpack
+      (toPythonModule (radicale.override { python3 = python; }))
+      requests
+    ]
+    ++ requests.optional-dependencies.socks;
 
   doCheck = false;
 

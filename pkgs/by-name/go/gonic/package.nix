@@ -1,12 +1,8 @@
 {
   lib,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
   nixosTests,
-  pkg-config,
-  taglib,
-  zlib,
-
   # Disable on-the-fly transcoding,
   # removing the dependency on ffmpeg.
   # The server will (as of 0.11.0) gracefully fall back
@@ -15,20 +11,23 @@
   # in the configuration if you disable transcodingSupport.
   transcodingSupport ? true,
   ffmpeg,
+  # Setting this to false does not disable the jukebox feature,
+  # but avoids the dependency on mpv at least.
+  jukeboxSupport ? true,
   mpv,
 }:
 
-buildGoModule rec {
+buildGo127Module (finalAttrs: {
   pname = "gonic";
-  version = "0.20.1";
+  version = "0.23.0";
   src = fetchFromGitHub {
     owner = "sentriz";
     repo = "gonic";
-    rev = "v${version}";
-    sha256 = "sha256-tW+GuNMMeiPf5XInR1BN2L7ommWh1SPClbRew8/2+cA=";
+    rev = "v${finalAttrs.version}";
+    sha256 = "sha256-yQu3NDBYuD/C0HtMF0ArSx+Im473mwRTREWlMOdLmf8=";
   };
 
-  vendorHash = "sha256-ynoIR4S02v3qec7447feuu/igFWR20VQVbL0GbTBpqM=";
+  vendorHash = "sha256-W/9BD/s+OUteXPIFm3ZJ+Eh+W6VfS8stgx98MLLk2ys=";
 
   # TODO(Profpatsch): write a test for transcoding support,
   # since it is prone to break
@@ -40,7 +39,7 @@ buildGoModule rec {
           '`ffmpeg' \
           '`${lib.getBin ffmpeg}/bin/ffmpeg'
     ''
-    + ''
+    + lib.optionalString jukeboxSupport ''
       substituteInPlace \
         jukebox/jukebox.go \
         --replace-fail \
@@ -68,4 +67,4 @@ buildGoModule rec {
     maintainers = with lib.maintainers; [ autrimpo ];
     mainProgram = "gonic";
   };
-}
+})

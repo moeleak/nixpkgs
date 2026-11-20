@@ -4,17 +4,18 @@
   fetchFromGitHub,
   cmake,
   llvmPackages,
+  sqlite,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "ldk-node";
-  version = "0-unstable-2026-02-10";
+  version = "0-unstable-2026-06-08";
 
   src = fetchFromGitHub {
     owner = "getAlby";
     repo = "ldk-node";
-    rev = "3996cf18b10545f54c377212e155bb6bd664888e";
-    hash = "sha256-mjIs7CeTRQ7Xuk9V/6LeXMDRZsd/wljeFHZ2vgEe1hg=";
+    rev = "549107b4d731bc9af06b81fbcd65463e3055df16";
+    hash = "sha256-7S/+po+a6DkUCnfCrwBMfMnsHzbLcvSiPxEmQc2Hzr0=";
   };
 
   buildFeatures = [ "uniffi" ];
@@ -29,6 +30,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     llvmPackages.clang
     rustPlatform.bindgenHook
   ];
+
+  buildInputs = [ sqlite ];
 
   # Add CFLAGS to suppress the stringop-overflow error during aws-lc-sys compilation.
   NIX_CFLAGS_COMPILE = "-Wno-error=stringop-overflow";

@@ -13,19 +13,20 @@
   libxcb,
   libxkbcommon,
   wayland,
+  rust-jemalloc-sys,
   versionCheckHook,
   nix-update-script,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "slint-lsp";
-  version = "1.16.1";
+  version = "1.18.1";
 
   src = fetchCrate {
     inherit (finalAttrs) pname version;
-    hash = "sha256-+REZRGPgdbBUDZaZ+3R2AKF56MouPIsjx8IVv1LUl50=";
+    hash = "sha256-et+y/JXBCG0RFFY8viMPGjneQAzyQKD+pBSpsKBt+DU=";
   };
 
-  cargoHash = "sha256-BP50c1GCAFTpRGqZDw3I5WtXabdN/2CcVhX2d1eXtck=";
+  cargoHash = "sha256-vC9flaCsV3DwnafunrXglP/TO46O8n2lZN2im6i8BQE=";
 
   rpathLibs = [
     fontconfig
@@ -34,6 +35,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     libx11
     libxcursor
     libxi
+    rust-jemalloc-sys
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [
     libxkbcommon
@@ -67,7 +69,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     homepage = "https://slint-ui.com/";
     downloadPage = "https://github.com/slint-ui/slint/";
     changelog = "https://github.com/slint-ui/slint/blob/v${finalAttrs.version}/CHANGELOG.md";
-    license = with lib.licenses; [ gpl3Plus ];
+    license = lib.licenses.gpl3Plus;
     maintainers = with lib.maintainers; [ xgroleau ];
   };
 })

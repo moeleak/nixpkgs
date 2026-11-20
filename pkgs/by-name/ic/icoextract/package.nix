@@ -6,14 +6,14 @@
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "icoextract";
-  version = "0.2.0";
+  version = "0.3.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jlu5";
     repo = "icoextract";
     rev = finalAttrs.version;
-    hash = "sha256-GJCe7oFUidJt21F4NmOXspxZGRQXIjQvFjFhMYsHLjk=";
+    hash = "sha256-c10k5GQ28N+MUb4qYjQr4hG/EUHYN7hX441b1QQa2to=";
   };
 
   build-system = with python3Packages; [ setuptools ];
@@ -30,6 +30,9 @@ python3Packages.buildPythonApplication (finalAttrs: {
 
   postInstall = ''
     install -Dm644 exe-thumbnailer.thumbnailer -t $out/share/thumbnailers
+
+    substituteInPlace $out/share/thumbnailers/exe-thumbnailer.thumbnailer \
+      --replace-fail "Exec=exe-thumbnailer" "Exec=$out/bin/exe-thumbnailer"
   '';
 
   meta = {

@@ -7,19 +7,39 @@
   dataDir ? "/var/lib/pixelfed",
   runtimeDir ? "/run/pixelfed",
 }:
-
-php.buildComposerProject2 (finalAttrs: {
+let
+  # Ensure php extensions
+  # https://github.com/pixelfed/pixelfed/blob/dev/app/Console/Commands/Installer.php#L135-L147
+  phpPackage = php.buildEnv {
+    extensions =
+      { enabled, all }:
+      enabled
+      ++ (with all; [
+        bcmath
+        ctype
+        curl
+        mbstring
+        gd
+        intl
+        zip
+        redis
+        imagick
+        ffi
+      ]);
+  };
+in
+phpPackage.buildComposerProject2 (finalAttrs: {
   pname = "pixelfed";
-  version = "0.12.6";
+  version = "0.15.2";
 
   src = fetchFromGitHub {
     owner = "pixelfed";
     repo = "pixelfed";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-FxJWoFNyIGQ6o9g2Q0/jaBMyeH8UnbTgha2goHAurvY=";
+    hash = "sha256-50SjsCPCNmErBfAe0dYl0bpaWoJ3v2qikABcpCgEkmQ=";
   };
 
-  vendorHash = "sha256-4x+vvkQUhqxBwm+9Lx7n6Ww6qvfLwqd8IXXCuCSAijE=";
+  vendorHash = "sha256-QCfbArftb6+SZXsvaDET/IyyyaSV+HosU9ckBrnnm3s=";
 
   postInstall = ''
     chmod -R u+w $out/share
@@ -36,6 +56,7 @@ php.buildComposerProject2 (finalAttrs: {
   '';
 
   passthru = {
+    inherit phpPackage;
     tests = { inherit (nixosTests.pixelfed) standard; };
     updateScript = nix-update-script { };
   };

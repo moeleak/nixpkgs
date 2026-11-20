@@ -8,12 +8,12 @@
   makeDesktopItem,
   copyDesktopItems,
   vencord,
-  electron_40,
+  electron_45,
   libicns,
   pipewire,
   libpulseaudio,
   autoPatchelfHook,
-  pnpm_10_29_2,
+  pnpm_12,
   fetchPnpmDeps,
   pnpmConfigHook,
   nodejs,
@@ -26,17 +26,17 @@
   withSystemVencord ? false,
 }:
 let
-  electron = electron_40;
+  electron = electron_45;
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "vesktop";
-  version = "1.6.5";
+  version = "1.6.9";
 
   src = fetchFromGitHub {
     owner = "Vencord";
     repo = "Vesktop";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-YPDlqiO+0BtDgC7aFl8B2KPYsT41WqzOQ7et2Tejs3M=";
+    hash = "sha256-UBk3wp1wuMqyY8KMSvc/URAw9awZMFQZrJgQe59PYmA=";
   };
 
   pnpmDeps = fetchPnpmDeps {
@@ -46,15 +46,15 @@ stdenv.mkDerivation (finalAttrs: {
       src
       patches
       ;
-    pnpm = pnpm_10_29_2;
-    fetcherVersion = 3;
-    hash = "sha256-Ue1K1KmRi4gF7E519deVY7QH+22dqlECMjdA7Z7qDCA=";
+    pnpm = pnpm_12;
+    fetcherVersion = 5;
+    hash = "sha256-efgDw/4orFP9kSWjtkyXcfkXsfYLx4LGTVNKfZ5LhdM=";
   };
 
   nativeBuildInputs = [
     nodejs
     pnpmConfigHook
-    pnpm_10_29_2
+    pnpm_12
     jq
   ]
   ++ lib.optionals stdenv.hostPlatform.isLinux [
@@ -87,20 +87,16 @@ stdenv.mkDerivation (finalAttrs: {
     ELECTRON_SKIP_BINARY_DOWNLOAD = 1;
   };
 
-  # electron builds must be writable
   preBuild = ''
     # Validate electron version matches upstream package.json
-    if [ "`jq -r '.devDependencies.electron' < package.json | cut -d. -f1 | tr -d '^'`" != "${lib.versions.major electron.version}" ]
-    then
-      echo "ERROR: electron version mismatch between package.json and nixpkgs"
+    expectedMajor="$(jq -r '.devDependencies.electron | ltrimstr("^") | split(".") | .[0]' < package.json)"
+    actualMajor="${lib.versions.major electron.version}"
+    if [ "$actualMajor" != "$expectedMajor" ] 2>/dev/null; then
+      echo "ERROR: electron version mismatch between package.json (major $expectedMajor) and nixpkgs (major $actualMajor)"
       exit 1
     fi
-  ''
-  + lib.optionalString stdenv.hostPlatform.isDarwin ''
-    cp -r ${electron.dist}/Electron.app .
-    chmod -R u+w Electron.app
-  ''
-  + lib.optionalString stdenv.hostPlatform.isLinux ''
+
+    # electron builds must be writable
     cp -r ${electron.dist} electron-dist
     chmod -R u+w electron-dist
   '';
@@ -112,7 +108,7 @@ stdenv.mkDerivation (finalAttrs: {
     pnpm exec electron-builder \
       --dir \
       -c.asarUnpack="**/*.node" \
-      -c.electronDist=${if stdenv.hostPlatform.isDarwin then "." else "electron-dist"} \
+      -c.electronDist=electron-dist \
       -c.electronVersion=${electron.version} \
       ${lib.optionalString stdenv.hostPlatform.isDarwin "-c.mac.identity=null"} # disable code signing on macos, https://github.com/electron-userland/electron-builder/blob/77f977435c99247d5db395895618b150f5006e8f/docs/code-signing.md#how-to-disable-code-signing-during-the-build-process-on-macos
 
@@ -167,6 +163,7 @@ stdenv.mkDerivation (finalAttrs: {
     icon = "vesktop";
     startupWMClass = "Vesktop";
     genericName = "Internet Messenger";
+    comment = "Alternative Discord client with Vencord built-in";
     keywords = [
       "discord"
       "vencord"
@@ -189,7 +186,7 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   meta = {
-    description = "Alternate client for Discord with Vencord built-in";
+    description = "Alternative Discord client with Vencord built-in";
     homepage = "https://github.com/Vencord/Vesktop";
     changelog = "https://github.com/Vencord/Vesktop/releases/tag/${finalAttrs.src.rev}";
     license = lib.licenses.gpl3Only;
@@ -203,7 +200,6 @@ stdenv.mkDerivation (finalAttrs: {
     platforms = [
       "x86_64-linux"
       "aarch64-linux"
-      "x86_64-darwin"
       "aarch64-darwin"
     ];
   };

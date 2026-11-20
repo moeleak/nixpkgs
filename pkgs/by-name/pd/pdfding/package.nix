@@ -1,7 +1,7 @@
 {
   lib,
   callPackage,
-  fetchFromGitHub,
+  fetchFromCodeberg,
   makeWrapper,
   nixosTests,
 
@@ -12,18 +12,21 @@ let
 in
 python.pkgs.buildPythonPackage (finalAttrs: {
   pname = "pdfding";
-  version = "1.7.2";
-  src = fetchFromGitHub {
-    owner = "mrmn2";
+  version = "1.15.0";
+  src = fetchFromCodeberg {
+    owner = "mrmn";
     repo = "PdfDing";
-    tag = "v${finalAttrs.version}";
-    hash = "sha256-a12Rq4fd3XEW6ZTsm8ISklpMu0ZKpeBrZXNh9My3vUQ=";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-7sviMLShkFumWJbwx8soADPl4lteAuE+OJozc4nD9Pw=";
   };
   pyproject = true;
 
-  # remove supervisor from dependencies
+  # remove supervisor from dependencies, we use systemd
   postPatch = ''
     sed -i 's/supervisor.*$//' pyproject.toml
+
+    substituteInPlace pdfding/pdf/tasks.py \
+      --replace-fail "file_path.unlink()" "file_path.unlink(missing_ok=True)"
   '';
 
   dependencies =
@@ -49,7 +52,7 @@ python.pkgs.buildPythonPackage (finalAttrs: {
       ruamel-yaml
       whitenoise
 
-      # dependecies required for django collectstatic
+      # dependencies required for django collectstatic
       cryptography
       pyjwt
       requests
@@ -62,6 +65,7 @@ python.pkgs.buildPythonPackage (finalAttrs: {
 
   nativeBuildInputs = [
     makeWrapper
+    python.pkgs.pyprojectVersionPatchHook
   ];
 
   optional-dependencies = {
@@ -107,9 +111,13 @@ python.pkgs.buildPythonPackage (finalAttrs: {
   env.PDFDING_OUT_DIR = "${placeholder "out"}/${python.sitePackages}/pdfding";
 
   makeWrapperArgs = [
-    "--set-default DATA_DIR /var/lib/pdfding"
+    "--set-default"
+    "DATA_DIR"
+    "/var/lib/pdfding"
     # allow for gunicorn processes to have access to Python packages
-    "--prefix PYTHONPATH : "
+    "--prefix"
+    "PYTHONPATH"
+    ":"
     "${python.pkgs.makePythonPath finalAttrs.passthru.dependencies}:${finalAttrs.env.PDFDING_OUT_DIR}"
   ];
 
@@ -117,21 +125,24 @@ python.pkgs.buildPythonPackage (finalAttrs: {
     mkdir -p $out/bin
 
     makeWrapper "$PDFDING_OUT_DIR/manage.py" $out/bin/pdfding-manage \
-      $makeWrapperArgs
+      "''${makeWrapperArgs[@]}"
 
     makeWrapper ${lib.getExe python.pkgs.gunicorn} $out/bin/pdfding-start \
       --add-flags '--bind ''${HOST_IP:-127.0.0.1}:''${HOST_PORT:-8080} core.wsgi:application' \
-      $makeWrapperArgs
+      "''${makeWrapperArgs[@]}"
   '';
 
+  # NOTE: don't undo relaxing of any of these, they are bound to break again
   pythonRelaxDeps = [
-    "rapidfuzz"
     "django"
+    "django-allauth"
     "gunicorn"
+    "huey"
+    "markdown"
     "nh3"
+    "psycopg2-binary"
     "pypdf"
     "pypdfium2"
-    "whitenoise"
   ];
 
   checkInputs = with python.pkgs; [
@@ -178,9 +189,9 @@ python.pkgs.buildPythonPackage (finalAttrs: {
   };
 
   meta = {
-    changelog = "https://github.com/mrmn2/PdfDing/blob/${finalAttrs.src.rev}/CHANGELOG.md";
+    changelog = "https://codeberg.org/mrmn/PdfDing/src/commit/${finalAttrs.src.rev}/CHANGELOG.md";
     description = "Selfhosted PDF manager, viewer and editor offering a seamless user experience on multiple devices";
-    downloadPage = "https://github.com/mrmn2/PdfDing";
+    downloadPage = "https://codeberg.org/mrmn/PdfDing";
     homepage = "https://pdfding.com";
     license = lib.licenses.agpl3Only;
     mainProgram = "pdfding-manage";

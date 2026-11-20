@@ -1,8 +1,10 @@
 {
   lib,
+  pkgs,
   buildPythonPackage,
   fetchFromGitHub,
   rustPlatform,
+  pkg-config,
   pytestCheckHook,
   geoarrow-types,
   pyarrow,
@@ -10,19 +12,19 @@
   pandas,
 }:
 let
-  version = "0.8.0";
+  version = "0.8.1";
 
   src = fetchFromGitHub {
     owner = "kylebarron";
     repo = "arro3";
     tag = "py-v${version}";
-    hash = "sha256-Zlc+M+h8pgYLLhEGgv2W6YfahYtdm9Q8ezVK+Kwd2lw=";
+    hash = "sha256-24aMiFHQdwZwTthPt7GILjQzbbLp3K2UcXYw3ZGWUJ4=";
   };
 
   cargoDeps = rustPlatform.fetchCargoVendor {
     inherit version src;
     pname = "arro3-vendor";
-    hash = "sha256-f36qIkQIu6Jl2hb3HJaMpnLbWVaR3z4WrQ1aLZr4VvQ=";
+    hash = "sha256-8pD7vfGtwknUKLQ/DARmRvvnffBqbGLY9lWJgU7VvWM=";
   };
 
   commonMeta = {
@@ -57,7 +59,10 @@ let
       nativeBuildInputs = with rustPlatform; [
         cargoSetupHook
         maturinBuildHook
+        pkg-config
       ];
+
+      buildInputs = [ pkgs.zstd ];
 
       env = {
         CARGO_TARGET_DIR = "./target";

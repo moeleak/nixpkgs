@@ -8,32 +8,44 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "rgx";
-  version = "0.12.1";
+  version = "0.14.3";
+
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "brevity1swos";
     repo = "rgx";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-05WEJ3gefPjBHuMXWhr135VtYnbteZapiAtNKwm4wxU=";
+    hash = "sha256-CSW+Ksi5478mxmaHgEGj1gS9OdtRkfq903PYjKVUNDc=";
   };
 
-  cargoHash = "sha256-CSGuf2jOjyLBfD0Fv3G01FioiyiXX8Bx/IiCkIBWbsQ=";
+  cargoHash = "sha256-IdizRSd6g0ODw1ELK8uXUorEff6DqtdFquCMPoGTrug=";
 
   buildInputs = [ pcre2 ];
 
   buildFeatures = [ "pcre2-engine" ];
 
-  passthru.updateScript = nix-update-script { };
+  passthru.updateScript = nix-update-script {
+    extraArgs = [
+      "--version-regex"
+      "^v(\\d+\\.\\d+\\.\\d+)$"
+    ];
+  };
 
   meta = {
     homepage = "https://github.com/brevity1swos/rgx";
     description = "Terminal regex tester with real-time matching and multi-engine support";
     changelog = "https://github.com/brevity1swos/rgx/releases/tag/${finalAttrs.src.tag}";
-    license = with lib.licenses; [
-      asl20 # or
-      mit
+    license =
+      with lib.licenses;
+      OR [
+        asl20
+        mit
+      ];
+    maintainers = with lib.maintainers; [
+      Cameo007
+      kybe236
     ];
-    maintainers = with lib.maintainers; [ Cameo007 ];
     mainProgram = "rgx";
   };
 })

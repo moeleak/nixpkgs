@@ -46,9 +46,9 @@ let
         concatStringsSep " " value
       else
         value
-    ) settings;
+    ) (lib.filterAttrs (key: value: value != null) settings);
 
-  resolvedConf = settingsToSections (transformSettings cfg.settings);
+  resolvedConf = settingsToSections { Resolve = transformSettings cfg.settings.Resolve; };
 in
 {
   imports = [
@@ -185,7 +185,11 @@ in
       # added with order 501 to allow modules to go before with mkBefore
       system.nssDatabases.hosts = (mkOrder 501 [ "resolve [!UNAVAIL=return]" ]);
 
-      systemd.additionalUpstreamSystemUnits = [ "systemd-resolved.service" ];
+      systemd.additionalUpstreamSystemUnits = [
+        "systemd-resolved.service"
+        "systemd-resolved-monitor.socket"
+        "systemd-resolved-varlink.socket"
+      ];
 
       systemd.services.systemd-resolved = {
         wantedBy = [ "sysinit.target" ];
@@ -233,13 +237,6 @@ in
 
     (mkIf config.boot.initrd.services.resolved.enable {
 
-      assertions = [
-        {
-          assertion = config.boot.initrd.systemd.enable;
-          message = "'boot.initrd.services.resolved.enable' can only be enabled with systemd stage 1.";
-        }
-      ];
-
       boot.initrd.systemd = {
         contents = {
           "/etc/systemd/resolved.conf".text = resolvedConf;
@@ -248,7 +245,12 @@ in
         tmpfiles.settings.systemd-resolved-stub."/etc/resolv.conf".L.argument =
           "/run/systemd/resolve/stub-resolv.conf";
 
-        additionalUpstreamUnits = [ "systemd-resolved.service" ];
+        additionalUpstreamUnits = [
+          "systemd-resolved.service"
+          "systemd-resolved-monitor.socket"
+          "systemd-resolved-varlink.socket"
+        ];
+
         users.systemd-resolve = { };
         groups.systemd-resolve = { };
         storePaths = [ "${config.boot.initrd.systemd.package}/lib/systemd/systemd-resolved" ];

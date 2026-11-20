@@ -3,12 +3,13 @@
   python3Packages,
   fetchFromGitHub,
   git,
+  writableTmpDirAsHomeHook,
 }:
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "git-archive-all";
   version = "1.23.1";
-  format = "setuptools";
+  pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Kentzo";
@@ -33,8 +34,11 @@ python3Packages.buildPythonApplication (finalAttrs: {
       --replace "import pycodestyle" ""
   '';
 
+  build-system = [ python3Packages.setuptools ];
+
   nativeCheckInputs = [
     git
+    writableTmpDirAsHomeHook
   ];
 
   checkInputs = with python3Packages; [
@@ -44,10 +48,6 @@ python3Packages.buildPythonApplication (finalAttrs: {
   ];
 
   disabledTests = [ "pycodestyle" ];
-
-  preCheck = ''
-    export HOME="$(mktemp -d)"
-  '';
 
   meta = {
     description = "Archive a repository with all its submodules";

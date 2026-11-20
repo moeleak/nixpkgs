@@ -1,26 +1,26 @@
 # NOTE: Use the following command to update the package
 # ```sh
-# nix-shell maintainers/scripts/update.nix --argstr commit true --arg predicate '(path: pkg: builtins.elem path [["claude-code"] ["vscode-extensions" "anthropic" "claude-code"]])'
+# nix-shell maintainers/scripts/update.nix --arg commit true --arg predicate '(path: pkg: builtins.elem path [["claude-code"] ["vscode-extensions" "anthropic" "claude-code"]])'
 # ```
 {
   lib,
   stdenvNoCC,
   fetchurl,
-  installShellFiles,
-  makeBinaryWrapper,
+  makeShellWrapper,
   autoPatchelfHook,
   alsa-lib,
   procps,
   ripgrep,
   bubblewrap,
   socat,
+  zstd,
   versionCheckHook,
   writableTmpDirAsHomeHook,
+  manifest ? lib.importJSON ./manifest.zst.json,
 }:
 let
   stdenv = stdenvNoCC;
-  baseUrl = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases";
-  manifest = lib.importJSON ./manifest.json;
+  baseUrl = "https://downloads.claude.ai/claude-code-releases";
   platformKey = "${stdenv.hostPlatform.node.platform}-${stdenv.hostPlatform.node.arch}";
   platformManifestEntry = manifest.platforms.${platformKey};
 in
@@ -29,19 +29,18 @@ stdenv.mkDerivation (finalAttrs: {
   inherit (manifest) version;
 
   src = fetchurl {
-    url = "${baseUrl}/${finalAttrs.version}/${platformKey}/claude";
+    url = "${baseUrl}/${finalAttrs.version}/${platformKey}/${platformManifestEntry.binary}";
     sha256 = platformManifestEntry.checksum;
   };
 
   dontUnpack = true;
   dontBuild = true;
-  __noChroot = stdenv.hostPlatform.isDarwin;
   # otherwise the bun runtime is executed instead of the binary
   dontStrip = true;
 
   nativeBuildInputs = [
-    installShellFiles
-    makeBinaryWrapper
+    makeShellWrapper
+    zstd
   ]
   ++ lib.optionals stdenv.hostPlatform.isElf [ autoPatchelfHook ];
 
@@ -50,14 +49,26 @@ stdenv.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    installBin $src
+    mkdir -p $out/bin
+    unzstd -q $src -o $out/bin/claude
+    chmod 755 $out/bin/claude
 
     wrapProgram $out/bin/claude \
       --set DISABLE_AUTOUPDATER 1 \
       --set-default FORCE_AUTOUPDATE_PLUGINS 1 \
       --set DISABLE_INSTALLATION_CHECKS 1 \
       --set USE_BUILTIN_RIPGREP 0 \
-      ${lib.optionalString stdenv.hostPlatform.isLinux ''
+      --set-default CLAUDE_CODE_CERT_STORE system \
+      ${
+        # darwin reads from the keychain but not the provided roots from there. default to re-using nix's certs
+        lib.optionalString stdenv.hostPlatform.isDarwin ''
+          --run ${lib.escapeShellArg ''
+            if [ -z "''${NODE_EXTRA_CA_CERTS:-}" ] && [ -n "''${NIX_SSL_CERT_FILE:-}" ]; then
+              export NODE_EXTRA_CA_CERTS="$NIX_SSL_CERT_FILE"
+            fi
+          ''} \
+        ''
+      }${lib.optionalString stdenv.hostPlatform.isLinux ''
         --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ alsa-lib ]} \
       ''}--prefix PATH : ${
         lib.makeBinPath (
@@ -92,12 +103,11 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Agentic coding tool that lives in your terminal, understands your codebase, and helps you code faster";
     homepage = "https://github.com/anthropics/claude-code";
     downloadPage = "https://claude.com/product/claude-code";
-    changelog = "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md";
+    changelog = "https://github.com/anthropics/claude-code/blob/v${finalAttrs.version}/CHANGELOG.md";
     license = lib.licenses.unfree;
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     platforms = [
       "aarch64-darwin"
-      "x86_64-darwin"
       "aarch64-linux"
       "x86_64-linux"
     ];

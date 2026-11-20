@@ -1,5 +1,6 @@
 {
   lib,
+  applyPatches,
   clangStdenv,
   fetchFromGitHub,
   rustPlatform,
@@ -18,12 +19,13 @@
 
   libadwaita,
   openssl,
-  ffmpeg,
+  ffmpeg_8,
   onnxruntime,
   libshumate,
   opencv,
   libseccomp,
   glycin-loaders,
+  sqlite,
 
   nix-update-script,
 }:
@@ -40,9 +42,17 @@ clangStdenv.mkDerivation (finalAttrs: {
     hash = "sha256-g1CxgK8gaX24TFnlGUons3ve8Ow9YaiMh1kMwlcP/F8=";
   };
 
+  patches = [
+    # Bump ffmpeg-next 8.0.0 -> 8.1.0 in Cargo.lock for ffmpeg 8.1 compatibility.
+    ./cargo-lock-bump-ffmpeg-next.patch
+  ];
+
   cargoDeps = rustPlatform.fetchCargoVendor {
-    inherit (finalAttrs) pname version src;
-    hash = "sha256-vA1vB2Lgyo5SfexDC4Ag85nM+/NzsYZNeIH4HmiESHc=";
+    inherit (finalAttrs) pname version;
+    src = applyPatches {
+      inherit (finalAttrs) src patches;
+    };
+    hash = "sha256-AEZY1QODq4F+CTrJce14qA6XSZjv29wSwIqUjZPWJo4=";
   };
 
   nativeBuildInputs = [
@@ -64,13 +74,14 @@ clangStdenv.mkDerivation (finalAttrs: {
   buildInputs = [
     libadwaita
     openssl
-    ffmpeg
+    ffmpeg_8
     onnxruntime
     libshumate
     opencv
     libseccomp
     libglycin.setupHook
     glycin-loaders
+    sqlite
   ];
 
   strictDeps = true;
@@ -93,7 +104,7 @@ clangStdenv.mkDerivation (finalAttrs: {
   meta = {
     description = "Photo gallery for Linux";
     homepage = "https://github.com/blissd/fotema";
-    license = with lib.licenses; [ gpl3Plus ];
+    license = lib.licenses.gpl3Plus;
     platforms = lib.platforms.linux;
     maintainers = with lib.maintainers; [ pluiedev ];
     mainProgram = "fotema";

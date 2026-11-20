@@ -2,7 +2,7 @@
   stdenv,
   lib,
   fetchurl,
-  squashfsTools,
+  squashfs-tools,
   autoPatchelfHook,
   copyDesktopItems,
   alsa-lib,
@@ -21,12 +21,12 @@
 
 stdenv.mkDerivation rec {
   pname = "tk-safe";
-  version = "25.12.3";
-  revision = "25";
+  version = "26.5.1";
+  revision = "31";
 
   src = fetchurl {
     url = "https://api.snapcraft.io/api/v1/snaps/download/rLNeIGEaag0TKFQLO0TxF3ARXg3rcTNx_${revision}.snap";
-    hash = "sha512-RdcScrTOQHVUn5JE59Z7S44+l2naNXBgID5VqMVelni0bPvnBigEDgRp5BID65Q52MXMe79lzzqo7qRmbYkb3Q==";
+    hash = "sha512-tJFl21t6sWb5iw5Y7bjKp7opSvkyIhkJQaAp+swY/Ux7THeuOzbpb9Sc6F80iaS13EWByP0QfmZyTupObR9BIQ==";
   };
 
   desktopItems = [
@@ -45,7 +45,7 @@ stdenv.mkDerivation rec {
     autoPatchelfHook
     copyDesktopItems
     makeWrapper
-    squashfsTools
+    squashfs-tools
     wrapGAppsHook3
   ];
 

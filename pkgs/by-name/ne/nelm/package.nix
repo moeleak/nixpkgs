@@ -4,28 +4,32 @@
   fetchFromGitHub,
   installShellFiles,
   lib,
+  nix-update-script,
   stdenv,
   versionCheckHook,
 }:
 buildGoModule (finalAttrs: {
   pname = "nelm";
-  version = "1.23.2";
+  version = "2.2.0";
+  strictDeps = true;
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "werf";
     repo = "nelm";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-tP5NkuKmne+XthBnN36uorwMuM7yuJLvo4zzc1K1JBQ=";
+    hash = "sha256-GwD/tz7tI0iAwwWRYtFtjASff9agrXPVTlDJ/7cCpfk=";
   };
 
-  vendorHash = "sha256-Ux9fyezBXWVjmpa8WsEHvOUo/pokzFXvdpDAtNh0T/8=";
+  vendorHash = "sha256-QluzTRw+/fcFPpzsqfkQjheWQk0a+cc/LXIZizTqux8=";
 
   subPackages = [ "cmd/nelm" ];
 
   ldflags = [
     "-s"
     "-w"
-    "-X github.com/werf/nelm/pkg/common.Version=${finalAttrs.version}"
+    "-X github.com/werf/nelm/v2/pkg/common.Brand=Nelm"
+    "-X github.com/werf/nelm/v2/pkg/common.Version=${finalAttrs.version}"
   ];
 
   nativeBuildInputs = [ installShellFiles ];
@@ -33,10 +37,6 @@ buildGoModule (finalAttrs: {
   # Tests are currently broken upstream because they were neglected after some
   # sort of a refactor. This is not a packaging problem.
   doCheck = false;
-  preCheck = ''
-    # Test all packages.
-    unset subPackages
-  '';
 
   postInstall = lib.optionalString (stdenv.hostPlatform.emulatorAvailable buildPackages) (
     let
@@ -54,6 +54,8 @@ buildGoModule (finalAttrs: {
   nativeInstallCheckInputs = [ versionCheckHook ];
   doInstallCheck = true;
   versionCheckProgramArg = "version";
+
+  passthru.updateScript = nix-update-script { extraArgs = [ "--use-github-releases" ]; };
 
   meta = {
     description = "Kubernetes deployment tool, alternative to Helm 3";

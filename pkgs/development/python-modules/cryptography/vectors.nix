@@ -2,7 +2,6 @@
   lib,
   buildPythonPackage,
   cryptography,
-  fetchpatch2,
   uv-build,
 }:
 
@@ -16,7 +15,7 @@ buildPythonPackage rec {
 
   postPatch = ''
     substituteInPlace pyproject.toml \
-      --replace-fail "uv_build>=0.7.19,<0.9.0" "uv_build>=0.7.19,<0.11.0"
+      --replace-fail 'uv_build>=0.7.19,<0.13.0' uv_build
   '';
 
   build-system = [ uv-build ];

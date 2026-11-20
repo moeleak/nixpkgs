@@ -6,16 +6,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "rabtap";
-  version = "1.44.1";
+  version = "1.46.0";
 
   src = fetchFromGitHub {
     owner = "jandelgado";
     repo = "rabtap";
     rev = "v${finalAttrs.version}";
-    sha256 = "sha256-mW2O8/22zbA3/wpYkQHCI0z8EEL0Wyud2TD5vNUJrNI=";
+    sha256 = "sha256-d70Oqv3CD38DOJ88ycVZOkjCX4a8siZhOFRtvfjuNZk=";
   };
 
-  vendorHash = "sha256-Yi4vH3UMOE//p3H9iCR5RY3SjjR0mu2sBRx8WK57Dq8=";
+  vendorHash = "sha256-zSICLdll9Hrn6VsRMxk4hxhzSnLel1aVM7OImuj2hn8=";
 
   ldflags = [
     "-X main.BuildVersion=v${finalAttrs.version}"

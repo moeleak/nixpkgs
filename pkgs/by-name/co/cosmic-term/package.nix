@@ -9,26 +9,29 @@
   fontconfig,
   freetype,
   libinput,
+  zstd,
   nix-update-script,
   nixosTests,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "cosmic-term";
-  version = "1.0.13";
+  version = "1.11.0";
 
   # nixpkgs-update: no auto update
   src = fetchFromGitHub {
     owner = "pop-os";
     repo = "cosmic-term";
     tag = "epoch-${finalAttrs.version}";
-    hash = "sha256-AG/yQg9LNmbB2K0SWAl2DEIcphdihEVhMBeIx3i76tk=";
+    hash = "sha256-/FPb/odhqDQeAoPu7ydDt0agKZzw2g+QZENwZayio+I=";
   };
 
-  cargoHash = "sha256-AYByonKIZWfNdaRIWijAv/8KUcO114hbZRH7Dx/MId8=";
+  cargoHash = "sha256-IBLj/1nvSxjTF7h5a7+vYBjCJ6BP8CxvhzPcwypg/IU=";
 
   separateDebugInfo = true;
   __structuredAttrs = true;
+
+  env.VERGEN_GIT_SHA = finalAttrs.src.tag;
 
   nativeBuildInputs = [
     just
@@ -40,6 +43,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     fontconfig
     freetype
     libinput
+    zstd
   ];
 
   dontUseJustBuild = true;

@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  config,
   newScope,
   fetchFromGitHub,
   fetchFromGitLab,
@@ -10,6 +11,7 @@
   nix-update-script,
   which,
   rustPlatform,
+  runCommand,
   emscripten,
   openssl,
   pkg-config,
@@ -18,8 +20,19 @@
   substitute,
   installShellFiles,
   buildPackages,
+  cmake,
+  validatePkgConfig,
+  # dependencies for wasmSupport
+  wasmtime_48,
+  binaryen,
+  llvmPackages,
+  makeWrapper,
+  pkgsCross,
+  symlinkJoin,
+
   enableShared ? !stdenv.hostPlatform.isStatic,
   enableStatic ? stdenv.hostPlatform.isStatic,
+  wasmSupport ? false,
   webUISupport ? false,
 }:
 
@@ -57,6 +70,7 @@ let
       fetchFromSourcehut
       fetchFromCodeberg
       fetchpatch
+      stdenv
       ;
   };
 
@@ -70,26 +84,19 @@ let
   */
   builtGrammars = lib.mapAttrs (_: lib.makeOverridable buildGrammar) grammars;
 
-  /**
-    # Extensible package set for tree-sitter grammars.
-    # Provides .override and .extend for customization.
-    # Note: Use builtGrammars (not this) when iterating over grammars,
-    # as this includes package set functions alongside derivations
-  */
-  grammarsScope = lib.makeScope newScope (self: builtGrammars);
+  hasTreeSitterPrefix = lib.hasPrefix "tree-sitter-";
+  grammarAliases = import ./grammars/aliases.nix { inherit lib; };
 
-  # Usage:
-  # pkgs.tree-sitter.withPlugins (p: [ p.tree-sitter-c p.tree-sitter-java ... ])
-  #
-  # or for all grammars:
-  # pkgs.tree-sitter.withPlugins (_: pkgs.tree-sitter.allGrammars)
-  # which is equivalent to
-  # pkgs.tree-sitter.withPlugins (p: builtins.attrValues p)
-  withPlugins =
-    grammarFn:
-    let
-      grammars = grammarFn builtGrammars;
-    in
+  grammarDerivationsFrom = lib.filterAttrs (
+    name: value: hasTreeSitterPrefix name && lib.isDerivation value
+  );
+
+  removeTreesitterPrefix = lib.strings.removePrefix "tree-sitter-";
+  removeGrammarSuffix = lib.strings.removeSuffix "-grammar";
+  replaceHyphens = lib.strings.replaceStrings [ "-" ] [ "_" ];
+
+  mkGrammarLinkFarm =
+    grammars:
     linkFarm "grammars" (
       map (
         drv:
@@ -97,32 +104,75 @@ let
           name = lib.strings.getName drv;
         in
         {
-          name =
-            (lib.strings.replaceStrings [ "-" ] [ "_" ] (
-              lib.strings.removePrefix "tree-sitter-" (lib.strings.removeSuffix "-grammar" name)
-            ))
-            + ".so";
+          name = (replaceHyphens (removeTreesitterPrefix (removeGrammarSuffix name))) + ".so";
           path = "${drv}/parser";
         }
       ) grammars
     );
 
-  allGrammars = lib.filter (p: !(p.meta.broken or false)) (lib.attrValues builtGrammars);
+  /**
+    Extensible package set of compiled tree-sitter grammars.
 
+    Exposed as `pkgs.tree-sitter-grammars` and `pkgs.tree-sitter.grammarsScope`.
+    Customize with `.overrideScope`; overrides propagate to every consumer that
+    reads the scope, including the grammar-only views below (which the
+    `pkgs.tree-sitter` passthru re-exports so there is a single source of truth):
+
+      `.derivations`  attrset of every grammar derivation
+      `.allGrammars`  list of non-broken grammar derivations
+      `.withPlugins`  build a grammar link farm
+
+    The scope also carries package-set helpers (`callPackage`, `overrideScope`,
+    …) alongside the grammars, so prefer one of the views above when iterating.
+  */
+  grammarsScope = lib.makeScope newScope (
+    self:
+    builtGrammars
+    // lib.optionalAttrs config.allowAliases (grammarAliases self builtGrammars)
+    // {
+      derivations = grammarDerivationsFrom self;
+      allGrammars = lib.filter (p: !(p.meta.broken or false)) (
+        lib.attrValues (grammarDerivationsFrom self)
+      );
+      withPlugins = grammarFn: mkGrammarLinkFarm (grammarFn (grammarDerivationsFrom self));
+    }
+  );
+
+  isWasi = stdenv.hostPlatform.isWasi;
+  # create a `TREE_SITTER_WASI_SDK_PATH` environment where
+  # `clang -> wasm32-unknown-wasip1-clang` so tree-sitter can find it
+  wasiCC = pkgsCross.wasi32.stdenv.cc;
+  wasiSdk = symlinkJoin {
+    name = "wasi-sdk";
+    paths = [ wasiCC ];
+    postBuild = ''
+      ln -s ${wasiCC.targetPrefix}clang $out/bin/clang
+    '';
+  };
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "tree-sitter";
-  version = "0.26.8";
+  version = "0.27.1";
+
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "tree-sitter";
     repo = "tree-sitter";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-fcFEfoALrbpBD6rWogxJ7FNVlvDQgswoX9ylRgko+8Q=";
+    hash = "sha256-KbPqA6pfplWRUtwRgbNXUF7aivj/n4shJqWbjNO93nQ=";
     fetchSubmodules = true;
   };
 
-  cargoHash = "sha256-9FeWnWWPUWmMF15Psmul8GxGv2JceHWc2WZPmOr81gw=";
+  cargoHash = "sha256-GbW/qFq8X0UNi9LIepTIAKSAqCXM/gdy6XV6s5YO8r0=";
+
+  cargoBuildFeatures = lib.optionals wasmSupport [ "wasm" ];
+
+  outputs = [
+    "out"
+    "dev"
+    "lib"
+  ];
 
   # The default qjs-rt feature builds rquickjs-sys as a build-machine
   # helper while the derivation is cross-compiling, which mixes native
@@ -132,12 +182,20 @@ rustPlatform.buildRustPackage (finalAttrs: {
   buildInputs = [
     installShellFiles
   ]
+  ++ lib.optionals wasmSupport [
+    wasmtime_48
+  ]
   ++ lib.optionals webUISupport [
     openssl
   ];
   nativeBuildInputs = [
     rustPlatform.bindgenHook
+    validatePkgConfig
     which
+  ]
+  ++ lib.optionals wasmSupport [
+    cmake
+    makeWrapper
   ]
   ++ lib.optionals webUISupport [
     emscripten
@@ -156,8 +214,18 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
 
   postPatch =
-    lib.optionalString webUISupport ''
-      substituteInPlace cli/loader/src/lib.rs \
+    # tree-sitter tries to concatenate $libdir/$includedir to $prefix,
+    # having multiple outputs on different paths requires patching this.
+    ''
+      substituteInPlace lib/tree-sitter.pc.in \
+          --replace-fail 'libdir=''${prefix}/@CMAKE_INSTALL_LIBDIR@' 'libdir=@CMAKE_INSTALL_FULL_LIBDIR@' \
+          --replace-fail 'includedir=''${prefix}/@CMAKE_INSTALL_INCLUDEDIR@' 'includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@'
+      substituteInPlace ./Makefile \
+          --replace-fail 's|@CMAKE_INSTALL_LIBDIR@|$(LIBDIR:$(PREFIX)/%=%)|' 's|@CMAKE_INSTALL_FULL_LIBDIR@|$(LIBDIR)|' \
+          --replace-fail 's|@CMAKE_INSTALL_INCLUDEDIR@|$(INCLUDEDIR:$(PREFIX)/%=%)|' 's|@CMAKE_INSTALL_FULL_INCLUDEDIR@|$(INCLUDEDIR)|'
+    ''
+    + lib.optionalString webUISupport ''
+      substituteInPlace crates/xtask/src/build_wasm.rs \
           --replace-fail 'let emcc_name = if cfg!(windows) { "emcc.bat" } else { "emcc" };' 'let emcc_name = "${lib.getExe' emscripten "emcc"}";'
     ''
     # when building on static platforms:
@@ -166,8 +234,24 @@ rustPlatform.buildRustPackage (finalAttrs: {
     + lib.optionalString stdenv.hostPlatform.isStatic ''
       substituteInPlace ./Makefile \
           --replace-fail 'all: libtree-sitter.a libtree-sitter.$(SOEXT) tree-sitter.pc' 'all: libtree-sitter.a tree-sitter.pc'
-      sed -i '/^install:/,/^[^[:space:]]/ { /$(SOEXT/d; }' ./Makefile
+      sed -i '/^install:/,/^uninstall:/ { /$(SOEXT/d; }' ./Makefile
+    ''
+    # rquickjs-sys passes the raw rust target to clang, which does not know riscv64gc
+    + lib.optionalString stdenv.hostPlatform.isRiscV64 ''
+      substituteInPlace $cargoDepsCopy/source-*/rquickjs-sys-*/build.rs \
+        --replace-fail \
+          'let mut cflags = vec![format!("--target={}", target)];' \
+          'let mut cflags = vec![format!("--target={}", target.replace("riscv64gc", "riscv64"))];'
     '';
+
+  # The Makefile install can't enable the wasm feature.
+  cmakeFlags = lib.optionals wasmSupport [
+    (lib.cmakeBool "TREE_SITTER_FEATURE_WASM" true)
+    (lib.cmakeFeature "WASMTIME_INCLUDE_DIR" "${lib.getDev wasmtime_48}/include")
+    (lib.cmakeFeature "WASMTIME_LIBRARY" "${lib.getLib wasmtime_48}/lib/libwasmtime${stdenv.hostPlatform.extensions.library}")
+    (lib.cmakeFeature "CMAKE_INSTALL_FULL_INCLUDEDIR" "${placeholder "dev"}/include")
+    (lib.cmakeFeature "CMAKE_INSTALL_FULL_LIBDIR" "${placeholder "lib"}/lib")
+  ];
 
   # Compile web assembly with emscripten. The --debug flag prevents us from
   # minifying the JavaScript; passing it allows us to side-step more Node
@@ -179,9 +263,20 @@ rustPlatform.buildRustPackage (finalAttrs: {
   '';
 
   postInstall = ''
-    PREFIX=$out make install
-    ${lib.optionalString (!enableShared) "rm -f $out/lib/*.so{,.*}"}
-    ${lib.optionalString (!enableStatic) "rm -f $out/lib/*.a"}
+    make install PREFIX=$out LIBDIR=$lib/lib INCLUDEDIR=$dev/include
+  ''
+  # supply the nix paths for the Wasi SDK & `wasm-opt`: https://tree-sitter.github.io/tree-sitter/6-contributing.html#wasm-stdlib
+  # lld is required for the linker phase in `tree-sitter build --wasm`
+  + lib.optionalString wasmSupport ''
+    cmake --install $cmakeBuildDir
+    wrapProgram $out/bin/tree-sitter \
+      --set-default TREE_SITTER_BINARYEN_PATH "${binaryen}" \
+      --set-default TREE_SITTER_WASI_SDK_PATH "${wasiSdk}" \
+      --prefix PATH : "${lib.makeBinPath [ llvmPackages.lld ]}"
+  ''
+  + ''
+    ${lib.optionalString (!enableShared) "rm -f $lib/lib/*.so{,.*}"}
+    ${lib.optionalString (!enableStatic) "rm -f $lib/lib/*.a"}
 
     mv docs/src/assets/schemas/config.schema.json $out/
   ''
@@ -201,21 +296,45 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # test result: FAILED. 120 passed; 13 failed; 0 ignored; 0 measured; 0 filtered out
   doCheck = false;
 
+  # CMake builds libtree-sitter with wasm support; cargo still builds the CLI.
+  ${if wasmSupport then "configurePhase" else null} = ''
+    cmakeConfigurePhase
+    cd ..
+  '';
+
+  ${if wasmSupport then "postBuild" else null} = ''
+    cmake --build $cmakeBuildDir
+  '';
+
   passthru = {
     inherit
-      grammars
       buildGrammar
       builtGrammars
+      grammars
       grammarsScope
-      withPlugins
-      allGrammars
       ;
+
+    # Keep legacy `pkgs.tree-sitter` views wired to the overridable scope.
+    inherit (grammarsScope) allGrammars withPlugins;
 
     updateScript = nix-update-script { };
 
     tests = {
       # make sure all grammars build
       builtGrammars = lib.recurseIntoAttrs builtGrammars;
+    }
+    // lib.optionalAttrs isWasi {
+      wasmGrammar =
+        let
+          grammar = builtGrammars.tree-sitter-nix;
+        in
+        runCommand "tree-sitter-wasm-grammar-test" { } ''
+          test -f ${grammar}/parser.wasm
+          # WebAssembly binaries start with "\0asm".
+          test "$(od -An -tx1 -N4 ${grammar}/parser.wasm | tr -d ' \n')" = "0061736d"
+          test ! -e ${grammar}/parser
+          touch $out
+        '';
     };
   };
 

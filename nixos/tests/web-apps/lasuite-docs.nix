@@ -14,12 +14,9 @@ in
     soyouzpanda
   ];
 
-  nodes.machine =
+  containers.machine =
     { pkgs, ... }:
     {
-      virtualisation.diskSize = 4 * 1024;
-      virtualisation.memorySize = 4 * 1024;
-
       networking.hosts."127.0.0.1" = [ domain ];
 
       environment.systemPackages = with pkgs; [
@@ -34,6 +31,9 @@ in
 
         inherit domain;
         s3Url = "http://${s3Addr}/lasuite-docs";
+
+        yhub.settings.SOFT_MIGRATION = false;
+        collaborationServer.enable = false;
 
         settings = {
           DJANGO_SECRET_KEY_FILE = pkgs.writeText "django-secret-file" ''
@@ -65,6 +65,10 @@ in
           DJANGO_CSRF_COOKIE_SECURE = false;
           DJANGO_SESSION_COOKIE_SECURE = false;
           DJANGO_CSRF_TRUSTED_ORIGINS = "http://*";
+
+          PROMETHEUS_METRICS_ENABLED = true;
+          PROMETHEUS_DB_METRICS_ENABLED = true;
+          PROMETHEUS_API_KEY = "hunter2";
         };
       };
 
@@ -134,12 +138,14 @@ in
     };
 
   testScript = ''
+    import datetime as dt
+
     with subtest("Wait for units to start"):
       machine.wait_for_unit("dex.service")
       machine.wait_for_unit("garage.service")
       machine.wait_for_unit("lasuite-docs.service")
       machine.wait_for_unit("lasuite-docs-celery.service")
-      machine.wait_for_unit("lasuite-docs-collaboration-server.service")
+      machine.wait_for_unit("lasuite-docs-yhub-server.service")
 
     with subtest("Create S3 bucket"):
       machine.wait_for_open_port(3901)
@@ -151,8 +157,8 @@ in
       machine.succeed("garage bucket allow --read --write --owner lasuite-docs --key ${garageAccessKey}")
 
     with subtest("Wait for web servers to start"):
-      machine.wait_until_succeeds("curl -fs 'http://${domain}/api/v1.0/authenticate/'", timeout=120)
-      machine.wait_until_succeeds("curl -fs '${oidcAddr}/dex/auth/mock?client_id=lasuite-docs&response_type=code&redirect_uri=http://${domain}/api/v1.0/callback/&scope=openid'", timeout=120)
+      machine.wait_until_succeeds("curl -fs 'http://${domain}/api/v1.0/authenticate/'", timeout=dt.timedelta(seconds=120))
+      machine.wait_until_succeeds("curl -fs '${oidcAddr}/dex/auth/mock?client_id=lasuite-docs&response_type=code&redirect_uri=http://${domain}/api/v1.0/callback/&scope=openid'", timeout=dt.timedelta(seconds=120))
 
     with subtest("Login"):
       state, nonce = machine.succeed("curl -fs -c cjar 'http://${domain}/api/v1.0/authenticate/' -w '%{redirect_url}' | sed -n 's/.*state=\\(.*\\)&nonce=\\(.*\\)/\\1 \\2/p'").strip().split(' ')
@@ -170,5 +176,10 @@ in
       document_id = machine.succeed(f"curl -fs -c cjar -b cjar 'http://${domain}/api/v1.0/documents/' -X POST -H 'X-CSRFToken: {csrf_token}' -H 'Referer: http://${domain}' | jq .id -r").strip()
 
       print(f"Created document with id {document_id}")
+
+    with subtest("Prometheus metrics"):
+      metric = machine.succeed("curl -Lvi --fail 'http://${domain}/metrics' -H 'Authorization: Bearer hunter2' | grep -E '^django_db_execute_total'").splitlines()[0]
+      value = float(metric.split(' ')[-1])
+      t.assertGreaterEqual(value, 0)
   '';
 }

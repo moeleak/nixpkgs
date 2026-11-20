@@ -13,18 +13,24 @@ stdenv.mkDerivation (finalAttrs: {
   sourceRoot = "${finalAttrs.src.name}/BasiliskII/src/Unix/Linux/NetDriver";
 
   nativeBuildInputs = kernel.moduleBuildDependencies;
+
   makeFlags = kernelModuleMakeFlags ++ [
     "KERNEL_DIR=${kernel.dev}/lib/modules/${kernel.modDirVersion}"
+    "INSTALL_MOD_PATH=${placeholder "out"}"
+    "INSTALL_MOD_DIR=drivers/net"
+    "DEPMOD=true"
   ];
 
-  installPhase = ''
-    runHook preInstall
-    mkdir -p $out/lib/modules/${kernel.modDirVersion}/drivers/net
-    install -Dm444 sheep_net.ko $out/lib/modules/${kernel.modDirVersion}/drivers/net/sheep_net.ko
-    runHook postInstall
-  '';
+  installTargets = [ "modules_install" ];
+
+  installFlags = [
+    "-C"
+    "${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
+    "M=$(PWD)"
+  ];
 
   meta = {
+    homepage = "https://github.com/kanjitalk755/macemu";
     license = lib.licenses.gpl2Only;
     maintainers = with lib.maintainers; [ matthewcroughan ];
     platforms = lib.platforms.linux;

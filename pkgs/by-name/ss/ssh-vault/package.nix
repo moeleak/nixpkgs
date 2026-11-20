@@ -1,29 +1,29 @@
 {
   lib,
+  aws-lc,
+  pkg-config,
   rustPlatform,
   fetchFromGitHub,
-  pkg-config,
-  openssl,
   versionCheckHook,
   nix-update-script,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "ssh-vault";
-  version = "1.2.8";
+  version = "1.3.9";
 
   src = fetchFromGitHub {
     owner = "ssh-vault";
     repo = "ssh-vault";
     tag = finalAttrs.version;
-    hash = "sha256-kJscLetdP4D6DzzERfohezdsJqGcm/dmYTC+ZxjvRvo=";
+    hash = "sha256-PyyNDrALWDSgyuHg8apXP5O4KxvCZgTMdVzpfWmr4XI=";
   };
 
-  cargoHash = "sha256-XFKqEwWDg8FUeObhI6oOIXNh8c7gsWgSWy3YThExuU4=";
+  cargoHash = "sha256-yoAlrPOdgbJA6Y0mBKDEzPrayHZuhgMX7/ant+0PhaY=";
 
   nativeBuildInputs = [ pkg-config ];
 
-  buildInputs = [ openssl ];
+  buildInputs = [ aws-lc ];
 
   # `test_setup_io` requires to be executed in an interactive shell
   checkFlags = [

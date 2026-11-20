@@ -81,28 +81,6 @@ self: super: {
     else
       throw "Musl libc only supports 64-bit Linux systems, and i686-linux.";
 
-  # x86_64-darwin packages for aarch64-darwin users to use with Rosetta for incompatible packages
-  pkgsx86_64Darwin =
-    if stdenv.hostPlatform.isDarwin then
-      nixpkgsFun {
-        overlays = [
-          (self': super': {
-            pkgsx86_64Darwin = super';
-          })
-        ]
-        ++ overlays;
-        localSystem = {
-          config = lib.systems.parse.tripleFromSystem (
-            stdenv.hostPlatform.parsed
-            // {
-              cpu = lib.systems.parse.cpuTypes.x86_64;
-            }
-          );
-        };
-      }
-    else
-      throw "x86_64 Darwin package set can only be used on Darwin systems.";
-
   # Full package set with rocm on cuda off
   # Mostly useful for asserting pkgs.pkgsRocm.torchWithRocm == pkgs.torchWithRocm and similar
   pkgsRocm = nixpkgsFun {
@@ -144,33 +122,51 @@ self: super: {
 
   pkgsExtraHardening = nixpkgsFun {
     overlays = [
-      (
-        self': super':
-        {
-          pkgsExtraHardening = super';
-          stdenv = super'.withDefaultHardeningFlags (
-            super'.stdenv.cc.defaultHardeningFlags
-            ++ [
-              "shadowstack"
-              "nostrictaliasing"
-              "pacret"
-              "glibcxxassertions"
-              "libcxxhardeningextensive"
-              "trivialautovarinit"
-            ]
-          ) super'.stdenv;
-          glibc = super'.glibc.override rec {
-            enableCET = if self'.stdenv.hostPlatform.isx86_64 then "permissive" else false;
-            enableCETRuntimeDefault = enableCET != false;
-          };
-        }
-        // lib.optionalAttrs (with super'.stdenv.hostPlatform; isx86_64 && isLinux) {
-          # causes shadowstack disablement
-          pcre = super'.pcre.override { enableJit = false; };
-          pcre-cpp = super'.pcre-cpp.override { enableJit = false; };
-        }
-      )
+      (self': super': {
+        pkgsExtraHardening = super';
+        stdenv = super'.withDefaultHardeningFlags (
+          super'.stdenv.cc.defaultHardeningFlags
+          ++ [
+            "shadowstack"
+            "nostrictaliasing"
+            "pacret"
+            "glibcxxassertions"
+            "libcxxhardeningextensive"
+            "trivialautovarinit"
+          ]
+        ) super'.stdenv;
+        glibc = super'.glibc.override rec {
+          enableCET = if self'.stdenv.hostPlatform.isx86_64 then "permissive" else false;
+          enableCETRuntimeDefault = enableCET != false;
+        };
+      })
     ]
     ++ overlays;
+  };
+
+  pkgsConfigured = nixpkgsFun {
+    config = super.config // {
+      configurePlatformsByDefault = true;
+    };
+  };
+  pkgsChecked = nixpkgsFun {
+    config = super.config // {
+      doCheckByDefault = true;
+    };
+  };
+  pkgsParallel = nixpkgsFun {
+    config = super.config // {
+      enableParallelBuildingByDefault = true;
+    };
+  };
+  pkgsStrict = nixpkgsFun {
+    config = super.config // {
+      strictDepsByDefault = true;
+    };
+  };
+  pkgsStructured = nixpkgsFun {
+    config = super.config // {
+      structuredAttrsByDefault = true;
+    };
   };
 }

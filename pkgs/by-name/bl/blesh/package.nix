@@ -1,35 +1,70 @@
 {
   lib,
   stdenvNoCC,
-  fetchzip,
-  runtimeShell,
+  fetchFromGitHub,
   bashInteractive,
-  glibcLocales,
+  less,
+  procps,
+  gawk,
+  glibcLocalesUtf8,
+  runtimeShell,
+  unstableGitUpdater,
 }:
 
-stdenvNoCC.mkDerivation rec {
+stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "blesh";
-  version = "0.4.0-devel3";
+  version = "0.4.0-devel3-unstable-2026-10-31";
 
-  src = fetchzip {
-    url = "https://github.com/akinomyoga/ble.sh/releases/download/v${version}/ble-${version}.tar.xz";
-    sha256 = "sha256-kGLp8RaInYSrJEi3h5kWEOMAbZV/gEPFUjOLgBuMhCI=";
+  src = fetchFromGitHub {
+    owner = "akinomyoga";
+    repo = "ble.sh";
+    rev = "152942758f567e51fd17bdc7b3783d27b3c476aa";
+    fetchSubmodules = true;
+    hash = "sha256-JYtwux5VQwujL6e0gOXUhIAwmkhPwxOV5/Snje9+7Jo=";
   };
 
-  dontBuild = true;
+  nativeBuildInputs = [
+    gawk
+  ];
+
+  patches = [
+    # Fix the cache invalidation not working; see
+    # https://github.com/NixOS/nixpkgs/pull/521218#issuecomment-4641313131
+    ./fix-cache-invalidation.patch
+  ];
+
+  # ble.sh embeds the commit id, normally read from .git, which fetchFromGitHub omits.
+  makeFlags = [
+    "PREFIX=$(out)"
+    "BLE_GIT_COMMIT_ID=${builtins.substring 0 7 finalAttrs.src.rev}"
+    "BLE_GIT_BRANCH=master"
+  ];
+
+  postPatch = ''
+    patchShebangs --build make_command.sh make
+  '';
 
   doCheck = true;
+  # auto-detection runs `make -n check` without makeFlags, which fails without BLE_GIT_COMMIT_ID
+  checkTarget = "check";
   nativeCheckInputs = [
     bashInteractive
-    glibcLocales
-  ];
-  preCheck = "export LC_ALL=en_US.UTF-8";
+    # the get-pager test expects less to be in PATH
+    less
+    # ble.sh refuses to load without ps, so tests would not run
+    procps
+  ]
+  # upstream tests have hard-coded LC_ALL=en_US.utf8
+  ++ lib.optionals stdenvNoCC.hostPlatform.isLinux [ glibcLocalesUtf8 ];
 
-  installPhase = ''
-    runHook preInstall
+  preCheck = ''
+    export HOME=$TMPDIR
+    export LANG=en_US.UTF-8
+    # upstream skips its flaky sleep-timing tests under GitHub CI
+    export CI=true GITHUB_ACTION=nix
+  '';
 
-    mkdir -p "$out/share/blesh/lib"
-
+  postInstall = ''
     cat <<EOF >"$out/share/blesh/lib/_package.sh"
     _ble_base_package_type=nix
 
@@ -39,12 +74,6 @@ stdenvNoCC.mkDerivation rec {
     }
     EOF
 
-    cp -rv $src/* $out/share/blesh
-
-    runHook postInstall
-  '';
-
-  postInstall = ''
     mkdir -p "$out/bin"
     cat <<EOF >"$out/bin/blesh-share"
     #!${runtimeShell}
@@ -53,7 +82,17 @@ stdenvNoCC.mkDerivation rec {
     echo "$out/share/blesh"
     EOF
     chmod +x "$out/bin/blesh-share"
+
+    rm -rf "$out/share/blesh/cache.d" "$out/share/blesh/run"
   '';
+
+  # tagFormat skips the "nightly"/"spike-*" tags; the newest tag is too far
+  # behind HEAD for shallow deepening, so clone fully.
+  passthru.updateScript = unstableGitUpdater {
+    tagPrefix = "v";
+    tagFormat = "v*";
+    shallowClone = false;
+  };
 
   meta = {
     homepage = "https://github.com/akinomyoga/ble.sh";
@@ -63,7 +102,8 @@ stdenvNoCC.mkDerivation rec {
     maintainers = with lib.maintainers; [
       aiotter
       matthiasbeyer
+      recutita
     ];
     platforms = lib.platforms.unix;
   };
-}
+})

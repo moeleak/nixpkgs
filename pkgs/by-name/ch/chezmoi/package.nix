@@ -1,22 +1,23 @@
 {
   lib,
-  buildGo125Module,
+  buildGoModule,
   fetchFromGitHub,
   installShellFiles,
+  nix-update-script,
 }:
 
-buildGo125Module (finalAttrs: {
+buildGoModule (finalAttrs: {
   pname = "chezmoi";
-  version = "2.70.3";
+  version = "2.74.1";
 
   src = fetchFromGitHub {
     owner = "twpayne";
     repo = "chezmoi";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-1O2KXDOs9U079A12oJ5reIO5HXyrn4+hfKfQiadFEM4=";
+    hash = "sha256-4ZsL9ulKzX2wc15dI0AEfuU0DxLVfTM5gC2qJbUBQl4=";
   };
 
-  vendorHash = "sha256-vejh1aeniksXJ7xda8fEYiqe4FEsYzJpGMtr59uHByY=";
+  vendorHash = "sha256-K1WeEUe2FHlsVCs2rOsdiFLxtBCrdPxVwKeT7AX8TOQ=";
 
   nativeBuildInputs = [
     installShellFiles
@@ -39,12 +40,14 @@ buildGo125Module (finalAttrs: {
     installShellCompletion --zsh completions/chezmoi.zsh
   '';
 
+  passthru.updateScript = nix-update-script { };
+
   meta = {
     description = "Manage your dotfiles across multiple machines, securely";
     homepage = "https://www.chezmoi.io/";
     changelog = "https://github.com/twpayne/chezmoi/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.mit;
-    maintainers = [ ];
+    maintainers = with lib.maintainers; [ kamadorueda ];
     mainProgram = "chezmoi";
   };
 })

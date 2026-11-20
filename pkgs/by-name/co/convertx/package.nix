@@ -1,18 +1,18 @@
 {
-  stdenv,
+  stdenvNoCC,
   lib,
   fetchFromGitHub,
 
   # Build deps
   bun,
   tailwindcss_4,
-  typescript,
   makeBinaryWrapper,
 
   # Runtime deps
   assimp,
   calibre,
   dasel,
+  djvulibre,
   ffmpeg-headless,
   graphicsmagick,
   imagemagick,
@@ -43,11 +43,12 @@ let
     hash = pin.srcHash;
   };
 
-  node_modules = stdenv.mkDerivation (finalAttrs: {
+  node_modules = stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "${pname}-node_modules";
     inherit version src;
 
     dontConfigure = true;
+    dontFixup = true;
 
     nativeBuildInputs = [
       bun
@@ -70,17 +71,17 @@ let
       cp package.json $out/lib
     '';
 
-    outputHash = pin."${stdenv.system}";
+    outputHash = pin."${stdenvNoCC.system}";
     outputHashMode = "recursive";
   });
 in
-stdenv.mkDerivation {
+stdenvNoCC.mkDerivation {
   inherit pname version src;
 
   nativeBuildInputs = [
     makeBinaryWrapper
     tailwindcss_4
-    typescript
+    bun
   ];
 
   dontConfigure = true;
@@ -90,29 +91,29 @@ stdenv.mkDerivation {
 
     ln -s ${node_modules}/lib/node_modules ./node_modules
     tailwindcss -i ./src/main.css -o ./public/generated.css
-    tsc
 
-    substituteInPlace ./dist/src/index.js \
-      --replace-fail "assets: \"public\"" "assets: \"$out/share/convertx/dist/public\""
+    substituteInPlace ./src/index.tsx \
+      --replace-fail "assets: \"public\"" "assets: \"$out/share/convertx/public\""
+
+    bun build --compile --minify --sourcemap --bytecode --format=esm \
+      --define 'process.env.NODE_ENV=\"production\"' \
+      src/index.tsx \
+      --outfile $out/bin/convertx
 
     runHook postBuild
   '';
 
   installPhase = ''
-    mkdir -p $out/bin
     mkdir -p $out/share/convertx
-    cp -R ./dist $out/share/convertx
-    cp -R ./public $out/share/convertx/dist
-    ln -s ${node_modules}/lib/node_modules $out
+    cp -R ./public $out/share/convertx
 
-    makeBinaryWrapper ${bun}/bin/bun $out/bin/convertx \
-      --add-flags "run --prefer-offline --no-install $out/share/convertx/dist/src/index.js" \
-      --set NODE_ENV production \
+    wrapProgram $out/bin/convertx \
       --suffix PATH : ${
         lib.makeBinPath [
           assimp
           calibre
           dasel
+          djvulibre
           ffmpeg-headless
           graphicsmagick
           imagemagick
@@ -124,7 +125,7 @@ stdenv.mkDerivation {
           pandoc
           perl5Packages.EmailOutlookMessage
           potrace
-          (python3.withPackages (ps: [ ps.markitdown ]))
+          (python3.withPackages (ps: [ ps.markitdown ] ++ ps.markitdown.optional-dependencies.all))
           resvg
           (texliveBasic.withPackages (ps: [
             ps.dvisvgm
@@ -144,7 +145,10 @@ stdenv.mkDerivation {
     description = "Self-hosted online file converter";
     homepage = "https://github.com/C4illin/ConvertX/tree/main";
     license = lib.licenses.agpl3Only;
-    platforms = lib.platforms.linux;
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     changelog = "https://github.com/C4illin/ConvertX/blob/main/CHANGELOG.md";
     mainProgram = "convertx";
     maintainers = with lib.maintainers; [

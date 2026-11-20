@@ -7,12 +7,16 @@
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "i3altlayout";
   version = "0.3";
-  format = "setuptools";
+  pyproject = true;
 
   src = fetchPypi {
     inherit (finalAttrs) pname version;
     hash = "sha256-DhOYeSCxKthr2fEMGMBXjUYeCJjj6AV4d05So4eDF8A=";
   };
+
+  build-system = with python3Packages; [
+    setuptools
+  ];
 
   pythonRemoveDeps = [ "enum-compat" ];
 

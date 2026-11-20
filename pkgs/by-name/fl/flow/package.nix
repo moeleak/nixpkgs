@@ -16,13 +16,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "flow";
-  version = "0.313.0";
+  version = "0.318.0";
 
   src = fetchFromGitHub {
-    owner = "facebook";
+    owner = "meta";
     repo = "flow";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-U2TC9IV414X71zhrRb47kCvQkVqOSxzeNnfuoBSeJQE=";
+    hash = "sha256-FlrQzfFYGDydlYR7AgC+sXBGQtMhDzazV1C5OxVbuuY=";
   };
 
   patches = [
@@ -79,7 +79,7 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Static type checker for JavaScript";
     mainProgram = "flow";
     homepage = "https://flow.org/";
-    changelog = "https://github.com/facebook/flow/blob/${finalAttrs.src.tag}/Changelog.md";
+    changelog = "https://github.com/meta/flow/blob/${finalAttrs.src.tag}/Changelog.md";
     license = lib.licenses.mit;
     platforms = ocamlPackages.ocaml.meta.platforms;
     maintainers = with lib.maintainers; [

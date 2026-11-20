@@ -2,33 +2,37 @@
   lib,
   buildPythonPackage,
   fetchFromGitHub,
-  setuptools,
-  netifaces,
+  gitMinimal,
+  ifaddr,
   pycryptodome,
   pytest-asyncio,
   pytestCheckHook,
+  setuptools,
 }:
 
 buildPythonPackage rec {
   pname = "greeclimate";
-  version = "2.1.4";
+  version = "3.5.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "cmroche";
     repo = "greeclimate";
     tag = "v${version}";
-    hash = "sha256-qYgwjVfH9Im0Mxd8YOjV1M4fKhSd3tKyQB2PZ9dkqTU=";
+    hash = "sha256-qtdMEN4zMAA28/Co+T9HDu7OuRjTMdTRXJnWPiwuTSY=";
   };
+
+  pythonRelaxDeps = [ "pycryptodome" ];
 
   build-system = [ setuptools ];
 
   dependencies = [
-    netifaces
+    ifaddr
     pycryptodome
   ];
 
   nativeCheckInputs = [
+    gitMinimal
     pytest-asyncio
     pytestCheckHook
   ];

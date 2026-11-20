@@ -16,6 +16,7 @@
   # tests
   pytest-cov-stub,
   pytestCheckHook,
+  pyyaml,
 }:
 
 buildPythonPackage (finalAttrs: {
@@ -24,7 +25,7 @@ buildPythonPackage (finalAttrs: {
   pyproject = true;
 
   src = fetchFromGitHub {
-    owner = "asteroid-team";
+    owner = "iver56";
     repo = "torch-audiomentations";
     tag = "v${finalAttrs.version}";
     hash = "sha256-5ccVO1ECiIn0q7m8ZLHxqD2fhaXeMDKUEswa49dRTsY=";
@@ -45,6 +46,7 @@ buildPythonPackage (finalAttrs: {
   nativeCheckInputs = [
     pytest-cov-stub
     pytestCheckHook
+    pyyaml
   ];
 
   pythonImportsCheck = [ "torch_audiomentations" ];
@@ -73,8 +75,8 @@ buildPythonPackage (finalAttrs: {
 
   meta = {
     description = "Fast audio data augmentation in PyTorch";
-    homepage = "https://github.com/asteroid-team/torch-audiomentations";
-    changelog = "https://github.com/asteroid-team/torch-audiomentations/releases/tag/v${finalAttrs.version}";
+    homepage = "https://github.com/iver56/torch-audiomentations";
+    changelog = "https://github.com/iver56/torch-audiomentations/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ matthewcroughan ];
   };

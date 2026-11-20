@@ -7,7 +7,6 @@
   glib,
   gobject-introspection,
   gtk4,
-  lcms2,
   libglycin,
   libseccomp,
   meson,
@@ -53,7 +52,6 @@ stdenv.mkDerivation (finalAttrs: {
     fontconfig
     glib
     libseccomp
-    lcms2
     gtk4
   ];
 
@@ -63,7 +61,6 @@ stdenv.mkDerivation (finalAttrs: {
     # TODO: these should not be required by .pc file
     fontconfig
     libseccomp
-    lcms2
   ];
 
   mesonFlags = [
@@ -79,6 +76,10 @@ stdenv.mkDerivation (finalAttrs: {
   postPatch = ''
     patchShebangs \
       build-aux/crates-version.py
+
+    substituteInPlace meson.build --replace-fail \
+      "meson.get_external_property('rust_target')" \
+      "'${stdenv.hostPlatform.rust.cargoShortTarget}'"
   '';
 
   postFixup = ''
@@ -86,17 +87,21 @@ stdenv.mkDerivation (finalAttrs: {
     moveToOutput "share/doc" "$devdoc"
   '';
 
+  strictDeps = true;
+
   meta = {
     description = "C-Bindings to convert glycin frames to GDK Textures";
     homepage = "https://gitlab.gnome.org/GNOME/glycin";
-    license = with lib.licenses; [
-      mpl20 # or
-      lgpl21Plus
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        mpl20
+        lgpl21Plus
+      ];
     teams = [ lib.teams.gnome ];
     platforms = lib.platforms.linux;
     pkgConfigModules = [
-      "glycin-gtk4-1"
+      "glycin-gtk4-2"
     ];
   };
 })

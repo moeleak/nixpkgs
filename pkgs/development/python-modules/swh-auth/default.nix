@@ -3,25 +3,32 @@
   stdenv,
   buildPythonPackage,
   fetchFromGitLab,
-  setuptools,
-  setuptools-scm,
+
+  # Build system
+  hatchling,
+  hatch-requirements-txt,
+  hatch-vcs,
+
+  # Dependencies
   click,
   python-keycloak,
-  python-jose,
   pyyaml,
   swh-core,
+
+  # Tests
   aiocache,
   httpx,
   pytestCheckHook,
   pytest-django,
   pytest-mock,
+  requests-mock,
   djangorestframework,
   starlette,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "swh-auth";
-  version = "0.10.0";
+  version = "0.11.0";
   pyproject = true;
 
   src = fetchFromGitLab {
@@ -30,18 +37,18 @@ buildPythonPackage (finalAttrs: {
     owner = "devel";
     repo = "swh-auth";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-8ctd5D7zT66oVNZlvRIs8pN7Fe2BhTgC+S9p1HBDO9E=";
+    hash = "sha256-A+Vs+i6rGxrDh1AhqYy6d9N/J+DDnKz17ciGKjOU2m8=";
   };
 
   build-system = [
-    setuptools
-    setuptools-scm
+    hatchling
+    hatch-requirements-txt
+    hatch-vcs
   ];
 
   dependencies = [
     click
     python-keycloak
-    python-jose
     pyyaml
     swh-core
   ];
@@ -58,6 +65,7 @@ buildPythonPackage (finalAttrs: {
     pytestCheckHook
     pytest-django
     pytest-mock
+    requests-mock
     starlette
   ];
 

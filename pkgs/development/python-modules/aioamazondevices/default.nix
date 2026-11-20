@@ -3,8 +3,8 @@
   anyio,
   beautifulsoup4,
   buildPythonPackage,
-  colorlog,
   fetchFromGitHub,
+  httpx,
   langcodes,
   lib,
   orjson,
@@ -14,17 +14,26 @@
   python-dateutil,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "aioamazondevices";
-  version = "13.4.3";
+  version = "17.2.12";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "chemelli74";
     repo = "aioamazondevices";
-    tag = "v${version}";
-    hash = "sha256-AH5edWwVEMo/TpnVbcOEC/oYI4DOQ5nqFfoFKeoI3Ok=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-RSUg7izsLcnadT3zBjV+8s8sxytzT8eLV7Vi7gbypHc=";
   };
+
+  postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail "setuptools>=84.2.1" "setuptools"
+  '';
+
+  pythonRelaxDeps = [
+    "orjson"
+  ];
 
   build-system = [ poetry-core ];
 
@@ -32,11 +41,12 @@ buildPythonPackage rec {
     aiohttp
     anyio
     beautifulsoup4
-    colorlog
+    httpx
     langcodes
     orjson
     python-dateutil
-  ];
+  ]
+  ++ httpx.optional-dependencies.http2;
 
   pythonImportsCheck = [ "aioamazondevices" ];
 
@@ -46,10 +56,10 @@ buildPythonPackage rec {
   ];
 
   meta = {
-    changelog = "https://github.com/chemelli74/aioamazondevices/blob/${src.tag}/CHANGELOG.md";
+    changelog = "https://github.com/chemelli74/aioamazondevices/blob/${finalAttrs.src.tag}/CHANGELOG.md";
     description = "Python library to control Amazon devices";
     homepage = "https://github.com/chemelli74/aioamazondevices";
     license = lib.licenses.asl20;
     maintainers = with lib.maintainers; [ dotlambda ];
   };
-}
+})

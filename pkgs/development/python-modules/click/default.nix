@@ -2,7 +2,6 @@
   lib,
   buildPythonPackage,
   fetchFromGitHub,
-  importlib-metadata,
   pytestCheckHook,
 
   # large-rebuild downstream dependencies and applications
@@ -16,19 +15,23 @@
 
 buildPythonPackage rec {
   pname = "click";
-  version = "8.3.1";
+  version = "8.4.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "pallets";
     repo = "click";
     tag = version;
-    hash = "sha256-MbaIQJr6GbM8JwdbUkbeC8TqWN5dH82pFOqHwJE2PBA=";
+    hash = "sha256-66JFGGwPXeCU7Fbqsrsq3giv6qsea1ZKGmZYPu9rcog=";
   };
 
   build-system = [ flit-core ];
 
   nativeCheckInputs = [ pytestCheckHook ];
+
+  pytestFlags = [
+    "-Wignore::pytest.PytestRemovedIn10Warning"
+  ];
 
   disabledTests = [
     # for some reason the tests fail to execute cat, even though they run with less just fine,

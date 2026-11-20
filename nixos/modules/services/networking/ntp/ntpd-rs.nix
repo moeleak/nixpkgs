@@ -44,7 +44,7 @@ in
       description = ''
         Settings to write to {file}`ntp.toml`
 
-        See <https://docs.ntpd-rs.pendulum-project.org/man/ntp.toml.5>
+        See <https://docs.ntpd-rs.pendulum-project.org/latest/man/ntp.toml.5/>
         for more information about available options.
       '';
     };
@@ -70,6 +70,7 @@ in
 
     services.ntpd-rs.settings = {
       observability = {
+        log-level = lib.mkDefault "warn";
         observation-path = lib.mkDefault "/var/run/ntpd-rs/observe";
       };
       source = lib.mkIf cfg.useNetworkingTimeServers (

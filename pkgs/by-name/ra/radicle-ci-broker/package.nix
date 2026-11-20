@@ -2,6 +2,8 @@
   lib,
   rustPlatform,
   fetchFromRadicle,
+  pkg-config,
+  libgit2,
   stdenv,
   jq,
   gitMinimal,
@@ -14,14 +16,14 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "radicle-ci-broker";
-  version = "0.27.0";
+  version = "0.32.1";
 
   src = fetchFromRadicle {
     seed = "seed.radicle.dev";
     repo = "zwTxygwuz5LDGBq255RA2CbNGrz8";
     node = "z6MkgEMYod7Hxfy9qCvDv5hYHkZ4ciWmLFgfvm3Wn1b2w2FV";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-1MXoAj2pa+fRKbu2WtxZb6ki6l86n2k+uqYYMcas6fA=";
+    hash = "sha256-+NPlpDGrHjCB1ny81wbaM3f/b3wLFaH5ldINeTuV5hI=";
     leaveDotGit = true;
     postFetch = ''
       git -C $out rev-parse --short HEAD > $out/.git_head
@@ -29,7 +31,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     '';
   };
 
-  cargoHash = "sha256-EO3KK9u17YWIwJukIDTQdQ25b0lGMuiC/gImGSYBkgs=";
+  cargoHash = "sha256-o0s6za+IxeJQkwHKuMPJk+uDcMp7VRq+mMqpX3bcWVY=";
 
   postPatch = ''
     substituteInPlace build.rs \
@@ -40,8 +42,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --replace-fail '"PATH": "/bin"' ""
   '';
 
+  nativeBuildInputs = [ pkg-config ];
+
+  buildInputs = [ libgit2 ];
+
   preCheck = ''
-    ln -s "$PWD/target/${stdenv.hostPlatform.rust.rustcTarget}/$cargoBuildType" target/debug
+    export SUBPLOT_DIR="$PWD/target/${stdenv.hostPlatform.rust.rustcTarget}/$cargoBuildType"
 
     rad auth --alias alice --stdin </dev/null
   '';

@@ -18,6 +18,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   cargoHash = "sha256-iOCIX7hq8RqRihVQrVoU2qCTSziuJePxsexkDSCZS9c=";
 
+  # Only build the CLI; the workspace also has a build-only `xtask` helper.
+  cargoBuildFlags = [ "--package=sd-cli" ];
+  cargoTestFlags = [ "--package=sd-cli" ];
+
   nativeBuildInputs = [ installShellFiles ];
 
   postInstall = ''
@@ -34,6 +38,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [
       amar1729
+      givikuna
     ];
   };
 })

@@ -4,81 +4,103 @@
   bzip2,
   fetchurl,
   glibc,
+  gobject-introspection,
   kdePackages,
+  python3,
   stdenv,
   runtimeShell,
   unzip,
+  wrapGAppsHook3,
 }:
 
 let
   pname = "bcompare";
-  version = "5.2.0.31950";
+  version = "5.2.7.32913";
 
   throwSystem = throw "Unsupported system: ${stdenv.hostPlatform.system}";
 
   srcs = {
     x86_64-linux = fetchurl {
       url = "https://www.scootersoftware.com/files/bcompare-${version}_amd64.deb";
-      sha256 = "sha256-CCSRNGWIYVKAoQVVJ8McDUtc45nK0S4CdamcT5uVlQM=";
+      hash = "sha256-eIPukT6BtXe8CS5EUeaz2xOPMSJ+bt/CtYpdOs0VcfQ=";
     };
 
-    x86_64-darwin = fetchurl {
+    aarch64-darwin = fetchurl {
       url = "https://www.scootersoftware.com/files/BCompareOSX-${version}.zip";
-      sha256 = "sha256-R+G2Zlr074i2W4GaEDweK0c0q8tnzjs6M0N106WVAlg=";
+      hash = "sha256-djhYz2ZadvZEasMZQjsedoMvAXyykMJvZeZu/HE3TCc=";
     };
-
-    aarch64-darwin = srcs.x86_64-darwin;
   };
 
   src = srcs.${stdenv.hostPlatform.system} or throwSystem;
 
-  linux = stdenv.mkDerivation {
-    inherit
-      pname
-      version
-      src
-      meta
-      ;
-    unpackPhase = ''
-      ar x $src
-      tar xfz data.tar.gz
-    '';
+  linux =
+    let
+      python = python3.withPackages (
+        pp: with pp; [
+          pygobject3
+        ]
+      );
+    in
+    stdenv.mkDerivation {
+      inherit
+        pname
+        version
+        src
+        meta
+        ;
+      unpackPhase = ''
+        ar x $src
+        tar xfz data.tar.gz
+      '';
 
-    installPhase = ''
-      mkdir -p $out/{bin,lib,share}
+      installPhase = ''
+        mkdir -p $out/{bin,lib,share}
 
-      cp -R usr/{bin,lib,share} $out/
+        cp -R usr/{bin,lib,share} $out/
 
-      # Remove library that refuses to be autoPatchelf'ed
-      #  - bcompare_ext_kde.amd64.so is linked with Qt4
-      #  - bcompare_ext_kde5.amd64.so is linked with Qt5
-      rm $out/lib/beyondcompare/ext/bcompare_ext_kde.amd64.so
-      rm $out/lib/beyondcompare/ext/bcompare_ext_kde5.amd64.so
+        # Remove library that refuses to be autoPatchelf'ed
+        #  - bcompare_ext_kde.amd64.so is linked with Qt4
+        #  - bcompare_ext_kde5.amd64.so is linked with Qt5
+        rm $out/lib/beyondcompare/ext/bcompare_ext_kde.amd64.so
+        rm $out/lib/beyondcompare/ext/bcompare_ext_kde5.amd64.so
 
-      substituteInPlace $out/bin/bcompare \
-        --replace "/usr/lib/beyondcompare" "$out/lib/beyondcompare" \
-        --replace "ldd" "${glibc.bin}/bin/ldd" \
-        --replace "/bin/bash" "${runtimeShell}"
-    '';
+        substituteInPlace $out/bin/bcompare \
+          --replace-fail "/usr/lib/beyondcompare" "$out/lib/beyondcompare" \
+          --replace-fail "ldd" "${glibc.bin}/bin/ldd" \
+          --replace-fail "/bin/bash" "${runtimeShell}" \
+          --replace-fail "QT_QPA_PLATFORM=xcb" 'QT_QPA_PLATFORM="''${QT_QPA_PLATFORM:-wayland;xcb}"'
 
-    nativeBuildInputs = [ autoPatchelfHook ];
+        substituteInPlace $out/lib/beyondcompare/bcmount.sh \
+          --replace-fail "python3" "${python.interpreter}"
+      '';
 
-    buildInputs = [
-      (lib.getLib stdenv.cc.cc)
-      kdePackages.kio
-      kdePackages.kservice
-      kdePackages.ki18n
-      kdePackages.kcoreaddons
-      bzip2
-    ];
+      postFixup = ''
+        # redirect /usr/share/zoneinfo to /etc/zoneinfo (exact 19 bytes) to fix profiles hang
+        sed --in-place "s|/usr/share/zoneinfo|/etc/./././zoneinfo|g" $out/lib/beyondcompare/BCompare
+      '';
 
-    dontBuild = true;
-    dontConfigure = true;
-    dontWrapQtApps = true;
+      nativeBuildInputs = [
+        autoPatchelfHook
+        gobject-introspection
+        wrapGAppsHook3
+      ];
 
-    __structuredAttrs = true;
-    strictDeps = true;
-  };
+      buildInputs = [
+        (lib.getLib stdenv.cc.cc)
+        kdePackages.kio
+        kdePackages.kservice
+        kdePackages.ki18n
+        kdePackages.kcoreaddons
+        bzip2
+      ];
+
+      dontBuild = true;
+      dontConfigure = true;
+      dontWrapQtApps = true;
+
+      __structuredAttrs = true;
+      strictDeps = true;
+    };
 
   darwin = stdenv.mkDerivation {
     inherit
@@ -111,6 +133,7 @@ let
     maintainers = with lib.maintainers; [
       ktor
       arkivm
+      barsikus007
     ];
     platforms = builtins.attrNames srcs;
     mainProgram = "bcompare";

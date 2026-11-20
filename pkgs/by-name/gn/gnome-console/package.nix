@@ -21,11 +21,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "gnome-console";
-  version = "49.2";
+  version = "51.0";
 
   src = fetchurl {
     url = "mirror://gnome/sources/gnome-console/${lib.versions.major finalAttrs.version}/gnome-console-${finalAttrs.version}.tar.xz";
-    hash = "sha256-J7As6OiQ/49TyoXbeGsa41kD8LYyeBLwIk3AtUsQiNs=";
+    hash = "sha256-9A0TkDsfBn8MAuCBL3jfjsJdjNEpeU5+Rr1WygwVby8=";
   };
 
   nativeBuildInputs = [
@@ -59,7 +59,7 @@ stdenv.mkDerivation (finalAttrs: {
     };
   };
 
-  passthru.tests.test = nixosTests.terminal-emulators.kgx;
+  passthru.tests.test = nixosTests.terminal-emulators.gnome-console;
 
   meta = {
     description = "Simple user-friendly terminal emulator for the GNOME desktop";

@@ -4,25 +4,33 @@
   buildPythonPackage,
   fetchFromGitHub,
   orjson,
+  pyprojectVersionPatchHook,
   setuptools,
   yarl,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "aiotractive";
-  version = "1.0.3";
+  version = "2.0.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "zhulik";
     repo = "aiotractive";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-wRV/ZQ2T3Dlrmq6jY5IatrGr07uxPFWcVoMiJN+md88=";
+    hash = "sha256-mYf8WoY2GNaVuLnDMYhbLK4h1CUvZsKKegiM0hXfWtQ=";
   };
 
   build-system = [ setuptools ];
 
-  pythonRelaxDeps = [ "orjson" ];
+  nativeBuildInputs = [
+    pyprojectVersionPatchHook
+  ];
+
+  pythonRelaxDeps = [
+    "aiohttp"
+    "orjson"
+  ];
 
   dependencies = [
     aiohttp

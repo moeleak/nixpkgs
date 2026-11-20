@@ -22,8 +22,6 @@ let
       "linux64"
     else if stdenv.hostPlatform.system == "aarch64-linux" then
       "linux-arm64"
-    else if stdenv.hostPlatform.system == "x86_64-darwin" then
-      "macos64"
     else if stdenv.hostPlatform.system == "aarch64-darwin" then
       "macos-aarch64"
     else
@@ -47,7 +45,7 @@ stdenv.mkDerivation rec {
     owner = "willuhn";
     repo = "jameica";
     tag = version;
-    hash = "sha256-7KpQas8ttL2DP+gFH87uLQyx4PMwVQ+FaqXpZBPWV5U=i";
+    hash = "sha256-7KpQas8ttL2DP+gFH87uLQyx4PMwVQ+FaqXpZBPWV5U=";
   };
 
   nativeBuildInputs = [

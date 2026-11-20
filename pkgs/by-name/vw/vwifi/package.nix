@@ -2,26 +2,26 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  cmake,
   libnl,
   pkg-config,
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "vwifi";
-  version = "6.3-unstable-2025-02-04";
+  version = "7.1.1";
   src = fetchFromGitHub {
     owner = "Raizo62";
     repo = "vwifi";
-    rev = "18c320b1b92bea241ad801d05e0f2b4748478fd9";
-    hash = "sha256-rlwBO5/xyr8KjvacxYt7dBrV1noXhwBJaElGhmM/eWU=";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-aEesXT1psxInT5S4yQmyHhRYOZNjq+BDKoltuJJ259c=";
   };
-
-  patches = [ ./makefile.patch ];
 
   buildInputs = [
     libnl
   ];
 
   nativeBuildInputs = [
+    cmake
     pkg-config
   ];
 

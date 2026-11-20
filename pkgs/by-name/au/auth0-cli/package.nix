@@ -8,16 +8,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "auth0-cli";
-  version = "1.30.0";
+  version = "1.33.0";
 
   src = fetchFromGitHub {
     owner = "auth0";
     repo = "auth0-cli";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Hl9uNYbyTtppZYxTnUirwckGrZbjdhY5IEBbXSFrNtw=";
+    hash = "sha256-XDNZW0yIu7KtvR/SYMbS9wlcsOW5dIXP2/247zJz5NA=";
   };
 
-  vendorHash = "sha256-ltVIGm1dDR9umWPM6c4XT9PbklZ20QQj6VTzQJ301A4=";
+  vendorHash = "sha256-LOMjKGIEGZugc5d+kt4+t+/hwXRGo2XXWDWM+rP9nfA=";
 
   ldflags = [
     "-s"
@@ -31,10 +31,12 @@ buildGoModule (finalAttrs: {
     # This is because subPackages above limits what is built to just what we
     # want but also limits the tests
     unset subPackages
-    # Test requires network access
-    substituteInPlace internal/cli/universal_login_customize_test.go \
-      --replace-fail "TestFetchUniversalLoginBrandingData" "SkipFetchUniversalLoginBrandingData"
   '';
+
+  checkFlags = [
+    # requires network access
+    "-skip=^TestFetchUniversalLoginBrandingData$"
+  ];
 
   nativeBuildInputs = [ installShellFiles ];
 

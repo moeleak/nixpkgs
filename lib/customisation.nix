@@ -2,36 +2,35 @@
 
 let
   inherit (builtins)
+    catAttrs
     intersectAttrs
     unsafeGetAttrPos
     ;
   inherit (lib)
     all
-    attrValues
-    functionArgs
-    isFunction
-    mirrorFunctionArgs
-    isAttrs
-    setFunctionArgs
-    optionalAttrs
     attrNames
-    filter
-    elemAt
+    attrValues
     concatStringsSep
-    sortOn
-    take
-    length
+    deepSeq
+    elemAt
+    extends
+    filter
+    flatten
+    functionArgs
     head
-    pipe
+    id
+    isAttrs
     isDerivation
+    isFunction
+    length
     listToAttrs
     mapAttrs
+    mirrorFunctionArgs
+    optionalAttrs
+    pipe
     seq
-    flatten
-    deepSeq
-    extends
-    toFunction
-    id
+    sortOn
+    take
     ;
   inherit (lib.strings) levenshtein levenshteinAtMost;
 
@@ -87,7 +86,7 @@ rec {
     mySed = overrideDerivation pkgs.gnused (oldAttrs: {
       name = "sed-4.2.2-pre";
       src = fetchurl {
-        url = ftp://alpha.gnu.org/gnu/sed/sed-4.2.2-pre.tar.bz2;
+        url = "ftp://alpha.gnu.org/gnu/sed/sed-4.2.2-pre.tar.bz2";
         hash = "sha256-MxBJRcM2rYzQYwJ5XKxhXTQByvSg5jZc5cSHEZoB2IY=";
       };
       patches = [];
@@ -152,8 +151,12 @@ rec {
   makeOverridable =
     f:
     let
+      fArgs = functionArgs f;
       # Creates a functor with the same arguments as f
-      mirrorArgs = mirrorFunctionArgs f;
+      mirrorArgs = g: {
+        __functor = self: g;
+        __functionArgs = fArgs;
+      };
 
       f' =
         origArgs:
@@ -163,13 +166,13 @@ rec {
           # Re-call the function but with different arguments
           overrideArgs = mirrorArgs (
             /**
-                    Change the arguments with which a certain function is called.
+              Change the arguments with which a certain function is called.
 
               In some cases, you may find a list of possible attributes to pass in this function's `__functionArgs` attribute, but it will not be complete for an original function like `args@{foo, ...}: ...`, which accepts arbitrary attributes.
 
               This function was provided by `lib.makeOverridable`.
             */
-            newArgs: makeOverridable f (origArgs // (if isFunction newArgs then newArgs origArgs else newArgs))
+            newArgs: f' (origArgs // (if isFunction newArgs then newArgs origArgs else newArgs))
           );
         in
         if isAttrs result then
@@ -193,8 +196,9 @@ rec {
           }
         else if isFunction result then
           # Transform the result into a functor while propagating its arguments
-          setFunctionArgs result (functionArgs result)
-          // {
+          {
+            __functor = self: result;
+            __functionArgs = functionArgs result;
             override = overrideArgs;
           }
         else
@@ -207,12 +211,12 @@ rec {
     if isAttrs f then
       # Preserve additional attributes for f
       f
-      // (mirrorArgs f')
-      # Decorate f.override if presented
       // {
+        __functor = self: f';
+        __functionArgs = fArgs;
+        # Decorate f.override if presented
         ${if f ? override then "override" else null} = fdrv: makeOverridable (f.override fdrv);
       }
-
     else
       mirrorArgs f';
 
@@ -401,7 +405,25 @@ rec {
     condition: passthru: drv:
     let
       commonAttrs =
-        drv // (listToAttrs outputsList) // { all = map (x: x.value) outputsList; } // passthru;
+        drv
+        // listToAttrs (
+          outputsList
+          ++ [
+            {
+              name = "all";
+              value = catAttrs "value" outputsList;
+            }
+          ]
+        )
+        // passthru
+        // {
+          drvPath =
+            assert condition;
+            drv.drvPath;
+          outPath =
+            assert condition;
+            drv.outPath;
+        };
 
       outputsList = map (outputName: {
         name = outputName;
@@ -423,15 +445,7 @@ rec {
         };
       }) (drv.outputs or [ "out" ]);
     in
-    commonAttrs
-    // {
-      drvPath =
-        assert condition;
-        drv.drvPath;
-      outPath =
-        assert condition;
-        drv.outPath;
-    };
+    commonAttrs;
 
   /**
     Strip a derivation of all non-essential attributes, returning
@@ -555,7 +569,7 @@ rec {
 
     # Examples
 
-    :::{#ex-makeScope .example}
+    :::{.example #ex-makeScope}
     # Create an interdependent package set on top of `pkgs`
 
     The functions in `foo.nix` and `bar.nix` can depend on each other, in the sense that `foo.nix` can contain a function that expects `bar` as an attribute in its argument.
@@ -584,7 +598,7 @@ rec {
     ```
     :::
 
-    :::{#ex-makeScope-callPackage .example}
+    :::{.example #ex-makeScope-callPackage}
     # Using `callPackage` from a scope
 
     ```nix
@@ -842,14 +856,6 @@ rec {
     :::
   */
   extendMkDerivation =
-    let
-      extendsWithExclusion =
-        excludedNames: g: f: final:
-        let
-          previous = f final;
-        in
-        removeAttrs previous excludedNames // g final previous;
-    in
     {
       constructDrv,
       excludeDrvArgNames ? [ ],
@@ -858,24 +864,27 @@ rec {
       inheritFunctionArgs ? true,
       transformDrv ? id,
     }:
-    setFunctionArgs
+    {
       # Adds the fixed-point style support
-      (
-        fpargs:
+      __functor =
+        self: fpargs:
         transformDrv (
-          constructDrv (extendsWithExclusion excludeDrvArgNames extendDrvArgs (toFunction fpargs))
-        )
-      )
-      # Add __functionArgs
-      (
-        removeAttrs (
-          # Inherit the __functionArgs from the base build helper
-          optionalAttrs inheritFunctionArgs (removeAttrs (functionArgs constructDrv) excludeDrvArgNames)
-          # Recover the __functionArgs from the derived build helper
-          // functionArgs (extendDrvArgs { })
-        ) excludeFunctionArgNames
-      )
-    // {
+          constructDrv (
+            final:
+            let
+              previous = if isFunction fpargs then fpargs final else fpargs;
+            in
+            removeAttrs previous excludeDrvArgNames // extendDrvArgs final previous
+          )
+        );
+
+      __functionArgs = removeAttrs (
+        # Inherit the __functionArgs from the base build helper
+        optionalAttrs inheritFunctionArgs (removeAttrs (functionArgs constructDrv) excludeDrvArgNames)
+        # Recover the __functionArgs from the derived build helper
+        // functionArgs (extendDrvArgs { })
+      ) excludeFunctionArgNames;
+
       inherit
         # Expose to the result build helper.
         constructDrv

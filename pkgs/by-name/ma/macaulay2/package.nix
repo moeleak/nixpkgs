@@ -5,7 +5,6 @@
   makeWrapper,
   runCommand,
   stdenv,
-  writableTmpDirAsHomeHook,
 
   _4ti2,
   autoreconfHook,
@@ -17,12 +16,12 @@
   cohomcalg,
   csdp,
   eigen,
-  emacs-nox,
   fflas-ffpack,
   flex,
   flint,
   frobby,
   gdbm,
+  getconf,
   gfortran,
   gfan,
   givaro,
@@ -47,34 +46,35 @@
   onetbb,
   openssl,
   R,
+  rPackages,
   rWrapper,
   pkg-config,
   python3,
   readline,
   singular,
   texinfo,
-  time,
+  runtimeShell,
   topcom,
   which,
   xz,
+  llvmPackages,
 
-  downloadDocs ? true,
+  disableDocs ? false,
+  downloadDocs ? !disableDocs,
 }:
+assert disableDocs -> !downloadDocs;
+let
+  generateDocs = !(disableDocs || downloadDocs);
+in
 stdenv.mkDerivation (finalAttrs: {
   pname = "macaulay2";
-  version = "1.26.05";
+  version = "1.26.06";
 
   src = fetchFromGitHub {
     owner = "Macaulay2";
     repo = "M2";
     tag = "release-${finalAttrs.version}";
-    hash = "sha256-UiPLownaFtuYFUlZhBl+Nl/sRZRhG9OUwepZtFTkTqc";
-    fetchSubmodules = true;
-  };
-
-  docs = fetchurl {
-    url = "https://macaulay2.com/Downloads/OtherSourceCode/Macaulay2-docs-${finalAttrs.version}.tar.gz";
-    hash = "sha256-rz9b7HvxfxI978yM9wE7XvLu7DO38i/amokXBU0RjSg=";
+    hash = "sha256-kYxqbMKW+7r6nI4i3o7vvJVf0TGRVLaDviZTFx3PTBI=";
   };
 
   buildInputs = [
@@ -87,6 +87,7 @@ stdenv.mkDerivation (finalAttrs: {
     flint
     frobby
     gdbm
+    getconf
     givaro
     glpk
     gtest
@@ -111,17 +112,22 @@ stdenv.mkDerivation (finalAttrs: {
     readline
     singular
     xz
+  ]
+  ++ lib.optionals stdenv.cc.isClang [
+    llvmPackages.openmp
   ];
 
   nativeBuildInputs = [
     autoreconfHook
     bison
-    emacs-nox
     flex
+    flint
     gdbm
+    getconf
     gfortran
     makeWrapper
     pkg-config
+    R
     texinfo
     which
 
@@ -145,8 +151,10 @@ stdenv.mkDerivation (finalAttrs: {
 
   postPatch = ''
     sed -i 's/AC_SUBST(REL,.*uname -r.*)/AC_SUBST(REL,"")/' configure.ac
-    substituteInPlace Macaulay2/packages/DeterminantalRepresentations.m2 \
-      --replace-fail "eps = 1e-15" "eps = 1e-14"
+    # remove editor stuff from Makefiles
+    substituteInPlace Macaulay2/Makefile.in \
+      --replace-fail "all-in-editors" "" \
+      --replace-fail "editors" ""
   '';
 
   preConfigure = ''
@@ -158,7 +166,7 @@ stdenv.mkDerivation (finalAttrs: {
   configureFlags = [
     "--disable-download"
     "--enable-shared"
-    "--with-issue=nixos"
+    "--with-issue=Nix"
     "--with-boost-libdir=${boost}/lib"
     "--with-system-libs"
     "CPPFLAGS=-I${lib.getDev cddlib}/include/cddlib"
@@ -172,17 +180,40 @@ stdenv.mkDerivation (finalAttrs: {
 
   enableParallelBuilding = true;
 
-  preBuild = lib.optionalString downloadDocs ''
-    ln -s ${finalAttrs.docs} ../tarfiles/${finalAttrs.docs.name}
-    make -C libraries all-in-Macaulay2-docs
-  '';
+  preBuild =
+    let
+      docs = fetchurl {
+        url = "https://macaulay2.com/Downloads/OtherSourceCode/Macaulay2-docs-${finalAttrs.version}.tar.gz";
+        hash = "sha256-0+ilvDh87Gmwzx0bLhT6nnadcPwgU3uB6pKhP9VqW0Q=";
+      };
+    in
+    if downloadDocs then
+      ''
+        ln -s ${docs} ../tarfiles/${docs.name}
+        make -C libraries all-in-Macaulay2-docs
+      ''
+    else
+      lib.optionalString generateDocs ''
+        # ForeignFunctions documentation
+        export ${lib.optionalString stdenv.hostPlatform.isDarwin "DY"}LD_LIBRARY_PATH=${lib.makeLibraryPath [ mpfr ]}
+        # RInterface documentation
+        export R_LIBS_SITE=${lib.makeSearchPath "library" (with rPackages; [ MASS ])}
+      '';
 
-  buildFlags = lib.optionals downloadDocs [
+  buildFlags = lib.optionals (!generateDocs) [
     "MakeDocumentation=false"
   ];
 
+  env.LDFLAGS = lib.concatStringsSep " " (
+    lib.optionals stdenv.hostPlatform.isDarwin [
+      "-lblas"
+    ]
+  );
+
   postInstall = ''
-    wrapProgram "$out/bin/M2" \
+    rm "$out/bin/M2"
+
+    makeWrapper "$out/bin/M2-binary" "$out/bin/M2" \
       --prefix PATH : ${
         lib.makeBinPath [
           _4ti2
@@ -198,7 +229,9 @@ stdenv.mkDerivation (finalAttrs: {
           topcom
         ]
       } \
-      --prefix LD_LIBRARY_PATH : ${
+      --prefix ${
+        if stdenv.hostPlatform.isDarwin then "DYLD_LIBRARY_PATH" else "LD_LIBRARY_PATH"
+      } : $out/lib/Macaulay2/lib:${
         lib.makeLibraryPath [
           cddlib
           flint
@@ -215,6 +248,14 @@ stdenv.mkDerivation (finalAttrs: {
       --prefix R_LIBS_SITE : ${lib.makeSearchPath "library" rWrapper.recommendedPackages}
   '';
 
+  # run engine tests only
+  checkFlags = [
+    "-C"
+    "Macaulay2/e"
+  ];
+
+  doCheck = true;
+
   installCheckPhase = ''
     runHook preInstallCheck
     $out/bin/M2 --check 1
@@ -229,23 +270,21 @@ stdenv.mkDerivation (finalAttrs: {
         {
           nativeBuildInputs = [
             finalAttrs.finalPackage
-            writableTmpDirAsHomeHook
           ];
         }
         ''
-          M2 --check 2 && touch $out
+          M2 -q --check 2 && touch $out
         '';
 
     all-packages =
-      runCommand "macaulay2-all-packages-test"
+      runCommand "macaulay2-all-package-tests"
         {
           nativeBuildInputs = [
             finalAttrs.finalPackage
-            writableTmpDirAsHomeHook
           ];
         }
         ''
-          M2 --check 3 && touch $out
+          M2 -q --check 3 && touch $out
         '';
   };
 
@@ -268,7 +307,9 @@ stdenv.mkDerivation (finalAttrs: {
       decomposition of ideals, integral closure of rings, and more.
     '';
     homepage = "https://macaulay2.com/";
-    license = lib.licenses.gpl2Plus;
+    changelog = "https://macaulay2.com/doc/Macaulay2/share/doc/Macaulay2/Macaulay2Doc/html/_changes_cm_sp${finalAttrs.version}.html";
+    license = lib.licenses.gpl3Only;
     maintainers = with lib.maintainers; [ coolcuber ];
+    platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
 })

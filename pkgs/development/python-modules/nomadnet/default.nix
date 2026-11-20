@@ -1,7 +1,7 @@
 {
   lib,
   buildPythonPackage,
-  fetchFromGitHub,
+  fetchPypi,
   lxmf,
   msgpack,
   qrcode,
@@ -12,14 +12,12 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "nomadnet";
-  version = "1.0.1";
+  version = "1.5.0";
   pyproject = true;
 
-  src = fetchFromGitHub {
-    owner = "markqvist";
-    repo = "NomadNet";
-    tag = finalAttrs.version;
-    hash = "sha256-uNchcz9kiLX2nUNRC2rTMv7my+19ylZrHTGWbonziFc=";
+  src = fetchPypi {
+    inherit (finalAttrs) version pname;
+    hash = "sha256-TAZDhxmdnNMrYsfYPOdw37b+JNQJLtZXWND2s+9Yub8=";
   };
 
   build-system = [ setuptools ];
@@ -40,9 +38,11 @@ buildPythonPackage (finalAttrs: {
   meta = {
     description = "Off-grid, resilient mesh communication";
     homepage = "https://github.com/markqvist/NomadNet";
-    changelog = "https://github.com/markqvist/NomadNet/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.gpl3Only;
-    maintainers = with lib.maintainers; [ fab ];
+    maintainers = with lib.maintainers; [
+      drupol
+      fab
+    ];
     mainProgram = "nomadnet";
   };
 })

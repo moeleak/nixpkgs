@@ -1,24 +1,24 @@
 {
   lib,
   stdenv,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
   callPackage,
   gitUpdater,
 }:
 
-buildGoModule (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "cloudflared";
-  version = "2026.3.0";
+  version = "2026.10.7";
 
   src = fetchFromGitHub {
     owner = "cloudflare";
     repo = "cloudflared";
     tag = finalAttrs.version;
-    hash = "sha256-oGe6ZZeIcFC+ST78m54upFJmbPL2udwtFHaC8vrH4cg=";
+    hash = "sha256-qyGcPCYaa4UT8ws5sUW+SXCp8QWbVniB4QFR8gGE0ds=";
   };
 
-  vendorHash = null;
+  vendorHash = "sha256-ah+kI+bWIZqsi9U+AJtWME9rfjTr6QpiLQy0RXNlDzc=";
 
   ldflags = [
     "-s"
@@ -30,11 +30,6 @@ buildGoModule (finalAttrs: {
   preCheck = ''
     # Workaround for: sshgen_test.go:74: mkdir /homeless-shelter/.cloudflared: no such file or directory
     export HOME="$(mktemp -d)"
-
-    # Workaround for: protocol_test.go:11:
-    #   lookup protocol-v2.argotunnel.com on [::1]:53: read udp [::1]:51876->[::1]:53: read: connection refused
-    substituteInPlace "edgediscovery/protocol_test.go" \
-      --replace-warn "TestProtocolPercentage" "SkipProtocolPercentage"
 
     # Workaround for: origin_icmp_proxy_test.go:46:
     #   cannot create ICMPv4 proxy: socket: permission denied nor ICMPv6 proxy: socket: permission denied
@@ -68,6 +63,11 @@ buildGoModule (finalAttrs: {
     #   Should be false
     substituteInPlace "datagramsession/manager_test.go" \
       --replace-warn "TestManagerCtxDoneCloseSessions" "SkipManagerCtxDoneCloseSessions"
+
+    # Workaround for: curves_test.go:121:
+    #   Should be true
+    substituteInPlace "crypto/curves_test.go" \
+      --replace-warn "TestSupportedCurvesNegotiation" "SkipSupportedCurvesNegotiation"
   '';
 
   doCheck = !stdenv.hostPlatform.isDarwin;

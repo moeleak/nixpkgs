@@ -24,6 +24,9 @@ let
       rc-manager = if config.networking.resolvconf.enable then "resolvconf" else "unmanaged";
     };
     keyfile = {
+      # NM's compiled-in default; made explicit so the tmpfiles rule below
+      # can follow it when the user redirects the keyfile store elsewhere.
+      path = "/etc/NetworkManager/system-connections";
       unmanaged-devices = if cfg.unmanaged == [ ] then null else lib.concatStringsSep ";" cfg.unmanaged;
     };
     logging = {
@@ -180,9 +183,7 @@ in
         description = ''
           Configuration for the [connection] section of NetworkManager.conf.
           Refer to
-          [
-            https://developer.gnome.org/NetworkManager/stable/NetworkManager.conf.html#id-1.2.3.11
-          ](https://developer.gnome.org/NetworkManager/stable/NetworkManager.conf.html)
+            <https://networkmanager.dev/docs/api/latest/NetworkManager.conf.html#id-1.2.3.11>
           or
           {manpage}`NetworkManager.conf(5)`
           for more information.
@@ -195,9 +196,7 @@ in
         description = ''
           Configuration added to the generated NetworkManager.conf, note that you can overwrite settings with this.
           Refer to
-          [
-            https://developer.gnome.org/NetworkManager/stable/NetworkManager.conf.html
-          ](https://developer.gnome.org/NetworkManager/stable/NetworkManager.conf.html)
+            <https://networkmanager.dev/docs/api/latest/NetworkManager.conf.html>
           or
           {manpage}`NetworkManager.conf(5)`
           for more information.
@@ -211,9 +210,7 @@ in
           List of interfaces that will not be managed by NetworkManager.
           Interface name can be specified here, but if you need more fidelity,
           refer to
-          [
-            https://developer.gnome.org/NetworkManager/stable/NetworkManager.conf.html#device-spec
-          ](https://developer.gnome.org/NetworkManager/stable/NetworkManager.conf.html#device-spec)
+            <https://networkmanager.dev/docs/api/latest/NetworkManager.conf.html#device-spec>
           or the "Device List Format" Appendix of
           {manpage}`NetworkManager.conf(5)`.
         '';
@@ -238,14 +235,13 @@ in
         default = [ ];
         example = literalExpression ''
           with pkgs; [
-            networkmanager-fortisslvpn
             networkmanager-iodine
+            networkmanager-libreswan
             networkmanager-l2tp
             networkmanager-openconnect
             networkmanager-openvpn
             networkmanager-sstp
             networkmanager-strongswan
-            networkmanager-vpnc
           ]
         '';
         description = ''
@@ -348,9 +344,7 @@ in
           Set the DNS ({file}`resolv.conf`) processing mode.
 
           A description of these modes can be found in the main section of
-          [
-            https://developer.gnome.org/NetworkManager/stable/NetworkManager.conf.html
-          ](https://developer.gnome.org/NetworkManager/stable/NetworkManager.conf.html)
+            <https://networkmanager.dev/docs/api/latest/NetworkManager.conf.html>
           or in
           {manpage}`NetworkManager.conf(5)`.
         '';
@@ -372,7 +366,7 @@ in
                 default = "basic";
                 description = ''
                   Dispatcher hook type. Look up the hooks described at
-                  [https://developer.gnome.org/NetworkManager/stable/NetworkManager.html](https://developer.gnome.org/NetworkManager/stable/NetworkManager.html)
+                    <https://networkmanager.dev/docs/api/latest/NetworkManager-dispatcher.html>
                   and choose the type depending on the output folder.
                   You should then filter the event type (e.g., "up"/"down") from within your script.
                 '';
@@ -601,13 +595,27 @@ in
 
     systemd.packages = packages;
 
-    systemd.tmpfiles.rules = [
-      "d /etc/NetworkManager/system-connections 0700 root root -"
-      "d /var/lib/misc 0755 root root -" # for dnsmasq.leases
+    systemd.tmpfiles.settings.networkmanager = {
+      ${configAttrs.keyfile.path}.d = {
+        mode = "0700";
+        user = "root";
+        group = "root";
+      };
+      # for dnsmasq.leases
+      "/var/lib/misc".d = {
+        mode = "0755";
+        user = "root";
+        group = "root";
+      };
       # ppp isn't able to mkdir that directory at runtime
-      "d /run/pppd/lock 0700 root root -"
-    ]
-    ++ pluginTmpfilesRules;
+      "/run/pppd/lock".d = {
+        mode = "0700";
+        user = "root";
+        group = "root";
+      };
+    };
+
+    systemd.tmpfiles.rules = pluginTmpfilesRules;
 
     systemd.services.NetworkManager = {
       wantedBy = [ "multi-user.target" ];
@@ -616,6 +624,8 @@ in
       aliases = [ "dbus-org.freedesktop.NetworkManager.service" ];
 
       serviceConfig = {
+        # required for dnsmasq DHCP server when doing a hotspot
+        CapabilityBoundingSet = "CAP_CHOWN";
         StateDirectory = "NetworkManager";
         StateDirectoryMode = 755; # not sure if this really needs to be 755
       };

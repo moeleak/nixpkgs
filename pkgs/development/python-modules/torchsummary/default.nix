@@ -2,7 +2,12 @@
   lib,
   buildPythonPackage,
   fetchPypi,
+
+  # build-system
   setuptools,
+
+  # dependencies
+  numpy,
   torch,
 }:
 
@@ -11,6 +16,7 @@ buildPythonPackage (finalAttrs: {
   version = "1.5.1";
   pyproject = true;
 
+  # No tags on GitHub
   src = fetchPypi {
     inherit (finalAttrs) pname version;
     hash = "sha256-mBv2ieIuDPf5XHRgAvIKJK0mqmudhhE0oUvGzpIjBZA=";
@@ -18,7 +24,10 @@ buildPythonPackage (finalAttrs: {
 
   build-system = [ setuptools ];
 
-  dependencies = [ torch ];
+  dependencies = [
+    numpy
+    torch
+  ];
 
   # no tests in pypi tarball
   doCheck = false;

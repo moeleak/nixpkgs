@@ -21,23 +21,23 @@ let
   setupHook = makeSetupHook {
     name = "pybind11-setup-hook";
     substitutions = {
-      out = placeholder "out";
       pythonInterpreter = python.pythonOnBuildForHost.interpreter;
       pythonIncludeDir = "${python}/include/${python.libPrefix}";
       pythonSitePackages = "${python}/${python.sitePackages}";
     };
+    meta.license = lib.licenses.mit;
   } ./setup-hook.sh;
 in
 buildPythonPackage (finalAttrs: {
   pname = "pybind11";
-  version = "3.0.3";
+  version = "3.1.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "pybind";
     repo = "pybind11";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-q609c2Q1n37OJ9fK0uDcniQZPO2PL+fnWdArV56qR64=";
+    hash = "sha256-rzpe7CrgIa5Df2OrB/9mxIJd3X5DA7FX0C+w7TcmAoQ=";
   };
 
   build-system = [
@@ -113,9 +113,6 @@ buildPythonPackage (finalAttrs: {
       bindings of existing C++ code.
     '';
     license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [
-      yuriaisaka
-      dotlambda
-    ];
+    maintainers = with lib.maintainers; [ dotlambda ];
   };
 })

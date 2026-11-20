@@ -10,31 +10,37 @@
   libinput,
   fontconfig,
   freetype,
+  oniguruma,
+  zstd,
   nixosTests,
   nix-update-script,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "cosmic-edit";
-  version = "1.0.13";
+  version = "1.11.0";
 
   # nixpkgs-update: no auto update
   src = fetchFromGitHub {
     owner = "pop-os";
     repo = "cosmic-edit";
     tag = "epoch-${finalAttrs.version}";
-    hash = "sha256-KqdAz5CG9Gdsw/yWHCDhLwXNvmcASyzA6jdpbfcy3pM=";
+    hash = "sha256-zgmzf3xLnL85RJuCRV9ED+fl+t4taNGucTD4Mw+bIVs=";
   };
-
-  cargoHash = "sha256-y7EpJrVq5dVP/t3UTsZrPbiHWGsFieLPo/DH0eM5OQE=";
-
-  separateDebugInfo = true;
 
   postPatch = ''
     substituteInPlace justfile --replace-fail '#!/usr/bin/env' "#!$(command -v env)"
   '';
 
+  cargoHash = "sha256-4f9CAYdr/O2xfOzn3Fu0tpTaay4m7+6683ZjaDn3Iiw=";
+
+  separateDebugInfo = true;
   __structuredAttrs = true;
+
+  env = {
+    RUSTONIG_SYSTEM_LIBONIG = true;
+    VERGEN_GIT_SHA = finalAttrs.src.tag;
+  };
 
   nativeBuildInputs = [
     just
@@ -47,6 +53,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     libinput
     fontconfig
     freetype
+    oniguruma
+    zstd
   ];
 
   dontUseJustBuild = true;

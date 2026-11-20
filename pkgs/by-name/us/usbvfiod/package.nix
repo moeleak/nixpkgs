@@ -8,16 +8,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "usbvfiod";
-  version = "0.1.0";
+  version = "0.4.0";
 
   src = fetchFromGitHub {
     owner = "cyberus-technology";
     repo = "usbvfiod";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-SG5S0wRue/G31XuR2D8xFrbAIhWG3rl+aNjEnhZ7dmI=";
+    hash = "sha256-9/znBMDA0yLJVBnttgol9SCi6pzvbtEB9VmF5RGlYik=";
   };
 
-  cargoHash = "sha256-nTNUC7Tiib2wWYC1g7S1W7wgIkqZLTN8aKUKjpgZlqo=";
+  cargoHash = "sha256-lVHW70s8f3NYuKcyu8CQbGe+P7B3qETrv7mTxrp4o2Q=";
 
   nativeInstallCheckInputs = [
     versionCheckHook
@@ -40,6 +40,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     maintainers = with lib.maintainers; [
       lbeierlieb
       snu
+      noi0103
     ];
     platforms = [
       "aarch64-linux"

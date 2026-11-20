@@ -4,20 +4,26 @@
   fetchFromGitHub,
   nix-update-script,
   versionCheckHook,
+  pkg-config,
+  zstd,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "mdwatch";
-  version = "0.2.0";
+  version = "0.2.9";
 
   src = fetchFromGitHub {
     owner = "vimlinuz";
     repo = "mdwatch";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-snmyfhOkCTnRsBcKcTTij5caA2NmSA1Csp3+D6BJcw4=";
+    hash = "sha256-khChL3VNFzbcl7Lw6PJnMESYAL2JWO6AAvq7t5SVDlg=";
   };
 
-  cargoHash = "sha256-CAXHIOC0K062zXNnAD1IW2Sb5Mnpc91A1Lamhc3+NLQ=";
+  cargoHash = "sha256-OBknkfnzewil/jKZJEZKAar+QD8h3whw1E4ncAtR99U=";
+
+  nativeBuildInputs = [ pkg-config ];
+
+  buildInputs = [ zstd ];
 
   passthru.updateScript = nix-update-script { };
 
@@ -29,7 +35,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     homepage = "https://github.com/vimlinuz/mdwatch";
     changelog = "https://github.com/vimlinuz/mdwatch/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ x123 ];
+    maintainers = with lib.maintainers; [
+      x123
+      vimlinuz
+    ];
     mainProgram = "mdwatch";
   };
 })

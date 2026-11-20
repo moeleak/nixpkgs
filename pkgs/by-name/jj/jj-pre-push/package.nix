@@ -11,14 +11,14 @@
 
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "jj-pre-push";
-  version = "0.4.4";
+  version = "0.5.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "acarapetis";
     repo = "jj-pre-push";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-TekLYlx2b+gcf0UzLOqWv2VtwS6etE/uPBQwc99z1Lw=";
+    hash = "sha256-Vi50t+AMUgSlUjwBRZPJ+yxfJMQWKDAr21trkqjcuQM=";
   };
 
   postPatch = ''
@@ -40,6 +40,9 @@ python3Packages.buildPythonApplication (finalAttrs: {
   nativeBuildInputs = [ installShellFiles ];
 
   postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
+    # Generate completions for the requested shell instead of detecting the build shell.
+    export _TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION=1
+
     installShellCompletion --cmd jj-pre-push \
       --bash <($out/bin/jj-pre-push --show-completion bash) \
       --fish <($out/bin/jj-pre-push --show-completion fish) \

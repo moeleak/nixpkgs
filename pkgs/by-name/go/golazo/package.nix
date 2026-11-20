@@ -5,29 +5,42 @@
   fetchFromGitHub,
   gitUpdater,
   libnotify,
+  makeWrapper,
 }:
 buildGoModule (finalAttrs: {
   pname = "golazo";
-  version = "0.24.0";
+  version = "0.26.0";
 
   src = fetchFromGitHub {
     owner = "0xjuanma";
     repo = "golazo";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-MSFH6IuSeMi98Ri/YVIxLFn7eYozodosfk8ZYz+Q2K0=";
+    hash = "sha256-g9JPPP/pZ65Jgq2hXYzRynhZebF7s2ZTNU4Ca1Iu5uc=";
   };
 
   vendorHash = "sha256-M2gfqU5rOfuiVSZnH/Dr8OVmDhyU2jYkgW7RuIUTd+E=";
 
-  subPackages = [ "." ];
+  patches = [ ./0001-disable-update-flag.patch ];
 
-  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [ libnotify ];
+  subPackages = [ "." ];
 
   ldflags = [
     "-X github.com/0xjuanma/golazo/cmd.Version=v${finalAttrs.version}"
   ];
 
+  nativeBuildInputs = [ makeWrapper ];
+
+  postInstall = lib.optionalString stdenv.hostPlatform.isLinux ''
+    wrapProgram $out/bin/golazo \
+      --prefix PATH : ${
+        lib.makeBinPath [
+          libnotify
+        ]
+      }
+  '';
+
   __structuredAttrs = true;
+  strictDeps = true;
 
   passthru.updateScript = gitUpdater {
     rev-prefix = "v";

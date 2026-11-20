@@ -23,13 +23,13 @@ let
       }
     else
       {
-        version = "2.1.1741730670";
+        version = "2.1.1791890110";
 
         src = fetchFromGitHub {
           owner = "LuaJIT";
           repo = "LuaJIT";
-          rev = "538a82133ad6fddfd0ca64de167c4aca3bc1a2da";
-          hash = "sha256-3DhNqVdojsWDo8mKJXIyTqFODIiKzThcAzHPdnoJaVM=";
+          rev = "634daf2453559fd5e0ec282f3b7aedaa09e9f344";
+          hash = "sha256-vIT7ShP1cxxhZr9/vXcNsc0nhYzjncpzLFYXDG2Ff6I=";
         };
       };
 in
@@ -40,6 +40,7 @@ callPackage ./default.nix {
   extraMeta = {
     badPlatforms = [
       "loongarch64-linux" # See https://github.com/LuaJIT/LuaJIT/issues/1278
+      "s390x-linux" # See https://github.com/LuaJIT/LuaJIT/issues/43
       # `#error "No support for PPC64"`
       "powerpc64-linux"
       "powerpc64le-linux"

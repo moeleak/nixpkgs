@@ -9,6 +9,7 @@
   gdk-pixbuf,
   libxkbcommon,
   vulkan-loader,
+  wayland,
   makeDesktopItem,
   autoPatchelfHook,
   copyDesktopItems,
@@ -18,16 +19,16 @@ let
 in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "lockbook-desktop";
-  version = "26.4.13";
+  version = "26.11.12";
 
   src = fetchFromGitHub {
     owner = "lockbook";
     repo = "lockbook";
     tag = finalAttrs.version;
-    hash = "sha256-KkYe07uEj/AO1rxsa4bwVsNO6iyjAFJwHeWAyMH8RPY=";
+    hash = "sha256-/PXx03z42IXdhpMsowN3InRPltCSjuEO/YlyqFuFHng=";
   };
 
-  cargoHash = "sha256-/FLR2IXsxBEV9Z6GSJ0MTjIZjApNUN9J2ellKiKtL74=";
+  cargoHash = "sha256-+6LaZ8FvhHXB+Fs/xYipxxbt7RiF/AWjGqyaMMPVL0A=";
 
   nativeBuildInputs = [
     pkg-config
@@ -40,17 +41,18 @@ rustPlatform.buildRustPackage (finalAttrs: {
     glib
     gobject-introspection
     gdk-pixbuf
-    libxkbcommon
   ];
 
   runtimeDependencies = [
     vulkan-loader
+    libxkbcommon
+    wayland
   ];
 
   doCheck = false; # there are no cli tests
   cargoBuildFlags = [
     "--package"
-    "lockbook-linux"
+    "lockbook-desktop"
   ];
 
   desktopItems = makeDesktopItem {
@@ -58,7 +60,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     name = "lockbook-desktop";
     comment = desc;
     icon = "lockbook";
-    exec = "lockbook-desktop";
+    exec = "lockbook-desktop %u";
+    mimeTypes = [ "x-scheme-handler/lb" ];
     categories = [
       "Office"
       "Documentation"
@@ -67,7 +70,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
   };
 
   postInstall = ''
-    mv $out/bin/lockbook-linux $out/bin/lockbook-desktop
     install -D docs/graphics/logo.svg $out/share/icons/hicolor/scalable/apps/lockbook.svg
   '';
 

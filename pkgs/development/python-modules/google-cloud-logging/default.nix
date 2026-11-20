@@ -23,13 +23,13 @@
 
 buildPythonPackage rec {
   pname = "google-cloud-logging";
-  version = "3.13.0";
+  version = "3.17.0";
   pyproject = true;
 
   src = fetchPypi {
     pname = "google_cloud_logging";
     inherit version;
-    hash = "sha256-Oq4Fc7GhpPWezfRXH054gbWCO9Ep/kaVYcHEmn+opME=";
+    hash = "sha256-1zQ/K4K0+ekkS/yKunrQNMQV+bu0Be0o0RJao30nC3I=";
   };
 
   build-system = [ setuptools ];
@@ -77,8 +77,6 @@ buildPythonPackage rec {
     # Tests require credentials
     "tests/system/test_system.py"
     "tests/unit/test__gapic.py"
-    # Exclude performance tests
-    "tests/performance/test_performance.py"
   ];
 
   pythonImportsCheck = [
@@ -88,8 +86,8 @@ buildPythonPackage rec {
 
   meta = {
     description = "Stackdriver Logging API client library";
-    homepage = "https://github.com/googleapis/python-logging";
-    changelog = "https://github.com/googleapis/python-logging/blob/v${version}/CHANGELOG.md";
+    homepage = "https://github.com/googleapis/google-cloud-python/tree/main/packages/google-cloud-logging";
+    changelog = "https://github.com/googleapis/google-cloud-python/blob/${version}/packages/google-cloud-logging/CHANGELOG.md";
     license = lib.licenses.asl20;
     maintainers = [ ];
   };

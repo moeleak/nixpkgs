@@ -7,12 +7,14 @@
   cmake,
   inotify-tools,
   kdePackages,
+  kdsingleapplication,
   libcloudproviders,
   libp11,
   librsvg,
   libsecret,
   openssl,
-  pcre,
+  openvfs,
+  pcre2,
   pkg-config,
   sphinx,
   sqlite,
@@ -22,7 +24,7 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "nextcloud-client";
-  version = "4.0.8";
+  version = "35.0.3";
 
   outputs = [
     "out"
@@ -33,8 +35,11 @@ stdenv.mkDerivation (finalAttrs: {
     owner = "nextcloud-releases";
     repo = "desktop";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-EKJj2z3CkWrNL2idBHu5jHuPXQXKwjEjUAgo6OOY/08=";
+    hash = "sha256-yvgy8As5V+OeBed9wIOPGb0gkl7VezHK4HqoJ/PK0T8=";
   };
+
+  __structuredAttrs = true;
+  strictDeps = true;
 
   patches = [
     ./0001-When-creating-the-autostart-entry-do-not-use-an-abso.patch
@@ -62,17 +67,18 @@ stdenv.mkDerivation (finalAttrs: {
   buildInputs = [
     inotify-tools
     kdePackages.kio
+    kdsingleapplication
     libcloudproviders
     libp11
     libsecret
     openssl
-    pcre
+    openvfs
+    pcre2
     qt6Packages.qt5compat
     qt6Packages.qtbase
     qt6Packages.qtkeychain
     qt6Packages.qtsvg
     qt6Packages.qttools
-    qt6Packages.qtwebengine
     qt6Packages.qtwebsockets
     qt6Packages.qtwayland
     sqlite
@@ -80,9 +86,15 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   qtWrapperArgs = [
-    "--prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ libsecret ]}"
+    "--prefix"
+    "LD_LIBRARY_PATH"
+    ":"
+    "${lib.makeLibraryPath [ libsecret ]}"
     # make xdg-open overridable at runtime
-    "--suffix PATH : ${lib.makeBinPath [ xdg-utils ]}"
+    "--suffix"
+    "PATH"
+    ":"
+    "${lib.makeBinPath [ xdg-utils ]}"
   ];
 
   cmakeFlags = [
@@ -96,6 +108,13 @@ stdenv.mkDerivation (finalAttrs: {
   meta = {
     changelog = "https://github.com/nextcloud/desktop/releases/tag/v${finalAttrs.version}";
     description = "Desktop sync client for Nextcloud";
+    longDescription = ''
+      It is highly recommend to link the default config to avoid that file managers download all files when indexing directories and creating thumbnails:
+
+      ```
+      environment.etc."xdg/openvfs/config.json".source = "''${pkgs.openvfs}/etc/xdg/openvfs/config.json";
+      ```
+    '';
     homepage = "https://nextcloud.com";
     license = lib.licenses.gpl2Plus;
     maintainers = with lib.maintainers; [

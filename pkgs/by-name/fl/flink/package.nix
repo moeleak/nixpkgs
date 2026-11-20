@@ -8,11 +8,11 @@
 
 stdenv.mkDerivation rec {
   pname = "flink";
-  version = "2.2.0";
+  version = "2.3.0";
 
   src = fetchurl {
     url = "mirror://apache/flink/${pname}-${version}/${pname}-${version}-bin-scala_2.12.tgz";
-    sha256 = "sha256-tmx9xuGVNyCd3DlDDWvn54XUjcB41rLSaapgFQlbSF8=";
+    sha256 = "sha256-tShksMQqNjitsIlbl1QqPKggoMPe/ameum5FwvjKSWo=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
@@ -41,9 +41,6 @@ stdenv.mkDerivation rec {
     license = lib.licenses.asl20;
     sourceProvenance = with lib.sourceTypes; [ binaryBytecode ];
     platforms = lib.platforms.all;
-    maintainers = with lib.maintainers; [
-      mbode
-      autophagy
-    ];
+    maintainers = with lib.maintainers; [ autophagy ];
   };
 }

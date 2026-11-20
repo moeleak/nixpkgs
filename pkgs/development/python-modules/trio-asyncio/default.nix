@@ -14,7 +14,7 @@
 
 buildPythonPackage rec {
   pname = "trio-asyncio";
-  version = "0.15.0";
+  version = "0.16.0";
   pyproject = true;
 
   # https://github.com/python-trio/trio-asyncio/issues/160
@@ -24,7 +24,7 @@ buildPythonPackage rec {
     owner = "python-trio";
     repo = "trio-asyncio";
     tag = "v${version}";
-    hash = "sha256-6c+4sGEpCVC8wxBg+dYgkOwRAUOi/DTITrDx3M2koyE=";
+    hash = "sha256-7kp99tdJhExjg8WsfBtXJyFrKnSAtTF1fhPFxCU7eI8=";
   };
 
   postPatch = ''
@@ -65,10 +65,12 @@ buildPythonPackage rec {
     changelog = "https://github.com/python-trio/trio-asyncio/blob/v${version}/docs/source/history.rst";
     description = "Re-implementation of the asyncio mainloop on top of Trio";
     homepage = "https://github.com/python-trio/trio-asyncio";
-    license = with lib.licenses; [
-      asl20 # or
-      mit
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        asl20
+        mit
+      ];
     maintainers = with lib.maintainers; [ dotlambda ];
   };
 }

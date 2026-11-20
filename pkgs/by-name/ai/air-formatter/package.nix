@@ -1,22 +1,27 @@
 {
   lib,
+  stdenv,
   rustPlatform,
   fetchFromGitHub,
   versionCheckHook,
   nix-update-script,
+  installShellFiles,
+  libgit2,
+  pkg-config,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "air-formatter";
-  version = "0.9.0";
+  version = "0.13.0";
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "posit-dev";
     repo = "air";
     tag = finalAttrs.version;
-    hash = "sha256-9itu/coUlYNdH2go1AmMff1pMozv6nGeOEZKTwBqA8M=";
+    hash = "sha256-/1xmTZ3gxIBELiXLRhyyIqgoge4vosGt4+KNmu6cOXM=";
   };
 
-  cargoHash = "sha256-R7rUXx+I1bmdP6fvbXyKulaWQZQxBcngJihCg0SVFY0=";
+  cargoHash = "sha256-u3XZjwDwOk4ddgpFBZWIAmepRjcZx6NJNogQWQeRZag=";
 
   useNextest = true;
 
@@ -25,11 +30,28 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
   doInstallCheck = true;
 
-  cargoBuildFlags = [ "-p air" ];
+  cargoBuildFlags = [ "--package=air" ];
 
   passthru = {
     updateScript = nix-update-script { };
   };
+
+  nativeBuildInputs = [
+    installShellFiles
+    pkg-config
+  ];
+
+  buildInputs = [ libgit2 ];
+
+  # TODO: Upstream also provides Elvish completions,
+  # but `installShellCompletion` only has support for Bash, Zsh, Powershell and Fish at the moment.
+  postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
+    installShellCompletion --cmd air-formatter \
+      --bash <($out/bin/air generate-shell-completion bash) \
+      --fish <($out/bin/air generate-shell-completion fish) \
+      --zsh  <($out/bin/air generate-shell-completion zsh) \
+      --powershell <($out/bin/air generate-shell-completion powershell)
+  '';
 
   meta = {
     description = "Extremely fast R code formatter";

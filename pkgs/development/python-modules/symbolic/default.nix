@@ -7,28 +7,30 @@
   rustc,
   cargo,
   milksnake,
+  pkg-config,
+  zstd,
   cffi,
   pytestCheckHook,
   nix-update-script,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "symbolic";
-  version = "13.0.0";
+  version = "13.9.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "getsentry";
     repo = "symbolic";
-    tag = version;
+    tag = finalAttrs.version;
     # the `py` directory is not included in the tarball, so we fetch the source via git instead
     forceFetchGit = true;
-    hash = "sha256-pxN0aQaM0Z7l4ZsmzTmXpJYkxzl11sBtcDXl5zbP9zI=";
+    hash = "sha256-o7LqQb+tWpAl+W5sHI51tfd2FEZOpPPgChIpkXjM1D8=";
   };
 
   cargoDeps = rustPlatform.fetchCargoVendor {
-    inherit pname version src;
-    hash = "sha256-WY5FG+XOPnhrrP7+YUljpAo74IeZ8grWvXvV1Y14FVg=";
+    inherit (finalAttrs) pname version src;
+    hash = "sha256-q2+eJufBBzPJEgVqmUagXSU9fQPHQv4jfyCVgHJLBsk=";
   };
 
   nativeBuildInputs = [
@@ -37,6 +39,11 @@ buildPythonPackage rec {
     rustc
     cargo
     milksnake
+    pkg-config
+  ];
+
+  buildInputs = [
+    zstd
   ];
 
   dependencies = [ cffi ];
@@ -60,8 +67,8 @@ buildPythonPackage rec {
   meta = {
     description = "Python library for dealing with symbol files and more";
     homepage = "https://github.com/getsentry/symbolic";
-    changelog = "https://github.com/getsentry/symbolic/blob/${version}/CHANGELOG.md";
+    changelog = "https://github.com/getsentry/symbolic/blob/${finalAttrs.src.tag}/CHANGELOG.md";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ defelo ];
+    maintainers = [ ];
   };
-}
+})

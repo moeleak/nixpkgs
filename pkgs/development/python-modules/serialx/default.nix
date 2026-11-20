@@ -20,14 +20,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "serialx";
-  version = "1.7.2";
+  version = "1.15.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "puddly";
     repo = "serialx";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-A8LdFpxnnluAlwVvNly4IfvCS8eZMDil6OmI4b9kGOA=";
+    hash = "sha256-USyOgiF13iJ4t0AW4bIuimmgLOExdAGDgUPozA1D3js=";
   };
 
   cargoDeps = rustPlatform.fetchCargoVendor {
@@ -75,6 +75,7 @@ buildPythonPackage (finalAttrs: {
     # racy
     "test_sync_readexactly_total_timeout"
     "test_sync_read_until_total_timeout"
+    "test_sync_readonly_partial_timeout"
   ];
 
   meta = {

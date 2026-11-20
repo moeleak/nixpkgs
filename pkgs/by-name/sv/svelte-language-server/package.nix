@@ -14,13 +14,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "svelte-language-server";
-  version = "0.17.31";
+  version = "0.18.6";
 
   src = fetchFromGitHub {
     owner = "sveltejs";
     repo = "language-tools";
     tag = "svelte-language-server@${finalAttrs.version}";
-    hash = "sha256-qcY8ikS7spfbMk1zJ1pu+yyBsFYIFCWB/YqANyCZrVc=";
+    hash = "sha256-UjNOWCKSFIyO4wAxlhY8wsnc3uxpnxDvQpEzjgT/M+A=";
   };
 
   pnpmWorkspaces = [ "svelte-language-server..." ];
@@ -34,7 +34,7 @@ stdenv.mkDerivation (finalAttrs: {
       ;
     inherit pnpm;
     fetcherVersion = 3;
-    hash = "sha256-x0yIANla1KURJ4fgxAe9WUJl/sPAsUcARubTJQ5uEpQ=";
+    hash = "sha256-QVoU6z8ws9eazxqBj1Aa5oXYLB8JKdoCXy0ykRqWvMw=";
   };
 
   nativeBuildInputs = [
@@ -55,6 +55,7 @@ stdenv.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
+    rm -rf node_modules packages/*/node_modules
     pnpm install --filter=svelte-language-server... --prod --frozen-lockfile --offline --force --ignore-scripts
     mkdir -p $out/lib/node_modules/svelte-language-server/
     mkdir -p $out/bin
@@ -82,6 +83,6 @@ stdenv.mkDerivation (finalAttrs: {
     homepage = "https://github.com/sveltejs/language-tools";
     license = lib.licenses.mit;
     mainProgram = "svelteserver";
-    maintainers = [ ];
+    maintainers = with lib.maintainers; [ dfjay ];
   };
 })

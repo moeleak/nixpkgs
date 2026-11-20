@@ -18,15 +18,14 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "pycrdt-store";
-  version = "0.1.4";
+  version = "0.1.5";
   pyproject = true;
-  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "y-crdt";
     repo = "pycrdt-store";
     tag = finalAttrs.version;
-    hash = "sha256-njahh5wbUGYkXh/ibZYH+2gmvqegaD8LwlhNDpYFTcM=";
+    hash = "sha256-ggfk9MT/thBKHStToYwSDT4+ZL7mqveg9XDEXLAViU8=";
   };
 
   build-system = [

@@ -7,16 +7,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "muffet";
-  version = "2.11.3";
+  version = "2.11.8";
 
   src = fetchFromGitHub {
     owner = "raviqqe";
     repo = "muffet";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-c/ionFvWOPZ/MFNos/Q0KdlFH9qlOeAXldQZljaEF8k=";
+    hash = "sha256-UQwT8oil23hDXSkCKchcxM9+i5zf7Vdoz7bWugPvswA=";
   };
 
-  vendorHash = "sha256-ZTPaNeozhbl6FReJowzVHDcSGLCXdt8e3UEW69lFx88=";
+  vendorHash = "sha256-/tiIh5WT22mEo+N8UpWCGyIgPo0L1dLy9MojH2ShP9c=";
 
   doInstallCheck = true;
   nativeInstallCheckInputs = [ versionCheckHook ];

@@ -29,7 +29,7 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "pango";
-  version = "1.57.0";
+  version = "1.58.2";
 
   outputs = [
     "bin"
@@ -40,7 +40,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = fetchurl {
     url = "mirror://gnome/sources/pango/${lib.versions.majorMinor finalAttrs.version}/pango-${finalAttrs.version}.tar.xz";
-    hash = "sha256-iQZAyEHa530649j+iVN4S5MPokGxdCPmEgx7/fi4kec=";
+    hash = "sha256-NCOFtso7fHNFXXyAoTt9vkSJ4AvDvUxb1u1NzkIeN0o=";
   };
 
   depsBuildBuild = [
@@ -128,8 +128,8 @@ stdenv.mkDerivation (finalAttrs: {
 
     homepage = "https://www.pango.org/";
     license = lib.licenses.lgpl2Plus;
+    identifiers.cpeParts = lib.meta.cpeFullVersionWithVendor "gnome" finalAttrs.version;
 
-    maintainers = with lib.maintainers; [ raskin ];
     teams = [ lib.teams.gnome ];
     platforms = lib.platforms.unix;
 
@@ -139,6 +139,8 @@ stdenv.mkDerivation (finalAttrs: {
       "pangofc"
       "pangoft2"
       "pangoot"
+    ]
+    ++ lib.optionals x11Support [
       "pangoxft"
     ];
   };

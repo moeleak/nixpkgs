@@ -1,21 +1,21 @@
 {
   lib,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
   nix-update-script,
 }:
-buildGoModule (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "tsidp";
-  version = "0.0.12";
+  version = "0.0.18";
 
   src = fetchFromGitHub {
     owner = "tailscale";
     repo = "tsidp";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-J85JXK7votjNzXh9qiu9YtafVh6s6SRjxO5y7jrh/tE=";
+    hash = "sha256-oL+WH5iFVRd0erh3KfJrvUMIpZraomHoRzo5sh3duu0=";
   };
 
-  vendorHash = "sha256-CFiGRKlSCoPUpH63NiYBGvTUZI/Dxqkh7OsiExsNcEk=";
+  vendorHash = "sha256-X3o71xgGBFJM3Sspb+223NYsDwJ3jf+9lCWQxS6JDA8=";
 
   passthru.updateScript = nix-update-script { };
 

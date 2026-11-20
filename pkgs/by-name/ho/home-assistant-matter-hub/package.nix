@@ -7,17 +7,20 @@
   pnpmConfigHook,
   fetchPnpmDeps,
   makeWrapper,
+  nix-update-script,
 }:
-
+let
+  pnpm = pnpm_10;
+in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "home-assistant-matter-hub";
-  version = "2.0.43";
+  version = "2.0.60";
 
   src = fetchFromGitHub {
     owner = "RiDDiX";
     repo = "home-assistant-matter-hub";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Dls5TglEIFvVGpg8ENTb6IhCwJermmREHuJnalF4kJ4=";
+    hash = "sha256-A1E0OJ0BWx2BWHYnaom094dfUHoy+HFzunZXRBfQ0DU=";
   };
 
   # The bundled cli.js imports transitive dependencies (e.g. @noble/curves)
@@ -33,8 +36,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       pnpmInstallFlags
       pnpmWorkspaces
       ;
-    fetcherVersion = 3;
-    hash = "sha256-1DaR4q1QH07UR+EchfDI92bTdRY4C2IaGIRj426DURI=";
+    inherit pnpm;
+    fetcherVersion = 4;
+    hash = "sha256-CqmG+XqAbPev1uLm4M5ywFygQN4Focir0Gdt0GKPyRw=";
   };
 
   __structuredAttrs = true;
@@ -47,7 +51,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   nativeBuildInputs = [
     nodejs
-    pnpm_10
+    pnpm
     pnpmConfigHook
     makeWrapper
   ];
@@ -88,6 +92,12 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
     runHook postInstall
   '';
+
+  passthru = {
+    updateScript = nix-update-script {
+      extraArgs = [ "--use-github-releases" ];
+    };
+  };
 
   meta = {
     description = "Publish your home-assistant instance using Matter";

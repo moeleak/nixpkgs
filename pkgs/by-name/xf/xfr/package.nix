@@ -9,22 +9,35 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "xfr";
-  version = "0.9.11";
+  version = "0.14.1";
 
   src = fetchFromGitHub {
     owner = "lance0";
     repo = "xfr";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-m41hICpbx8aZprKrjdAdvoDEzCi8gLoLia6TTi/AThY=";
+    hash = "sha256-VjT8vxDaFZthe0TfhYfav9WzxIFjbMqbhILJMokw1rc=";
   };
 
-  cargoHash = "sha256-uUKAjq8jj/NPpi5DHktNGBLWvecSPUwYdMQF/4o7JnM=";
+  cargoHash = "sha256-lRmBdW42BuF+IkHsmd1fN1dHhYGuycCW2GuApG2MoeI=";
 
   nativeBuildInputs = [
     installShellFiles
     versionCheckHook
   ];
+
   doInstallCheck = true;
+
+  # opt ouf of default features to deselect the update-check feature
+  buildNoDefaultFeatures = true;
+
+  buildFeatures = [
+    "discovery"
+  ];
+
+  checkFlags = [
+    # flaky timing test
+    "--skip=byte_budget::paced_duration_covers_delivery"
+  ];
 
   postInstall = ''
     installShellCompletion --cmd xfr \
@@ -33,9 +46,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --zsh <($out/bin/xfr --completions zsh)
   '';
 
-  passthru = {
-    updateScript = nix-update-script { };
-  };
+  passthru.updateScript = nix-update-script { };
 
   __structuredAttrs = true;
 
@@ -43,7 +54,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     description = "Modern iperf3 alternative with a live TUI, multi-client server, and QUIC support.";
     mainProgram = "xfr";
     homepage = "https://github.com/lance0/xfr";
-    changelog = "https://github.com/lance0/xfr/releases/tag/v${finalAttrs.version}";
+    changelog = "https://github.com/lance0/xfr/releases/tag/${finalAttrs.src.tag}";
     maintainers = with lib.maintainers; [
       _0x4A6F
       herbetom

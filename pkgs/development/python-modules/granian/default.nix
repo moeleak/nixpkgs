@@ -4,6 +4,7 @@
   rustPlatform,
   cacert,
   buildPythonPackage,
+  granian,
   uvloop,
   click,
   setproctitle,
@@ -20,14 +21,14 @@
 
 buildPythonPackage rec {
   pname = "granian";
-  version = "2.7.4";
+  version = "2.8.8";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "emmett-framework";
     repo = "granian";
     tag = "v${version}";
-    hash = "sha256-KId5e1ITRCkLNmvY5q/ZT18INzS8Uh9HFCzfKEablOY=";
+    hash = "sha256-dIm8b5LMIb5H2mTzSV/xa497R78GaHrLn9NhgBLwAps=";
   };
 
   # Granian forces a custom allocator for all the things it runs,
@@ -39,8 +40,9 @@ buildPythonPackage rec {
   ];
 
   cargoDeps = rustPlatform.fetchCargoVendor {
-    inherit pname version src;
-    hash = "sha256-rR65e05uWmag+21n1YA1TILYU6ArajW2+QVOfGn4zGo=";
+    pname = "granian";
+    inherit version src;
+    hash = "sha256-Ykymd9cGOZ5P/5exdIiOehXLP3jB/BEFu21uZ17sqAA=";
   };
 
   nativeBuildInputs = with rustPlatform; [
@@ -85,6 +87,15 @@ buildPythonPackage rec {
     # SSLCertVerificationError: certificate verify failed: certificate has expired
     "test_asgi_ws_scope"
     "test_rsgi_ws_scope"
+
+    # Connection refused
+    "test_asgi"
+    "test_rsgi"
+    "test_wsgi"
+    "test_https"
+
+    # No such file or directory: 'granian.sock'
+    "test_uds_default_file_permission"
   ];
 
   # This is a measure of last resort. Granian tests fully lock up
@@ -94,6 +105,27 @@ buildPythonPackage rec {
   # and upstream claims it does not exist.
   # FIXME: root cause and fix this.
   doCheck = false;
+
+  # Make ofborg run checks.
+  # They're too buggy for hydra, but still a useful smell test
+  passthru.tests = {
+    # overridePythonAttrs is not available in finalAttrs.finalPackage
+    pytest = granian.overridePythonAttrs {
+      pname = "granian-with-check-phase";
+      # skip repeat build
+      buildPhase = ''
+        # runHook preBuild
+        die() { echo >&2 "$@"; exit 1; }
+        [[ ! -d dist ]] || die "ERROR: dist/ found at start of buildPhase"
+        cp -r ${granian.dist} dist
+        chmod -R +w dist/
+        runHook postBuild
+      '';
+      nativeBuildInputs = [ ]; # maturin overwrites buildPhase unconditionally
+      doCheck = true;
+      dontCheckPythonMetadata = true; # changed pname
+    };
+  };
 
   pythonImportsCheck = [ "granian" ];
 

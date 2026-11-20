@@ -6,80 +6,97 @@
   ocamlPackages,
   darwin,
   makeBinaryWrapper,
+  removeReferencesTo,
+  installShellFiles,
   coreutils,
   curl,
   gawk,
+  nix,
   nix-prefetch-darcs,
   nix-prefetch-fossil,
   nix-prefetch-git,
   nix-prefetch-pijul,
-  removeReferencesTo,
   testers,
   nixtamal,
+  withTUI ? ocamlPackages ? console && stdenv.hostPlatform.parsed.cpu.bits >= 64,
 }:
 
-ocamlPackages.buildDunePackage (finalAttrs: {
+let
+  ocPkgs = ocamlPackages.overrideScope (
+    _: prev: {
+      jsont = prev.jsont.override {
+        withBrr = false;
+        withBytesrw = true;
+        withTypegist = false;
+      };
+    }
+  );
+in
+ocPkgs.buildDunePackage (finalAttrs: {
   pname = "nixtamal";
-  version = "1.5.4";
+  version = "3.1.0";
   release_year = 2026;
 
-  minimalOCamlVersion = "5.3";
+  minimalOCamlVersion = "5.4";
 
   src = fetchdarcs {
     url = "https://darcs.toastal.in.th/nixtamal/stable/";
     mirrors = [ "https://smeder.ee/~toastal/nixtamal.darcs" ];
     rev = finalAttrs.version;
-    hash = "sha256-ST90m0SF3dyGOV3Q43bJ9bGuznP0WIkQsIJXUNFNPOs=";
+    hash = "sha256-AW9jcfnGM1Wi3bPKBfP8rZXjRAbwn8FIlue3SxgWGIA=";
   };
 
   nativeBuildInputs = [
     makeBinaryWrapper
     removeReferencesTo
+    installShellFiles
+    # Compile-time preprocessing
+    ocPkgs.ppx_deriving
+    # Completions
+    ocPkgs.cmdliner
     # For manpages
     python3Packages.docutils
     python3Packages.pygments
   ]
-  ++ lib.optionals stdenv.hostPlatform.isDarwin [
-    darwin.sigtool
-  ];
+  ++ lib.optional stdenv.hostPlatform.isDarwin darwin.sigtool;
 
-  buildInputs = with ocamlPackages; [
+  buildInputs = with ocPkgs; [
     cmdliner
     fmt
-    ppx_deriving_qcheck
   ];
 
-  propagatedBuildInputs = with ocamlPackages; [
-    camomile
-    eio
-    eio_main
-    jingoo
-    (jsont.override {
-      withBrr = false;
-      withBytesrw = true;
-    })
-    kdl
-    logs
-    ppx_deriving
-    qcheck-core
-    saturn
-    stdint
-    uri
-    xdg
+  propagatedBuildInputs =
+    (with ocPkgs; [
+      camomile
+      eio
+      eio_main
+      eio_posix
+      jingoo
+      (jsont.override {
+        withBrr = false;
+        withBytesrw = true;
+        withTypegist = false;
+      })
+      ppx_blob
+      kdl
+      logs
+      saturn
+      stdint
+      xdg
+    ])
+    ++ lib.optional withTUI ocPkgs.console;
+
+  nativeCheckInputs = [
+    nix
   ];
 
-  checkInputs = with ocamlPackages; [
+  checkInputs = with ocPkgs; [
     alcotest
+    ppx_deriving_qcheck
     qcheck
     qcheck-alcotest
+    qcheck-core
   ];
-
-  postPatch = ''
-    substituteInPlace bin/main.ml --subst-var version
-    substituteInPlace lib/lock_loader.ml --subst-var release_year
-  '';
-
-  doCheck = true;
 
   outputs = [
     "bin"
@@ -90,23 +107,34 @@ ocamlPackages.buildDunePackage (finalAttrs: {
     "out"
   ];
 
+  env = {
+    DUNE_CACHE = "disabled";
+  };
+
+  postPatch = ''
+    substituteInPlace bin/main.ml --subst-var version
+    substituteInPlace lib/lock_loader.ml --subst-var release_year
+  '';
+
+  doCheck = true;
+
   installPhase = ''
     runHook preInstall
 
     dune install \
        -j "$NIX_BUILD_CORES" \
-       --cache="disabled" \
        --prefix="$out" \
        --bindir="$bin/bin" \
        --datadir="$data/share" \
        --docdir="$doc/share/doc" \
        --mandir="$man/share/man" \
-       --libdir="$lib/lib/ocaml/${ocamlPackages.ocaml.version}/site-lib" \
+       --libdir="$lib/lib/ocaml/${ocPkgs.ocaml.version}/site-lib" \
        nixtamal
 
-    for dep in "${ocamlPackages.ocaml}" "${ocamlPackages.camomile}"
-    do
-        remove-references-to -t "$dep" "$bin/bin/nixtamal"
+    cp -r "$src/meta" "$src/ncl" "$data/share"/*/
+
+    for dep in "${ocPkgs.ocaml}" "${ocPkgs.camomile}"; do
+       remove-references-to -t "$dep" "$bin/bin/nixtamal"
     done
 
     wrapProgram "$bin/bin/nixtamal" --prefix PATH : ${
@@ -121,6 +149,17 @@ ocamlPackages.buildDunePackage (finalAttrs: {
       ]
     }
 
+    ${lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) /* sh */ ''
+      mkdir -p "$TMPDIR"
+      cmdliner tool-completion --standalone-completion bash nixtamal >"$TMPDIR/completion.bash"
+      cmdliner tool-completion --standalone-completion zsh nixtamal >"$TMPDIR/completion.zsh"
+      substituteInPlace "$TMPDIR/completion.zsh" --replace-fail "_nixtamal_cmdliner" "_nixtamal"
+
+      installShellCompletion --bash --cmd nixtamal "$TMPDIR/completion.bash"
+      installShellCompletion --fish --cmd nixtamal "script/completion.fish"
+      installShellCompletion --zsh --cmd nixtamal "$TMPDIR/completion.zsh"
+    ''}
+
     runHook postInstall
   '';
 
@@ -130,7 +169,7 @@ ocamlPackages.buildDunePackage (finalAttrs: {
   };
 
   meta = {
-    license = with lib.licenses; [ gpl3Plus ];
+    license = lib.licenses.gpl3Plus;
     platforms = lib.platforms.unix;
     mainProgram = "nixtamal";
     outputsToInstall = [
@@ -140,21 +179,22 @@ ocamlPackages.buildDunePackage (finalAttrs: {
       "man"
     ];
     homepage = "https://nixtamal.toast.al";
-    changelog = "https://nixtamal.toast.al/changelog/";
+    changelog = "https://nixtamal.toast.al/changelog/#${finalAttrs.version}";
     description = "Fulfilling input pinning for Nix";
     longDescription = ''
-      Nixtamal’s keys features
-
-      • Automate the manual work of input pinning, allowing to lock & refresh inputs
-      • Declarative KDL manifest file over imperative CLI flags
+      • Automate the manual work of input pinning for dependency management
+      • Allow easy ways to lock & refresh those inputs
+      • Declarative manifest file over imperative CLI flags
       • diff/grep-friendly lockfile
-      • Host, forge, VCS-agnostic
-      • Choose eval time fetchers (builtins) or build time fetchers (Nixpkgs, default) — which opens up fetching Darcs, Pijul, & Fossil
-      • Supports mirrors
+      • Declarative patch/diff management for inputs
+      • Host-, forge-, VCS-agnostic
+      • Choose eval time fetchers (builtins) or build time fetchers (Nixpkgs, default) — which opens up fetching now-supported Darcs, Pijul, & Fossil
+      • Supports mirrors, failing over when a server is down
       • Override hash algorithm on a per-project & per-input basis — including BLAKE3 support
       • Custom freshness commands
       • No experimental Nix features required
     '';
     maintainers = with lib.maintainers; [ toastal ];
+    donationPage = "https://nixtamal.toast.al/funding/";
   };
 })

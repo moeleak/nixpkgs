@@ -9,8 +9,8 @@
   libpulseaudio,
 }:
 let
-  versionMajor = "9.4";
-  versionMinor = "14";
+  versionMajor = "10.2";
+  versionMinor = "3";
   versionBuild_x86_64 = "1";
   versionBuild_i686 = "1";
 in
@@ -21,13 +21,13 @@ stdenv.mkDerivation rec {
   src =
     if stdenv.hostPlatform.system == "x86_64-linux" then
       fetchurl {
-        url = "https://download.nomachine.com/download/${versionMajor}/Linux/nomachine_${version}_${versionBuild_x86_64}_x86_64.tar.gz";
-        sha256 = "sha256-tLL8l/UgTiVzGs+mwJeRUlVA8lH72JVogBOEpaSr2AY=";
+        url = "https://web9001.nomachine.com/download/${versionMajor}/Linux/nomachine-player_${version}_${versionBuild_x86_64}_x86_64.tar.gz";
+        hash = "sha256-JOg97ElcbLM6uc6DCAwfGnoytsEgY/BSFmmdIE4oC1o=";
       }
     else if stdenv.hostPlatform.system == "i686-linux" then
       fetchurl {
-        url = "https://download.nomachine.com/download/${versionMajor}/Linux/nomachine_${version}_${versionBuild_i686}_i686.tar.gz";
-        sha256 = "sha256-pPvg8MCrpCsQiiglRxHHl9wVyndI9JTluX/mwah3wwQ=";
+        url = "https://web9001.nomachine.com/download/${versionMajor}/Linux/nomachine-player_${version}_${versionBuild_i686}_i686.tar.gz";
+        hash = "sha256-Shq1vkmOIUwANRLizoUMQPz0ul6MOm+LQJTr+pOTJfU=";
       }
     else
       throw "NoMachine client is not supported on ${stdenv.hostPlatform.system}";
@@ -98,12 +98,13 @@ stdenv.mkDerivation rec {
     homepage = "https://www.nomachine.com/";
     mainProgram = "nxplayer";
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
-    license = {
-      fullName = "NoMachine End User License Agreement, version 9";
+    license = lib.licenses.mkLicense {
+      shortName = "noMachine";
+      fullName = "NoMachine End User License Agreement, version 10";
       url = "https://www.nomachine.com/licensing/nomachine-end-user-license-agreement";
       free = false;
     };
-    maintainers = with lib.maintainers; [ talyz ];
+    maintainers = with lib.maintainers; [ danc86 ];
     platforms = [
       "x86_64-linux"
       "i686-linux"

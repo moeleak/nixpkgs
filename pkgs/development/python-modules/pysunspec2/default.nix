@@ -8,16 +8,16 @@
   openpyxl,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAtrs: {
   pname = "pysunspec2";
-  version = "1.3.5";
+  version = "1.3.7";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "sunspec";
     repo = "pysunspec2";
-    tag = "v${version}";
-    hash = "sha256-5iexVb6qXHmVczLydjXu+blGm9zwKGqUBLDUwl8HBrs=";
+    tag = "v${finalAtrs.version}";
+    hash = "sha256-N5OBzH1DSHhS2/fGvxEoISbX96Z8h+m2FDQPfpkr0VA=";
     fetchSubmodules = true;
   };
 
@@ -40,8 +40,8 @@ buildPythonPackage rec {
   meta = {
     description = "Python library for interfacing with SunSpec devices";
     homepage = "https://github.com/sunspec/pysunspec2";
-    changelog = "https://github.com/sunspec/pysunspec2/releases/tag/${src.tag}";
+    changelog = "https://github.com/sunspec/pysunspec2/releases/tag/${finalAtrs.src.tag}";
     license = lib.licenses.asl20;
     maintainers = [ lib.maintainers.cheriimoya ];
   };
-}
+})

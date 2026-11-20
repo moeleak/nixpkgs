@@ -1,21 +1,21 @@
 {
   lib,
-  buildGoModule,
+  buildGo127Module,
   fetchFromGitHub,
 }:
 
-buildGoModule (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "comigo";
-  version = "1.2.30";
+  version = "1.3.10";
 
   src = fetchFromGitHub {
     owner = "yumenaka";
     repo = "comigo";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-JS+KgXmYEx3V5FnFqcDwFonxRHg5f5n8uH4MtpT0e3g=";
+    hash = "sha256-PWZrEsX/zg97CZgQgZECgSsp3/TU+LP7GviR1MUWqmA=";
   };
 
-  vendorHash = "sha256-OUmqbev7Eq79co8RdmwOF6fqcOWwwm6Kx4fbvd2DJU4=";
+  vendorHash = "sha256-3dQw6GGkvSMlEVAVOqhylgEhvtbeZB9Vst0Vpg305VI=";
 
   subPackages = [ "." ];
 

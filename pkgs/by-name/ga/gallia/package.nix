@@ -8,22 +8,15 @@
 
 python3.pkgs.buildPythonApplication (finalAttrs: {
   pname = "gallia";
-  version = "2.0.2";
+  version = "2.2.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Fraunhofer-AISEC";
     repo = "gallia";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-2jiD2ZZGinfTT+35TYl3+okWkkTrY1IdfSYbjC+/cvs=";
+    hash = "sha256-0qEMYZ3DgZYfdvXAPhrNi47QoyObc/mAd7DxYxg2BwI=";
   };
-
-  postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace-fail "uv_build>=0.9.11,<0.10.0" "uv_build"
-  '';
-
-  pythonRelaxDeps = [ "pydantic" ];
 
   build-system = with python3.pkgs; [ uv-build ];
 
@@ -35,6 +28,7 @@ python3.pkgs.buildPythonApplication (finalAttrs: {
     platformdirs
     pydantic
     tabulate
+    wcwidth
     zstandard
   ];
 

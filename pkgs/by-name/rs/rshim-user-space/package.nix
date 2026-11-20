@@ -4,8 +4,8 @@
   bashNonInteractive,
   coreutils,
   fetchFromGitHub,
-  fetchpatch2,
-  fuse,
+  fetchpatch,
+  fuse3,
   gawk,
   gnugrep,
   gnused,
@@ -13,10 +13,12 @@
   libusb1,
   makeBinaryWrapper,
   pciutils,
+  perl,
   pkg-config,
   procps,
   pv,
   stdenv,
+  systemdSupport ? lib.meta.availableOn stdenv.hostPlatform systemd,
   systemd,
   util-linux,
   which,
@@ -25,13 +27,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "rshim-user-space";
-  version = "2.6.6";
+  version = "2.8.5";
 
   src = fetchFromGitHub {
     owner = "Mellanox";
     repo = "rshim-user-space";
     rev = "rshim-${finalAttrs.version}";
-    hash = "sha256-OdrJnOm0QegQ2ex1hFSWPfwYuBnXpGeMJ2YfvNyIwTU=";
+    hash = "sha256-Qd2dkMr0yG4S89oOyGweAAPcp1Jf+u8euE1l19q4wcQ=";
   };
 
   nativeBuildInputs = [
@@ -42,14 +44,33 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals withBfbInstall [ makeBinaryWrapper ];
 
   buildInputs = [
-    fuse
+    fuse3
     libusb1
     pciutils
-    systemd
+  ]
+  ++ lib.optionals systemdSupport [ systemd ];
+
+  patches = [
+    # https://github.com/Mellanox/rshim-user-space/pull/391
+    # Avoid nested PKG_CHECK_MODULES which leaks help text into ./configure
+    # as bare shell, producing "fuse_CFLAGS: command not found" noise.
+    ./fix-fuse-3-support.patch
+    # https://github.com/Mellanox/rshim-user-space/pull/363
+    # Fix console handling under glibc >= 2.42 where struct termio was removed.
+    ./fix-console-handling.patch
+
+    # https://github.com/Mellanox/rshim-user-space/pull/451
+    (fetchpatch {
+      url = "https://github.com/Mellanox/rshim-user-space/commit/03dfebef1bc026340bd9cb57220c8b4df9585af1.patch";
+      hash = "sha256-7qTEjJD1ZG7xIQRsmcBU3y1j7NlKyCRsEvFlsj7H5b8=";
+    })
   ];
 
   prePatch = ''
     patchShebangs scripts/bfb-install
+    patchShebangs scripts/bf-reg
+    substituteInPlace scripts/bfb-install \
+      --replace-fail 'bf-reg' "${placeholder "out"}/bin/bf-reg"
   '';
 
   strictDeps = true;
@@ -62,24 +83,28 @@ stdenv.mkDerivation (finalAttrs: {
   ''
   + lib.optionalString withBfbInstall ''
     cp -a scripts/bfb-install "$out"/bin/
+    cp -a scripts/bf-reg "$out"/bin/
   '';
 
   postFixup = lib.optionalString withBfbInstall ''
     wrapProgram $out/bin/bfb-install \
       --set PATH ${
-        lib.makeBinPath [
-          bashNonInteractive
-          coreutils
-          gawk
-          gnugrep
-          gnused
-          pciutils
-          procps
-          pv
-          systemd
-          util-linux
-          which
-        ]
+        lib.makeBinPath (
+          [
+            bashNonInteractive
+            coreutils
+            gawk
+            gnugrep
+            gnused
+            pciutils
+            perl
+            procps
+            pv
+            util-linux
+            which
+          ]
+          ++ lib.optionals systemdSupport [ systemd ]
+        )
       }
   '';
 

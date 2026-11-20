@@ -9,35 +9,36 @@
   git,
   glibcLocales,
   gnupg,
-  gpgme,
+  gpg,
   merge3,
   nix-update-script,
   openssh,
   paramiko,
   pytestCheckHook,
   rich,
-  rustPlatform,
   rustc,
-  setuptools,
+  rustPlatform,
   setuptools-rust,
+  setuptools,
   urllib3,
+  writableTmpDirAsHomeHook,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "dulwich";
-  version = "1.2.0";
+  version = "1.2.21";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "jelmer";
     repo = "dulwich";
     tag = "dulwich-${finalAttrs.version}";
-    hash = "sha256-R5vq3mb1nSqEn+LIUaXc8Edrw8TgTb5H4LOXnHgeAzQ=";
+    hash = "sha256-JijCxPx0nPW2pXsT90YzB3X8aQ9jD/vGzIST0fMY7yM=";
   };
 
   cargoDeps = rustPlatform.fetchCargoVendor {
     inherit (finalAttrs) pname version src;
-    hash = "sha256-r2Ef8ciZW6rNBg8eLr5lkqtTEXugy7B9DjbSCErJkzc=";
+    hash = "sha256-OXZY37Gg8saT8aZWAvhcP+kT3zkrXRg4vwCqg9YbxXE=";
   };
 
   nativeBuildInputs = [
@@ -61,7 +62,7 @@ buildPythonPackage (finalAttrs: {
     https = [ urllib3 ];
     merge = [ merge3 ];
     pgp = [
-      gpgme
+      gpg
       gnupg
     ];
     paramiko = [ paramiko ];
@@ -74,6 +75,7 @@ buildPythonPackage (finalAttrs: {
     glibcLocales
     openssh # for ssh-keygen
     pytestCheckHook
+    writableTmpDirAsHomeHook
   ]
   ++ lib.concatAttrValues finalAttrs.passthru.optional-dependencies;
 
@@ -83,10 +85,6 @@ buildPythonPackage (finalAttrs: {
     # Depends on setuid which is not available in sandboxed environments
     "SharedRepositoryTests"
   ];
-
-  preCheck = ''
-    export TMPDIR=$(mktemp -d)
-  '';
 
   disabledTestPaths = [
     # AssertionError: GPGMEError not raised

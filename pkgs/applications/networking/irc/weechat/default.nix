@@ -1,6 +1,7 @@
 {
   stdenv,
   fetchurl,
+  fetchpatch,
   lib,
   ncurses,
   openssl,
@@ -105,16 +106,20 @@ assert lib.all (p: p.enabled -> !(builtins.elem null p.buildInputs)) plugins;
 
 stdenv.mkDerivation rec {
   pname = "weechat";
-  version = "4.9.0";
+  version = "4.10.4";
 
   src = fetchurl {
     url = "https://weechat.org/files/src/weechat-${version}.tar.xz";
-    hash = "sha256-fLubJ/JafS8djEJqCPjmJe77wdPlm793WSVET3I5S28=";
+    hash = "sha256-m2eoaTMPNEmPCNyrSe3BxU6aivE2GI0w1e0fuCVxBto=";
   };
 
-  # Why is this needed? https://github.com/weechat/weechat/issues/2031
-  patches = lib.optionals gettext.gettextNeedsLdflags [
-    ./gettext-intl.patch
+  patches = [
+    # https://github.com/weechat/weechat/issues/2031
+    (fetchpatch {
+      url = "https://github.com/weechat/weechat/commit/b457688b41e429372a3dac64efd2534fdf4b2f73.patch";
+      excludes = [ "CHANGELOG.md" ];
+      hash = "sha256-3UBsAsAVWDnaQ9RSxJkg8+MYTXyoM4l46b56BW7wzuY=";
+    })
   ];
 
   outputs = [
@@ -199,7 +204,7 @@ stdenv.mkDerivation rec {
       on https://nixos.org/nixpkgs/manual/#sec-weechat .
     '';
     license = lib.licenses.gpl3;
-    maintainers = with lib.maintainers; [ ncfavier ];
+    maintainers = with lib.maintainers; [ abbe ];
     mainProgram = "weechat";
     platforms = lib.platforms.unix;
   };

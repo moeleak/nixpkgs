@@ -2,6 +2,7 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  fetchpatch,
 
   # nativeBuildInputs
   cmake,
@@ -9,10 +10,12 @@
   rustc,
   cargo,
   installShellFiles,
+  pkg-config,
 
   # buildInputs
   corrosion,
   libuuid,
+  sqlite,
 
   # passthru.tests
   nixosTests,
@@ -25,19 +28,33 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "taskwarrior";
-  version = "3.4.2";
+  version = "3.5.0";
   src = fetchFromGitHub {
     owner = "GothenburgBitFactory";
     repo = "taskwarrior";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Y0jnAW4OtPI9GCOSFRPf8/wo4qBB6O1FASj40S601+E=";
+    hash = "sha256-ckVYO7Z5nF2xvPU4K/dktx/ht4gKTASlzZNkDjXXKyg=";
     fetchSubmodules = true;
   };
   cargoDeps = rustPlatform.fetchCargoVendor {
-    name = "${finalAttrs.pname}-${finalAttrs.version}-cargo-deps";
-    inherit (finalAttrs) src;
-    hash = "sha256-03HG8AGe6PJ516zL23iNjGUYmGOZa8NuFljb1ll2pjs=";
+    inherit (finalAttrs) pname version src;
+    hash = "sha256-vNi/gVzIzTXuuPkWNimDwPJG7COWJATzGaT6J4UrrTk=";
   };
+  patches = [
+    # Propagate system SQLite through the CMake/Rust bridge.
+    # https://github.com/GothenburgBitFactory/taskwarrior/pull/4223
+    (fetchpatch {
+      url = "https://github.com/GothenburgBitFactory/taskwarrior/commit/bd86de7a6e99b1bc8d1a8f5704a08571afd2cdef.patch";
+      hash = "sha256-6IAQlY5bExL9oCswIfs9D3MrcZKtQcSoNrEnAL46VXA=";
+    })
+
+    # Installs properly Bash scripts, just like fish. See:
+    # https://github.com/GothenburgBitFactory/taskwarrior/pull/4173
+    (fetchpatch {
+      url = "https://github.com/GothenburgBitFactory/taskwarrior/commit/c1958786deb9be8b245b4fc4c3efd0258cd70782.patch";
+      hash = "sha256-i/9m/ipF+yc2iMNoNWH4i2myUOilyKNqP2A5zWkCJaQ=";
+    })
+  ];
 
   # The CMakeLists files used by upstream issue a `cargo install` command to
   # install a rust tool (cxxbridge-cmd) that is supposed to be included in the Cargo.toml's and
@@ -75,39 +92,36 @@ stdenv.mkDerivation (finalAttrs: {
     rustc
     cargo
     installShellFiles
+    pkg-config
   ];
 
   buildInputs = [
     corrosion
     libuuid
+    sqlite
   ];
 
-  doCheck = true;
+  # The test suite is run as an installCheck instead of a check: since
+  # https://github.com/GothenburgBitFactory/taskwarrior/commit/76537e107da1654e81df9713df25dbb8fadf4320
+  # (3.5.0) the default config includes `default.theme`, which `task` looks
+  # up at its compiled-in $out/share/doc/task/rc (TASK_RCDIR). That path is
+  # only populated once `installPhase` has run, so the tests need to run
+  # after install, not before.
+  doInstallCheck = true;
   # See:
   # https://github.com/GothenburgBitFactory/taskwarrior/blob/v3.4.1/doc/devel/contrib/development.md#run-the-test-suite
-  preCheck = ''
+  preInstallCheck = ''
     make test_runner
   '';
-  nativeCheckInputs = [
-    python3
-  ];
-
-  doInstallCheck = true;
-
+  installCheckTarget = "test";
   nativeInstallCheckInputs = [
+    python3
     versionCheckHook
   ];
 
   versionCheckProgram = "${placeholder "out"}/bin/${finalAttrs.meta.mainProgram}";
 
   postInstall = ''
-    # ZSH is installed automatically from some reason, only bash and fish need
-    # manual installation
-    installShellCompletion --cmd task \
-      --bash $out/share/doc/task/scripts/bash/task.sh \
-      --fish $out/share/doc/task/scripts/fish/task.fish
-    rm -r $out/share/doc/task/scripts/bash
-    rm -r $out/share/doc/task/scripts/fish
     # Install vim and neovim plugin
     mkdir -p $out/share/vim-plugins
     mv $out/share/doc/task/scripts/vim $out/share/vim-plugins/task
@@ -127,6 +141,7 @@ stdenv.mkDerivation (finalAttrs: {
       mlaradji
       doronbehar
       Necior
+      me-and
     ];
     mainProgram = "task";
     platforms = lib.platforms.unix;

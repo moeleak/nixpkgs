@@ -8,16 +8,18 @@
 
 buildGoModule (finalAttrs: {
   pname = "desync";
-  version = "1.0.0";
+  version = "1.1.5";
 
   src = fetchFromGitHub {
     owner = "folbricht";
     repo = "desync";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-aRxWq9gGfglfBixS7xOoj8r29rJRAfGj4ydcSFf/7P0=";
+    hash = "sha256-WPhxXHB4d+yGX/94GwEJa3HEYZhIq7ncDEMd+NeY7bQ=";
   };
 
-  vendorHash = "sha256-ywID0txn7L6+QkYNvGvO5DTsDQBZLU+pGwNd3q7kLKI=";
+  vendorHash = "sha256-08LGC+N0NjUAjo9b5JhKNr46CuIXMz/erw2RPRU17xo=";
+
+  ldflags = [ "-X main.version=${finalAttrs.src.tag}" ];
 
   nativeBuildInputs = [ installShellFiles ];
 
@@ -26,19 +28,10 @@ buildGoModule (finalAttrs: {
 
   checkFlags =
     let
-      skippedTests = [
-        "TestExtract" # block cloning fails on ZFS
-        "TestExtractCommand/extract_while_regenerating_the_corrupted_seed" # block cloning fails on ZFS
-        "TestExtractCommand/extract_with_seed_directory" # block cloning fails on ZFS
-        "TestExtractCommand/extract_with_single_seed" # block cloning fails on ZFS
-        "TestExtractCommand/extract_with_single_seed,_explicit_data_directory_and_unexpected_seed_options" # block cloning fails on ZFS
-        "TestExtractCommand/extract_with_single_seed_and_explicit_data_directory" # block cloning fails on ZFS
-        "TestExtractWithNonStaticSeeds" # block cloning fails on ZFS
-        "TestMountIndex" # FUSE does not work in sandbox
-        "TestSeed/extract_repetitive_file" # block cloning fails on ZFS
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isDarwin [
-        # sendfile is not permitted in Darwin sandbox
+      skippedTests = lib.optionals stdenv.hostPlatform.isDarwin [
+        # sendfile(2) does not work with __darwinAllowLocalNetworking, see NixOS/nix#16632
+        "TestExtractAdaptiveConcurrency"
+        "TestExtractAdaptiveNextToFixedStore"
         "TestS3StoreGetChunk/fail"
         "TestS3StoreGetChunk/recover"
       ];
@@ -62,6 +55,6 @@ buildGoModule (finalAttrs: {
     homepage = "https://github.com/folbricht/desync";
     changelog = "https://github.com/folbricht/desync/releases/tag/v${finalAttrs.version}";
     license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [ chaduffy ];
+    maintainers = with lib.maintainers; [ matshch ];
   };
 })

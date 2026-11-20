@@ -2,21 +2,26 @@
   buildPythonPackage,
   lib,
   fetchPypi,
+  setuptools_80,
 }:
 
-buildPythonPackage rec {
+buildPythonPackage (finalAttrs: {
   pname = "xstatic-bootstrap";
   version = "5.3.8.0";
-  format = "setuptools";
+  pyproject = true;
 
   src = fetchPypi {
     pname = "xstatic_bootstrap";
-    inherit version;
+    inherit (finalAttrs) version;
     hash = "sha256-BPXMlbvlQ40ehR0GxMoa1/hL02oJtN5aH1S1JOhQaFk=";
   };
 
+  build-system = [ setuptools_80 ];
+
   # no tests implemented
   doCheck = false;
+
+  pythonImportsCheck = [ "xstatic.pkg.bootstrap" ];
 
   meta = {
     homepage = "https://getbootstrap.com";
@@ -24,4 +29,4 @@ buildPythonPackage rec {
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ makefu ];
   };
-}
+})

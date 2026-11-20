@@ -6,27 +6,28 @@
   copyDesktopItems,
   makeWrapper,
   makeDesktopItem,
-  electron_39,
+  electron_41,
   nodejs_22,
   nix-update-script,
-
-  nodejs ? nodejs_22,
-  electron ? electron_39,
 }:
+let
+  electron = electron_41;
+  nodejs = nodejs_22;
+in
 buildNpmPackage (finalAttrs: {
   inherit nodejs;
 
   pname = "openscreen";
-  version = "1.3.0";
+  version = "1.4.0";
 
   src = fetchFromGitHub {
     owner = "siddharthvaddem";
     repo = "openscreen";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-0L+SGbhKNvSH5IpjHjS5G1uhnoWV5oIaSs2mRSAl/mM=";
+    hash = "sha256-ZBWDQVYDXJ/IQGhlmscmCOMjpl03kVIdMoJXOW8OjUI=";
   };
 
-  npmDepsHash = "sha256-pKfOxRzVfMNVHxA9oM9naWz024api8jxiTJwy0+6W9A=";
+  npmDepsHash = "sha256-SMAYgOwlZg9+/KZBUhVviOxEdMeL3Z2YdC8Hx8Q/ioY=";
 
   npmRebuildFlags = [ "--ignore-scripts" ]; # Prevent running `node-gyp build`
 
@@ -60,7 +61,8 @@ buildNpmPackage (finalAttrs: {
       npm exec electron-builder -- \
         --dir \
         -c.electronDist=${electron.dist} \
-        -c.electronVersion=${electron.version}
+        -c.electronVersion=${electron.version} \
+        -c.npmRebuild=false
     ''}
 
     runHook postBuild
@@ -111,10 +113,10 @@ buildNpmPackage (finalAttrs: {
 
   meta = {
     description = "Free, open-source alternative to Screen Studio (sort of)";
-    homepage = "https://openscreen.vercel.app";
+    homepage = "https://github.com/siddharthvaddem/openscreen";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [
-      Renna42
+      etiennelescot
     ];
     mainProgram = "openscreen";
     platforms = lib.platforms.linux ++ lib.platforms.darwin;

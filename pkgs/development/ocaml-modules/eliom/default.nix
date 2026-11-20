@@ -1,8 +1,8 @@
 {
   buildDunePackage,
   lib,
-  ocaml,
   fetchFromGitHub,
+  fetchpatch,
   which,
   ocsigen_server,
   lwt_react,
@@ -19,14 +19,22 @@
 
 buildDunePackage (finalAttrs: {
   pname = "eliom";
-  version = "12.0.1";
+  version = "12.1.0";
 
   src = fetchFromGitHub {
     owner = "ocsigen";
     repo = "eliom";
     tag = finalAttrs.version;
-    hash = "sha256-Lja3Xe3FszzyILhpOXWTyA0ippaU6aW5CJ06WEKgbkA=";
+    hash = "sha256-VJHt64XheW+JPZ3pynlOvpTgXf5nE9HCB4K1bWUXmAs=";
   };
+
+  patches = [
+    # Compatibility with tyxml 5.0.0
+    (fetchpatch {
+      url = "https://github.com/ocsigen/eliom/commit/14352fd0280943023306a9870f8a3b49af137325.patch";
+      hash = "sha256-ThvsIBZNCycmR9PDyGZk5TOe0jg7lubIaivCp8pZWqw=";
+    })
+  ];
 
   nativeBuildInputs = [
     which

@@ -5,22 +5,23 @@
   home-assistant,
   pytestCheckHook,
   pytest-cov-stub,
-  pytest-homeassistant-custom-component,
+  pytest-homeassistant,
+  homeassistant,
 
   # dependency
   moonraker-api,
 }:
 
-buildHomeAssistantComponent rec {
+buildHomeAssistantComponent (finalAttrs: {
   owner = "marcolivierarsenault";
   domain = "moonraker";
-  version = "1.13.3";
+  version = "1.14.0";
 
   src = fetchFromGitHub {
     owner = "marcolivierarsenault";
     repo = "moonraker-home-assistant";
-    tag = version;
-    hash = "sha256-EVlz2wsI3T815Lct9sfdYneyM0/8RHVbT6XJegtW9vs=";
+    tag = finalAttrs.version;
+    hash = "sha256-6UvTQx5pjq/99I0ptw4chQlMqQZwo0xpD2Mc0L077eI=";
   };
 
   dependencies = [
@@ -28,26 +29,18 @@ buildHomeAssistantComponent rec {
   ];
 
   nativeCheckInputs = [
-    pytest-homeassistant-custom-component
+    homeassistant
+    pytest-homeassistant
     pytest-cov-stub
     pytestCheckHook
   ]
-  ++ home-assistant.getPackages "camera" home-assistant.python.pkgs;
-
-  disabledTests = [
-    # tests try to open sockets
-    "test_thumbnail_camera_from_img_to_none"
-    "test_bad_connection_config_flow"
-  ];
-
-  #skip phases with nothing to do
-  dontConfigure = true;
+  ++ home-assistant.getPackages "camera" home-assistant.python3Packages;
 
   meta = {
-    changelog = "https://github.com/marcolivierarsenault/moonraker-home-assistant/releases/tag/${version}";
+    changelog = "https://github.com/marcolivierarsenault/moonraker-home-assistant/releases/tag/${finalAttrs.src.tag}";
     description = "Custom integration for Moonraker and Klipper in Home Assistant";
     homepage = "https://github.com/marcolivierarsenault/moonraker-home-assistant";
     maintainers = with lib.maintainers; [ _9R ];
     license = lib.licenses.mit;
   };
-}
+})

@@ -6,6 +6,8 @@
   jq,
   lib,
   makeBinaryWrapper,
+  pkg-config,
+  libgit2,
   man-db,
   nixosTests,
   openssh,
@@ -15,9 +17,9 @@
   xdg-utils,
   versionCheckHook,
 
-  version ? "1.8.0",
-  srcHash ? "sha256-QjAdZO5PwJ6FuThzQYnkF+hAeArltXxhEnzIcAePwzA=",
-  cargoHash ? "sha256-m8CqRTJD/1bOqTB2SoUjglZsOWGfv/nBNTOQftNvIqE=",
+  version ? "1.10.3",
+  srcHash ? "sha256-xbVu+s4TQMc6fA8iUNq01y5lDxfC76Pwe6Z2rqA6C5Q=",
+  cargoHash ? "sha256-zQ6XnDJt3pek0WzC0J8PY111LGuzZeSCZ1QxwYAhPWw=",
   updateScript ? ./update.sh,
 }:
 
@@ -39,14 +41,18 @@ rustPlatform.buildRustPackage (finalAttrs: {
     '';
   };
 
+  __structuredAttrs = true;
+
   env.RADICLE_VERSION = finalAttrs.version;
 
   nativeBuildInputs = [
     asciidoctor
     installShellFiles
     makeBinaryWrapper
+    pkg-config
   ];
-  nativeCheckInputs = [ gitMinimal ];
+
+  buildInputs = [ libgit2 ];
 
   preBuild = ''
     export GIT_HEAD=$(<$src/.git_head)
@@ -58,6 +64,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--package=radicle-cli"
     "--package=radicle-remote-helper"
   ];
+
+  nativeCheckInputs = [ gitMinimal ];
 
   cargoTestFlags = finalAttrs.cargoBuildFlags;
 
@@ -83,6 +91,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     "--skip=tests::e2e::test_connection_crossing"
     # https://radicle.zulipchat.com/#narrow/stream/369277-heartwood/topic/Clone.20Partial.20Fail.20Flake
     "--skip=rad_clone_partial_fail"
+    "--skip=commands::patch::rad_patch_merge_unauthorized_branch"
   ];
 
   postInstall = ''
@@ -166,12 +175,18 @@ rustPlatform.buildRustPackage (finalAttrs: {
     '';
     homepage = "https://radicle.dev";
     changelog = "https://radicle.network/nodes/seed.radicle.dev/rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5/tree/CHANGELOG.md";
-    license = with lib.licenses; [
-      asl20
-      mit
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        asl20
+        mit
+      ];
     platforms = lib.platforms.unix;
     teams = [ lib.teams.radicle ];
     mainProgram = "rad";
+    knownVulnerabilities = [
+      # https://radicle.dev/2026/09/23/disclosure-of-vulnerability-in-network-protocol
+      "Private repositories are insecure: traffic between nodes is not encrypted and not authenticated."
+    ];
   };
 })

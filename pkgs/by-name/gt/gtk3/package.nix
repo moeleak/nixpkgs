@@ -295,7 +295,9 @@ stdenv.mkDerivation (finalAttrs: {
     '';
     homepage = "https://www.gtk.org/";
     license = lib.licenses.lgpl2Plus;
-    maintainers = with lib.maintainers; [ raskin ];
+    identifiers.cpeParts = lib.meta.cpeFullVersionWithVendor "gnome" finalAttrs.version // {
+      product = "gtk";
+    };
     teams = [ lib.teams.gnome ];
     pkgConfigModules = [
       "gdk-3.0"

@@ -2,6 +2,7 @@
   lib,
   buildPythonPackage,
   fetchFromGitHub,
+  pyprojectVersionPatchHook,
 
   # build-system
   setuptools,
@@ -9,10 +10,14 @@
   # dependencies
   aiohttp,
   av,
+  cpace,
+  cryptography,
   mashumaro,
+  noiseprotocol,
   numpy,
   orjson,
   pillow,
+  soxr,
   zeroconf,
 
   # test dependencies
@@ -29,21 +34,17 @@
 
 buildPythonPackage (finalAttrs: {
   pname = "aiosendspin";
-  version = "4.4.0";
+  version = "10.2.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Sendspin";
     repo = "aiosendspin";
     tag = finalAttrs.version;
-    hash = "sha256-7edFCGNbECW5rrTbF7vJ4lJUc2IrQZD9VTR3IxJRP08=";
+    hash = "sha256-Y8DXmuoQHXA3dtnQVGjp0sQX3R4NYjQVU2JtpsorqRQ=";
   };
 
-  # https://github.com/Sendspin/aiosendspin/blob/4.4.0/pyproject.toml#L7
   postPatch = ''
-    substituteInPlace pyproject.toml \
-      --replace-fail 'version = "0.0.0"' 'version = "${finalAttrs.version}"'
-
     # too narrow timeouts, so remove pytest-timeout
     sed -i "/addopts/d" pyproject.toml
   '';
@@ -52,25 +53,57 @@ buildPythonPackage (finalAttrs: {
     setuptools
   ];
 
+  nativeBuildInputs = [
+    # https://github.com/Sendspin/aiosendspin/blob/9.1.1/pyproject.toml#L30
+    pyprojectVersionPatchHook
+  ];
+
   dependencies = [
     aiohttp
-    av
+    cpace
+    cryptography
     mashumaro
-    numpy
+    noiseprotocol
     orjson
-    pillow
     zeroconf
   ];
+
+  optional-dependencies = {
+    asrc = [
+      av
+      numpy
+      soxr
+    ];
+    server = [
+      av
+      numpy
+      pillow
+    ];
+    source = [
+      av
+      numpy
+    ];
+  };
 
   nativeCheckInputs = [
     pytest-aiohttp
     pytest-cov-stub
     pytest-xdist
     pytestCheckHook
-  ];
+  ]
+  ++ finalAttrs.passthru.optional-dependencies.server;
 
   pythonImportsCheck = [
     "aiosendspin"
+  ];
+
+  __darwinAllowLocalNetworking = true;
+
+  disabledTests = [
+    # This test fails due to our ffmpeg/pyav being build with libsoxr and it automatically being chosen.
+    # When forcefully disabling libsoxr, the test passes, but Music Assistant, the primary consumer of this library,
+    # builds a custom ffmpeg with libsoxr and then links their PyAV against it, so it cannot be that bad, right?
+    "test_format_change_during_inflight_commit_aborts_old_format_delivery"
   ];
 
   passthru = {

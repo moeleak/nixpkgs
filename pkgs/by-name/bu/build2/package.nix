@@ -6,7 +6,7 @@
   fetchurl,
   fixDarwinDylibNames,
   libbutl,
-  libpkgconf,
+  libpkg-config,
   buildPackages,
   enableShared ? !stdenv.hostPlatform.isStatic,
   enableStatic ? !enableShared,
@@ -16,7 +16,7 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "build2";
-  version = "0.17.0";
+  version = "0.18.1";
 
   outputs = [
     "out"
@@ -29,7 +29,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = fetchurl {
     url = "https://pkg.cppget.org/1/alpha/build2/build2-${finalAttrs.version}.tar.gz";
-    hash = "sha256-Kx5X/GV3GjFSbjo1mzteiHnnm4mr6+NAKIR/mEE+IdA=";
+    hash = "sha256-BLMBd/1kofVuB2MalPyuj4lXNMi3p5uuzVIJUzQv3A0=";
   };
 
   patches = [
@@ -45,11 +45,10 @@ stdenv.mkDerivation (finalAttrs: {
   disallowedReferences = [
     build2-bootstrap
     libbutl.dev
-    libpkgconf.dev
   ];
   buildInputs = [
     libbutl
-    libpkgconf
+    libpkg-config
   ];
 
   # Build2 uses @rpath on darwin
@@ -71,8 +70,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   build2ConfigureFlags = [
     "config.bin.lib=${configSharedStatic enableShared enableStatic}"
-    "config.cc.poptions+=-I${lib.getDev libpkgconf}/include/pkgconf"
-    "config.build2.libpkgconf=true"
   ];
 
   postInstall = lib.optionalString stdenv.hostPlatform.isDarwin ''

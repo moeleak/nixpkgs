@@ -3,24 +3,29 @@
   rustPlatform,
   fetchFromGitHub,
   pkg-config,
+  libgit2,
   udev,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "framework-tool";
-  version = "0.6.3";
+  version = "0.6.7";
 
   src = fetchFromGitHub {
     owner = "FrameworkComputer";
     repo = "framework-system";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-EoaMVbnmidXoCRMbqn5LIZuxXE9xl9Dtb16U9FKmH+4=";
+    hash = "sha256-r/WkdEmvz9Rva6e2to+Tp2oXCLzK94P2odL/o/4GM1A=";
   };
 
-  cargoHash = "sha256-PshbC+LIBm84/86w9lP0OmCVztsT5gB+86rUorCDsQM=";
+  cargoHash = "sha256-JMVuDerKrNW795qMNzzpeViJEVaGoLevNLaup6705og=";
 
   nativeBuildInputs = [ pkg-config ];
-  buildInputs = [ udev ];
+
+  buildInputs = [
+    libgit2
+    udev
+  ];
 
   meta = {
     description = "Swiss army knife for Framework laptops";
@@ -29,7 +34,6 @@ rustPlatform.buildRustPackage (finalAttrs: {
     platforms = [ "x86_64-linux" ];
     maintainers = with lib.maintainers; [
       nickcao
-      leona
       kloenk
       johnazoidberg
     ];

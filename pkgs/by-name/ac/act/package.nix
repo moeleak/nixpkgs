@@ -8,16 +8,16 @@
 }:
 buildGoModule (finalAttrs: {
   pname = "act";
-  version = "0.2.88";
+  version = "0.2.97";
 
   src = fetchFromGitHub {
     owner = "nektos";
     repo = "act";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-/nkaJlB2opuScXb8+Jo9rXdYN1Pwc+nq+T05Y4yxcCI=";
+    hash = "sha256-sVwFJGeKb/+gA2fI72Nzwgg6iz0RoDS8gK56aWRmdCw=";
   };
 
-  vendorHash = "sha256-z7FX2hrF4DkmHu0K9Atc76pa+PPLylimpoWhQCeF5uA=";
+  vendorHash = "sha256-swbESCLfvFlfpzVDhECGbwmrs8g3GgFisLJXfraytro=";
 
   doCheck = false;
 

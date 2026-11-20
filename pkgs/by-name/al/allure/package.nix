@@ -8,11 +8,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "allure";
-  version = "2.40.0";
+  version = "2.46.2";
 
   src = fetchurl {
     url = "https://github.com/allure-framework/allure2/releases/download/${finalAttrs.version}/allure-${finalAttrs.version}.tgz";
-    hash = "sha256-RXOO/8dGZ0DULqkTjoD8pQgedWbHCvypRwjZxVhdNCQ=";
+    hash = "sha256-gwIeLALpo0h98knve79RwbnyO3Ir0ojG0XhWCTA+Dfg=";
   };
 
   dontConfigure = true;

@@ -1,63 +1,82 @@
 {
   lib,
+  stdenv,
   python3Packages,
   fetchFromGitHub,
   versionCheckHook,
 }:
 python3Packages.buildPythonApplication (finalAttrs: {
   pname = "rclip";
-  version = "2.1.6";
+  version = "4.1.2";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "yurijmikhalevich";
     repo = "rclip";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-95OiG3I9S9eJHMYkRd9Y52XnCROFV98fvmUs4SRBF4s=";
+    hash = "sha256-5jG95v1fMhjaHnDe1BcoIcmk+xfgSbkCnptgrGhT2GE=";
   };
 
-  build-system = with python3Packages; [
-    poetry-core
-  ];
+  postPatch = ''
+    substituteInPlace pyproject.toml --replace-fail "uv_build>=0.11.12,<0.12.0" "uv-build"
+  '';
 
-  dependencies = with python3Packages; [
-    numpy
-    open-clip-torch
-    pillow
-    pillow-heif
-    requests
-    torch
-    torchvision
-    tqdm
-    rawpy
+  build-system = with python3Packages; [
+    uv-build
   ];
 
   pythonRelaxDeps = [
+    "huggingface-hub"
     "numpy"
-    "open_clip_torch"
     "pillow"
     "rawpy"
-    "torch"
-    "torchvision"
+    "regex"
+    "textual-image"
+  ];
+  pythonRemoveDeps = lib.optionals stdenv.hostPlatform.isDarwin [
+    # unpackaged
+    "coremltools"
+  ];
+  dependencies = with python3Packages; [
+    ftfy
+    huggingface-hub
+    numpy
+    onnxruntime
+    pillow
+    pillow-heif
+    regex
+    requests
+    textual
+    textual-image
+    tqdm
+    rawpy
   ];
 
   pythonImportsCheck = [ "rclip" ];
 
   nativeCheckInputs = [
     versionCheckHook
+    python3Packages.jinja2
   ]
   ++ (with python3Packages; [ pytestCheckHook ]);
+
+  disabledTests = [
+    # requires rawpy to be built with DEMOSAIC_PACK_GPL2
+    "test_collects_native_versions_from_runtime_apis"
+    # requires rclip to be built with uv before inspecting the artifacts
+    "test_sdist_includes_compliance_inputs"
+    "test_wheel_includes_clip_legal_files"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # NativeHeifDecodeError: macOS could not render the HEIF image (in the sandbox)
+    "test_decode_path_downscales_large_heic_to_min_side"
+    "test_decode_path_returns_the_full_frame_by_default"
+    "test_thumbnail_decode_matches_the_full_frame_decode"
+  ];
 
   disabledTestPaths = [
     # requires network
     "tests/e2e/test_rclip.py"
-  ];
-
-  disabledTests = [
-    # requires network
-    "test_text_model_produces_the_same_vector_as_the_main_model"
-    "test_loads_text_model_when_text_processing_only_requested_and_checkpoint_exists"
-    "test_loads_full_model_when_text_processing_only_requested_and_checkpoint_doesnt_exist"
   ];
 
   meta = {

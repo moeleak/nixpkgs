@@ -11,16 +11,16 @@
 
 maven.buildMavenPackage rec {
   pname = "sonar-scanner-cli";
-  version = "7.3.0.5189";
+  version = "8.4.0.16527";
 
   src = fetchFromGitHub {
     owner = "SonarSource";
     repo = "sonar-scanner-cli";
     tag = version;
-    hash = "sha256-Vbd+vQKFQo/wzGF4ekcCiEczlyuTD41Liz+nePR9lVA=";
+    hash = "sha256-jdBI4SrKHvi/d+xB/4CgnorrXYzRSkgiBqEP+s6sHro=";
   };
 
-  mvnHash = "sha256-1SPpGu6uQ1Xa0U/DUjfZAXi6SQN/8LImU6THv4e9CSo=";
+  mvnHash = "sha256-gfG4fH5TnsxviLlbqCX2m0LycPU+VxchkswxAOT215s=";
 
   mvnParameters = "-Dproject.build.outputTimestamp=1980-01-01T00:00:02Z";
 
@@ -74,6 +74,7 @@ maven.buildMavenPackage rec {
     description = "Scanner CLI for SonarQube and SonarCloud";
     homepage = "https://github.com/SonarSource/sonar-scanner-cli";
     license = lib.licenses.lgpl3Only;
+    maintainers = with lib.maintainers; [ kmjayadeep ];
     mainProgram = "sonar-scanner";
     platforms = lib.platforms.unix;
   };

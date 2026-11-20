@@ -10,18 +10,22 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "navbar-card";
-  version = "1.6.0";
+  version = "1.8.0";
 
   src = fetchFromGitHub {
     owner = "joseluis9595";
     repo = "lovelace-navbar-card";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-ngKsH83nrDglRQBdQhJzMC8/TRV+uL21vi2ovsLEPuY=";
+    hash = "sha256-v9qXY/oRZ5CZjUcPH31jznQQtS/A6RjkMCTv0eTH1uQ=";
   };
+
+  strictDeps = true;
 
   node_modules = stdenv.mkDerivation {
     pname = "${finalAttrs.pname}-node_modules";
     inherit (finalAttrs) version src;
+
+    strictDeps = true;
 
     nativeBuildInputs = [
       bun
@@ -58,7 +62,7 @@ stdenv.mkDerivation (finalAttrs: {
     # Required else we get errors that our fixed-output derivation references store paths
     dontFixup = true;
 
-    outputHash = "sha256-By1ZTJ+cZO+vhs0BL8HSu36k+dvG0WPRnuUwIoaclnw=";
+    outputHash = "sha256-dYeWdDcwqk7U1o7xay7ZTabLQaqV8cAiqYA+sXb0FxI=";
     outputHashMode = "recursive";
   };
 

@@ -10,16 +10,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "pscale";
-  version = "0.282.0";
+  version = "0.353.0";
 
   src = fetchFromGitHub {
     owner = "planetscale";
     repo = "cli";
     rev = "v${finalAttrs.version}";
-    sha256 = "sha256-qCbdsSu4XTMbinW87AUO6y125nHhsD+dQ0JioMXIqVM=";
+    sha256 = "sha256-l+C2OXfGABlMt0yVe02rFFNYNIVTQ+dmexNP/zWFMao=";
   };
 
-  vendorHash = "sha256-+XZRC6Q2Qc1Oc4fn6SsLNqDvZTvgK6HDFESrmvxKzGo=";
+  vendorHash = "sha256-w8gg1rZJ7sl/1kLA7App0h3bBKq+Ey4zgWTv2U7tzNs=";
 
   ldflags = [
     "-s"
@@ -30,6 +30,11 @@ buildGoModule (finalAttrs: {
   ];
 
   nativeBuildInputs = [ installShellFiles ];
+
+  # The importcmd tests write a state directory under $HOME.
+  preCheck = ''
+    export HOME=$(mktemp -d)
+  '';
 
   postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd pscale \

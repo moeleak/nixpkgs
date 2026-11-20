@@ -2,25 +2,31 @@
   lib,
   buildPythonPackage,
   fetchFromGitHub,
+  lookyloo-models,
   poetry-core,
+  pydantic,
   requests,
 }:
 
 buildPythonPackage (finalAttrs: {
   pname = "pylacus";
-  version = "1.21.3";
+  version = "1.28.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "ail-project";
     repo = "PyLacus";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-cQsrrifoDnNrliRoDoJtTgFMu8FjgSmm3Td4HXrLjwQ=";
+    hash = "sha256-/nquSgYIJwFVQIYJMG9zBtpccYXWsibm5yNbY81BvzU=";
   };
 
   build-system = [ poetry-core ];
 
-  dependencies = [ requests ];
+  dependencies = [
+    lookyloo-models
+    pydantic
+    requests
+  ];
 
   # Tests require network access
   doCheck = false;

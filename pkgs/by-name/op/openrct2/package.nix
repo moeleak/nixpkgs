@@ -1,109 +1,117 @@
 {
   lib,
   stdenv,
-  fetchFromGitHub,
   fetchurl,
-  unzip,
-
+  fetchFromGitHub,
   SDL2,
   cmake,
   curl,
   discord-rpc,
-  duktape,
-  expat,
   flac,
   fontconfig,
   freetype,
-  gbenchmark,
+  gtest,
   icu,
   innoextract,
-  jansson,
-  libGLU,
+  libGL,
   libiconv,
   libogg,
   libpng,
-  libpthread-stubs,
   libvorbis,
   libzip,
-  makeWrapper,
+  makeBinaryWrapper,
   nlohmann_json,
   openssl,
   pkg-config,
-  speexdsp,
+  unzip,
   versionCheckHook,
+  writableTmpDirAsHomeHook,
   zlib,
-
-  withDiscordRpc ? false,
+  zstd,
   # Paths to RCT1 and RCT2 installs can be specified to have them added as a wrapped argument
   rct1Path ? null,
   rct2Path ? null,
+  verifyAssets ? true,
+  withDiscordRpc ? false,
 }:
 
-let
-  objects-version = "1.7.9";
-  openmusic-version = "1.6.1";
-  opensfx-version = "1.0.6";
-  title-sequences-version = "0.4.26";
-
-  objects = fetchurl {
-    url = "https://github.com/OpenRCT2/objects/releases/download/v${objects-version}/objects.zip";
-    hash = "sha256-VUYe0gxugvFOmiec2ERlSwJkmZu5QDTVj6kS/e4m6tY=";
-  };
-  openmusic = fetchurl {
-    url = "https://github.com/OpenRCT2/OpenMusic/releases/download/v${openmusic-version}/openmusic.zip";
-    hash = "sha256-mUs1DTsYDuHLlhn+J/frrjoaUjKEDEvUeonzP6id4aE=";
-  };
-  opensfx = fetchurl {
-    url = "https://github.com/OpenRCT2/OpenSoundEffects/releases/download/v${opensfx-version}/opensound.zip";
-    hash = "sha256-BrkPPhnCFnUt9EHVUbJqnj4bp3Vb3SECUEtzv5k2CL4=";
-  };
-  title-sequences = fetchurl {
-    url = "https://github.com/OpenRCT2/title-sequences/releases/download/v${title-sequences-version}/title-sequences.zip";
-    hash = "sha256-2ruXh7FXY0L8pN2fZLP4z6BKfmzpwruWEPR7dikFyFg=";
-  };
-in
 stdenv.mkDerivation (finalAttrs: {
   pname = "openrct2";
-  version = "0.5.0";
+  version = "0.5.7";
+
+  __structuredAttrs = true;
+  strictDeps = true;
 
   src = fetchFromGitHub {
     owner = "OpenRCT2";
     repo = "OpenRCT2";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-sGdtiEUmZux6FCXuxefRulfIEO8FY7wYfIBOhdSYtF8=";
+    hash = "sha256-pGBxQh4T0+zAj7ju8cP55HxW7wGpl5wyalf66VcIDxA=";
   };
+
+  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    # MACOS_BUNDLE (to build a .APP) is tied to MACOS_USE_DEPENDENCIES by default.
+    # Decouple the two variables so that we can use resources downloaded from Nix.
+    sed -i \
+      -e 's/^CMAKE_DEPENDENT_OPTION(MACOS_BUNDLE.*/option(MACOS_BUNDLE "Build macOS application bundle (OpenRCT2.app)" ON)/' \
+      -e '/"MACOS_USE_DEPENDENCIES; NOT DISABLE_GUI" OFF)/d' \
+      CMakeLists.txt
+    sed -i '/^if (MACOS_USE_DEPENDENCIES)$/i include(cmake/download.cmake)' CMakeLists.txt
+
+    # Clang 21 on Nixpkgs will provide a broken Foundation module, as of now.
+    # The Apple Obj-C modules requested are not explicitly required, so drop them.
+    substituteInPlace src/{openrct2,openrct2-ui}/CmakeLists.txt \
+        --replace-fail '-x objective-c++ -fmodules' \
+                       '-x objective-c++'
+
+    # `fixup_bundle` will inherit mismatched dependencies relative to compilation.
+    # Hence, disable `fixup_bundle` for Darwin builds.
+    substituteInPlace src/openrct2-ui/CMakeLists.txt \
+        --replace-fail 'fixup_bundle(''${CMAKE_BINARY_DIR}/''${MACOS_APP_NAME} \"\" \"\")' \
+                       '# fixup_bundle disabled for Nix builds'
+
+    # sdl2-compat is the default for SDL2 in Nixpkgs, which has issues on Darwin.
+    # Set OpenGL as the default renderer in Darwin to bypass them.
+    substituteInPlace src/openrct2/config/Config.cpp \
+        --replace-fail 'DrawingEngine::softwareWithHardwareDisplay, Enum_DrawingEngine)' \
+                       'DrawingEngine::openGL, Enum_DrawingEngine)'
+
+    # Wrapping with --rct*-data-path will not work on Darwin for OpenRCT2.app.
+    # This simply sets that data path as the default in source, if defined.
+    ${lib.optionalString (rct1Path != null) ''
+      substituteInPlace src/openrct2/config/Config.cpp \
+          --replace-fail 'GetString("rct1_path", "")' 'GetString("rct1_path", "${rct1Path}")'
+    ''}
+    ${lib.optionalString (rct2Path != null) ''
+      substituteInPlace src/openrct2/config/Config.cpp \
+          --replace-fail 'GetString("rct2_path", "")' 'GetString("rct2_path", "${rct2Path}")'
+    ''}
+  '';
 
   nativeBuildInputs = [
     cmake
     pkg-config
     unzip
-    makeWrapper
-    versionCheckHook
+    makeBinaryWrapper
   ];
 
   buildInputs = [
     SDL2
     curl
-    duktape
-    expat
     flac
     fontconfig
     freetype
-    gbenchmark
     icu
-    innoextract
-    jansson
-    libGLU
+    libGL
     libiconv
     libogg
     libpng
-    libpthread-stubs
     libvorbis
     libzip
     nlohmann_json
     openssl
-    speexdsp
     zlib
+    zstd
   ]
   ++ lib.optional withDiscordRpc discord-rpc;
 
@@ -112,44 +120,115 @@ stdenv.mkDerivation (finalAttrs: {
     (lib.cmakeBool "DOWNLOAD_OPENMUSIC" false)
     (lib.cmakeBool "DOWNLOAD_OPENSFX" false)
     (lib.cmakeBool "DOWNLOAD_TITLE_SEQUENCES" false)
+    (lib.cmakeBool "DOWNLOAD_REPLAYS" false)
+    (lib.cmakeBool "WITH_TESTS" finalAttrs.doCheck)
     (lib.cmakeBool "DISABLE_DISCORD_RPC" (!withDiscordRpc))
+    (lib.cmakeBool "DISABLE_VERSION_CHECKER" true)
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    (lib.cmakeBool "MACOS_USE_DEPENDENCIES" false)
+    (lib.cmakeBool "MACOS_BUNDLE" true)
   ];
-
-  postUnpack = ''
-    mkdir -p $sourceRoot/data/{object,sequence}
-    unzip -o ${objects} -d $sourceRoot/data/object
-    unzip -o ${openmusic} -d $sourceRoot/data
-    unzip -o ${opensfx} -d $sourceRoot/data
-    unzip -o ${title-sequences} -d $sourceRoot/data/sequence
-  '';
-
-  # Fix blank changelog & contributors screen. See https://github.com/OpenRCT2/OpenRCT2/issues/16988
-  postPatch = ''
-    substituteInPlace src/openrct2/platform/Platform.Linux.cpp \
-      --replace-fail "/usr/share/doc/openrct2" "$out/share/doc/openrct2"
-  '';
 
   preConfigure =
     # Verify that the correct version of each third party repository is used.
-    (
-      let
-        versionCheck = assetKey: url: ''
-          grep -qF '"${url}"' assets.json \
-            || (echo "${assetKey} differs from expected version!"; exit 1)
-        '';
-      in
-      (versionCheck "objects" objects.url)
-      + (versionCheck "openmusic" openmusic.url)
-      + (versionCheck "opensfx" opensfx.url)
-      + (versionCheck "title-sequences" title-sequences.url)
+    lib.optionalString verifyAssets (
+      lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (assetName: asset: ''
+          grep -qF '"${asset.url}"' assets.json \
+            || (echo "${assetName} differs from expected version!"; exit 1)
+        '') finalAttrs.assets
+      )
     );
 
+  doCheck = stdenv.hostPlatform.isLinux;
+  nativeCheckInputs = [
+    writableTmpDirAsHomeHook
+  ];
+  checkInputs = [
+    gtest
+  ];
+  preCheck = ''
+    mkdir -p data testdata/replays
+    cp -r ../data/. *.dat data/
+    unzip -q -o ${finalAttrs.assets.replays} -d testdata/replays
+  '';
+  postCheck = ''
+    rm -r data testdata/replays
+  '';
+  enableParallelChecking = false;
   doInstallCheck = true;
+  nativeInstallCheckInputs = [
+    versionCheckHook
+  ];
 
-  postInstall = ''
-    wrapProgram $out/bin/openrct2 \
-      ${lib.optionalString (rct1Path != null) "--add-flags '--rct1-data-path=\"${rct1Path}\"'"} \
-      ${lib.optionalString (rct2Path != null) "--add-flags '--rct2-data-path=\"${rct2Path}\"'"}
+  postInstall =
+    if stdenv.hostPlatform.isDarwin then
+      ''
+        mkdir -p $out/{Applications,bin,share}
+        cp -R OpenRCT2.app $out/Applications/
+        makeBinaryWrapper $out/Applications/OpenRCT2.app/Contents/MacOS/openrct2 $out/bin/openrct2
+        cp openrct2-cli $out/bin/openrct2-cli
+        ln -s $out/Applications/OpenRCT2.app/Contents/Resources $out/share/openrct2
+      ''
+    else
+      ''
+        rm -r $out/lib
+
+        wrapProgram $out/bin/openrct2 \
+          --suffix PATH : ${lib.makeBinPath [ innoextract ]} \
+          ${
+            lib.optionalString (
+              rct1Path != null
+            ) "--add-flag ${lib.escapeShellArg "--rct1-data-path=${rct1Path}"}"
+          } \
+          ${lib.optionalString (
+            rct2Path != null
+          ) "--add-flag ${lib.escapeShellArg "--rct2-data-path=${rct2Path}"}"}
+      '';
+
+  assets = {
+    objects = fetchurl {
+      url = "https://github.com/OpenRCT2/objects/releases/download/v${finalAttrs.objectsVersion}/objects.zip";
+      hash = "sha256-lJvuXKyelBvmO7kjt5JzilB8FVpv6nPtqwsjvt4h0wI=";
+    };
+    openmusic = fetchurl {
+      url = "https://github.com/OpenRCT2/OpenMusic/releases/download/v${finalAttrs.openmusicVersion}/openmusic.zip";
+      hash = "sha256-mUs1DTsYDuHLlhn+J/frrjoaUjKEDEvUeonzP6id4aE=";
+    };
+    opensfx = fetchurl {
+      url = "https://github.com/OpenRCT2/OpenSoundEffects/releases/download/v${finalAttrs.opensfxVersion}/opensound.zip";
+      hash = "sha256-BrkPPhnCFnUt9EHVUbJqnj4bp3Vb3SECUEtzv5k2CL4=";
+    };
+    replays = fetchurl {
+      url = "https://github.com/OpenRCT2/replays/releases/download/v${finalAttrs.replaysVersion}/replays.zip";
+      hash = "sha256-wyyT/qR5xh6Mz596/glUFoCmODNg85zWdCDCTX9zlJA=";
+    };
+    title-sequences = fetchurl {
+      url = "https://github.com/OpenRCT2/title-sequences/releases/download/v${finalAttrs.titleSequencesVersion}/title-sequences.zip";
+      hash = "sha256-N6womFuvGDuuJ69ycQYTWV9oPcJIksBZiftr/QFr210=";
+    };
+  };
+
+  objectsVersion = "1.8.0";
+  openmusicVersion = "1.6.1";
+  opensfxVersion = "1.0.6";
+  replaysVersion = "0.0.97";
+  titleSequencesVersion = "0.5.6";
+
+  postUnpack = ''
+    export OPENRCT2_ASSETS_DIR=$sourceRoot/${if stdenv.hostPlatform.isDarwin then "build" else "data"}
+    mkdir -p $OPENRCT2_ASSETS_DIR/{object,sequence}
+    unzip -o ${finalAttrs.assets.objects} -d $OPENRCT2_ASSETS_DIR/object
+    unzip -o ${finalAttrs.assets.openmusic} -d $OPENRCT2_ASSETS_DIR
+    unzip -o ${finalAttrs.assets.opensfx} -d $OPENRCT2_ASSETS_DIR
+    unzip -o ${finalAttrs.assets.title-sequences} -d $OPENRCT2_ASSETS_DIR/sequence
+  ''
+  + lib.optionalString stdenv.hostPlatform.isDarwin ''
+    printf '%s' "${finalAttrs.assets.objects.url}" > $sourceRoot/build/object/objects.zip.zipversion
+    printf '%s' "${finalAttrs.assets.title-sequences.url}" > $sourceRoot/build/sequence/title-sequences.zip.zipversion
+    printf '%s' "${finalAttrs.assets.opensfx.url}" > $sourceRoot/build/opensound.zip.zipversion
+    printf '%s' "${finalAttrs.assets.openmusic.url}" > $sourceRoot/build/openmusic.zip.zipversion
   '';
 
   passthru.updateScript = ./update.sh;
@@ -176,15 +255,15 @@ stdenv.mkDerivation (finalAttrs: {
       the game settings and specify the path to the data directory.
     '';
     homepage = "https://openrct2.io";
-    changelog = "https://github.com/OpenRCT2/OpenRCT2/releases/tag/v${finalAttrs.version}";
-    downloadPage = "https://github.com/OpenRCT2/OpenRCT2/releases";
+    changelog = "https://github.com/OpenRCT2/OpenRCT2/releases/tag/${finalAttrs.src.tag}";
     license = lib.licenses.gpl3Only;
     maintainers = with lib.maintainers; [
       keenanweaver
       kylerisse
+      schrobingus
     ];
+    platforms = lib.platforms.linux ++ lib.platforms.darwin;
     mainProgram = "openrct2";
-    platforms = lib.platforms.linux;
-    sourceProvenance = with lib.sourceTypes; [ fromSource ];
+    downloadPage = "https://github.com/OpenRCT2/OpenRCT2/releases";
   };
 })

@@ -14,24 +14,23 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "hid-fanatecff";
-  version = "0.2.2";
+  version = "0.2.3";
 
   src = fetchFromGitHub {
     owner = "gotzl";
     repo = "hid-fanatecff";
     tag = finalAttrs.version;
-    hash = "sha256-aVuTnrxw7zWMZ1U21DUKDvcYlIp7iHJHaX8ijmUd/TE=";
+    hash = "sha256-lJ+Pn1OLgZK+T1dsV1mwzAwJJgsouFFwDH7bFUD1SGI=";
   };
 
   nativeBuildInputs = kernel.moduleBuildDependencies;
 
+  postInstall = ''
+    install -Dm644 fanatec.rules \
+      "$out/lib/udev/rules.d/99-fanatec.rules"
+  '';
+
   postPatch = ''
-    mkdir -p $out/{lib/udev/rules.d,${moduleDir}}
-
-    sed -i '/depmod/d' Makefile
-    substituteInPlace Makefile \
-      --replace-fail '/etc/udev/rules.d' "$out/lib/udev/rules.d"
-
     substituteInPlace fanatec.rules \
       --replace-fail '/usr/bin/evdev-joystick' '${lib.getExe' linuxConsoleTools "evdev-joystick"}' \
       --replace-fail '/bin/sh' '${lib.getExe bashNonInteractive}'
@@ -40,10 +39,22 @@ stdenv.mkDerivation (finalAttrs: {
   makeFlags = kernelModuleMakeFlags ++ [
     "KVERSION=${kernel.modDirVersion}"
     "KERNEL_SRC=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
-    "MODULEDIR=$(out)/${moduleDir}"
+    "INSTALL_MOD_PATH=${placeholder "out"}"
+    "INSTALL_MOD_DIR=kernel/drivers/hid"
+  ];
+
+  installTargets = [ "modules_install" ];
+
+  installFlags = [
+    "-C"
+    "${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
+    "M=$(PWD)"
   ];
 
   passthru.updateScript = nix-update-script { };
+
+  strictDeps = true;
+  __structuredAttrs = true;
 
   meta = {
     description = "Linux module driver for Fanatec driving wheels";

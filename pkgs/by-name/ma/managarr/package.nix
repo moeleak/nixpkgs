@@ -1,14 +1,17 @@
 {
   lib,
+  aws-lc,
+  pkg-config,
   fetchFromGitHub,
   rustPlatform,
   perl,
+  openssl,
   cacert,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "managarr";
-  version = "0.7.2";
+  version = "0.8.2";
 
   __structuredAttrs = true;
 
@@ -16,12 +19,20 @@ rustPlatform.buildRustPackage (finalAttrs: {
     owner = "Dark-Alex-17";
     repo = "managarr";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-10wM6OI3XqFQKyspJU6fqnE3GyzxNaquQlPjn3nS774=";
+    hash = "sha256-AZaQXmo61BVsQGqHX5S+34pxEjDbxGMpmGsDewlyWcg=";
   };
 
-  cargoHash = "sha256-7myysFoBYTosHPZ3gzSzXhN8+wbHHF/73b6wQqdlKe8=";
+  cargoHash = "sha256-A0gA56I+3vsGH0i6joXCsZiLjGct9m1F/Wx/pT2Mjws=";
 
-  nativeBuildInputs = [ perl ];
+  nativeBuildInputs = [
+    perl
+    pkg-config
+  ];
+
+  buildInputs = [
+    aws-lc
+    openssl
+  ];
 
   env.SSL_CERT_FILE = "${cacert}/etc/ssl/certs/ca-bundle.crt";
 

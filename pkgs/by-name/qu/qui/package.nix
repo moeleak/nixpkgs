@@ -1,25 +1,25 @@
 {
   lib,
-  buildGo126Module,
+  buildGo127Module,
   fetchFromGitHub,
   stdenvNoCC,
   nixosTests,
   nix-update-script,
   nodejs,
-  pnpm_9,
+  pnpm_11,
   fetchPnpmDeps,
   pnpmConfigHook,
-  typescript,
   versionCheckHook,
+  writableTmpDirAsHomeHook,
 }:
-buildGo126Module (finalAttrs: {
+buildGo127Module (finalAttrs: {
   pname = "qui";
-  version = "1.18.0";
+  version = "1.33.1";
   src = fetchFromGitHub {
     owner = "autobrr";
     repo = "qui";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Rdg8fcoUY7WrNXj+LZyMXx6hFo8+OGrCLjhE3JD1y4o=";
+    hash = "sha256-OW3KXiylC2AD5vw+uXnidwaST/ujbr+9yzoLh8qNJ/E=";
   };
 
   qui-web = stdenvNoCC.mkDerivation (finalAttrs': {
@@ -29,8 +29,7 @@ buildGo126Module (finalAttrs: {
     nativeBuildInputs = [
       nodejs
       pnpmConfigHook
-      pnpm_9
-      typescript
+      pnpm_11
     ];
 
     sourceRoot = "${finalAttrs.src.name}/web";
@@ -42,9 +41,9 @@ buildGo126Module (finalAttrs: {
         src
         sourceRoot
         ;
-      pnpm = pnpm_9;
-      fetcherVersion = 3;
-      hash = "sha256-hCiIbVroyMhl2xT0WAGbmLSXfUH6RJHlC1g3isMlUJs=";
+      pnpm = pnpm_11;
+      fetcherVersion = 4;
+      hash = "sha256-F+B1rj9fcgaDfPYC+8hUZfpNQNiiK9TnT/Ld68fW/WA=";
     };
 
     postBuild = ''
@@ -56,7 +55,7 @@ buildGo126Module (finalAttrs: {
     '';
   });
 
-  vendorHash = "sha256-7MzKE3pBvoW/ajB6gHtBBS1M/NuQsRw3ZSNtCJzrEyI=";
+  vendorHash = "sha256-wJ2chWHNP24BH+QcIuJSWDfbMhPn0k0lc67QCN4w7uo=";
 
   preBuild = ''
     cp -r ${finalAttrs.qui-web}/* web/dist
@@ -65,6 +64,25 @@ buildGo126Module (finalAttrs: {
   ldflags = [
     "-X github.com/autobrr/qui/internal/buildinfo.Version=${finalAttrs.version}"
     "-X main.PolarOrgID="
+  ];
+
+  nativeCheckInputs = [
+    writableTmpDirAsHomeHook
+  ];
+
+  # some season-pack tests use non-existent source paths (e.g. /media/...) and
+  # assert on a same-filesystem check that resolves them up to /. go's
+  # t.TempDir honours $TMPDIR, which defaults to /build. so just point it to
+  # something sane. We use realpath, because on macOS it's symliked to
+  # /private/tmp during the build, and tests were failing when comparing
+  # non-resolved paths to resolved paths.
+  preCheck = ''
+    export TMPDIR="$(realpath /tmp)"
+  '';
+
+  checkFlags = [
+    # broken in sandbox for some reason
+    "-skip=TestRollback"
   ];
 
   nativeInstallCheckInputs = [
@@ -93,7 +111,7 @@ buildGo126Module (finalAttrs: {
     changelog = "https://github.com/autobrr/qui/releases/tag/v${finalAttrs.version}";
     maintainers = with lib.maintainers; [
       pta2002
-      tmarkus
+      AAAAAASomeThingsFailToEvaluate
     ];
     mainProgram = "qui";
     platforms = lib.platforms.unix;

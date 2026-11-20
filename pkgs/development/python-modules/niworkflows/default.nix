@@ -52,13 +52,17 @@ buildPythonPackage (finalAttrs: {
     hash = "sha256-AMUOiIL33kcJtlKT+L5QwcUh8mBBkf80uzOQZFKDauo=";
   };
 
-  pythonRelaxDeps = [ "traits" ];
+  # fails to determine the version automatically
+  env.SETUPTOOLS_SCM_PRETEND_VERSION = finalAttrs.version;
 
   build-system = [
     hatch-vcs
     hatchling
   ];
 
+  pythonRelaxDeps = [
+    "traits"
+  ];
   dependencies = [
     acres
     attrs
@@ -83,8 +87,6 @@ buildPythonPackage (finalAttrs: {
     traits
     transforms3d
   ];
-
-  env.SETUPTOOLS_SCM_PRETEND_VERSION = finalAttrs.version;
 
   nativeCheckInputs = [
     pytest-cov-stub

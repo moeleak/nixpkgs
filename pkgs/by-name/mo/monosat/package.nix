@@ -47,6 +47,8 @@ let
     license = if includeGplCode then lib.licenses.gpl2 else lib.licenses.mit;
     homepage = "https://github.com/sambayless/monosat";
     maintainers = [ lib.maintainers.acairncross ];
+    # last successful hydra build on darwin was in 2025
+    broken = stdenv.hostPlatform.isDarwin;
   };
 
   core = stdenv.mkDerivation {
@@ -116,7 +118,11 @@ let
       # the sourceRoot if it weren't for the patch.
       postPatch =
         commonPostPatch
+        # cython 3.1 dropped the python 2 `long` builtin
         + ''
+          substituteInPlace src/monosat/api/python/monosat/monosat_p.pyx \
+            --replace-fail '(int, long)' 'int' \
+            --replace-fail '(int,long)' 'int'
           cd src/monosat/api/python
         ''
         +

@@ -10,16 +10,16 @@
 }:
 buildGoModule (finalAttrs: {
   pname = "guesswidth";
-  version = "0.4.0";
+  version = "0.7.0";
 
   src = fetchFromGitHub {
     owner = "noborus";
     repo = "guesswidth";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-afZYegG4q+KmvNP2yy/HGvP4V1mpOUCxRLWLTUHAK0M=";
+    hash = "sha256-GtlJPZXzLdnOaa/xwvrEGQYQKy6uiuebXzghNjVExRM=";
   };
 
-  vendorHash = "sha256-IGb+fM3ZOlGrLGFSUeUhZ9wDMKOBofDBYByAQlvXY14=";
+  vendorHash = "sha256-pjGuBDiUPQpgxpCSnt0r2vueO7HzHrI0AvUKaL/fDUc=";
 
   ldflags = [
     "-X github.com/noborus/guesswidth.version=v${finalAttrs.version}"

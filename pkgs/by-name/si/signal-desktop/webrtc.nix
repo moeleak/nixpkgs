@@ -16,6 +16,7 @@
   apple-sdk,
   xcodebuild,
   llvmPackages,
+  ringrtcSrc,
 }:
 
 let
@@ -85,7 +86,34 @@ stdenv.mkDerivation (finalAttrs: {
     alsa-lib
   ];
 
+  env = {
+    BUILD_CC = "$CC_FOR_BUILD";
+    BUILD_CXX = "$CXX_FOR_BUILD";
+    BUILD_AR = "$AR_FOR_BUILD";
+    BUILD_NM = "$NM_FOR_BUILD";
+    NIX_CFLAGS_COMPILE = lib.optionalString stdenv.hostPlatform.isLinux "-Wno-changes-meaning";
+  };
+
+  patches = [
+    # --warning-suppression-mappings is a Clang-only option.
+    # https://github.com/signalapp/webrtc/pull/180
+    ./guard-clang-only-warning-flags.patch
+
+    # clang++: error: unknown argument: '-fno-lifetime-dse'
+    ./chromium-147-llvm-22.patch
+
+    # Keep in sync with Chromium's LLVM 22 compatibility patches.
+    # clang++: error: unknown argument: '-fdiagnostics-show-inlining-chain'
+    # clang++: error: unknown argument: '-fsanitize-ignore-for-ubsan-feature=array-bounds'
+    # clang++: error: unknown argument: '-fsanitize-ignore-for-ubsan-feature=return'
+    ./chromium-153-llvm-22.patch
+  ];
+
   postPatch = ''
+    # The RingRTC FFI headers live in the ringrtc repo; upstream symlinks them
+    # into the webrtc checkout from ringrtc's bin/env.sh.
+    cp -r ${ringrtcSrc}/src/rust/src/webrtc_include ringrtc/rffi/api
+
     substituteInPlace build/toolchain/linux/BUILD.gn \
       --replace-fail 'toolprefix = "aarch64-linux-gnu-"' 'toolprefix = ""'
 
@@ -182,7 +210,6 @@ stdenv.mkDerivation (finalAttrs: {
     description = "WebRTC library used by Signal";
     homepage = "https://github.com/SignalApp/webrtc";
     license = lib.licenses.bsd3;
-    maintainers = [ ];
     platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
 })

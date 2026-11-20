@@ -10,16 +10,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "git-spice";
-  version = "0.28.0";
+  version = "0.33.0";
 
   src = fetchFromGitHub {
     owner = "abhinav";
     repo = "git-spice";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-/UzEWuW1Y3CXXPfU3ntYk3r+LreyzQ8XG4hbPIwWRUE=";
+    hash = "sha256-68kVli8C/OQ90rOVkF61Q2D8+l/Ca8AMNfxNnWwcN8A=";
   };
 
-  vendorHash = "sha256-YPcQ3Yjn016S2bLjUKH2SXgTm6b1+q7McgEzjUzyggE=";
+  vendorHash = "sha256-6Tb5uJkkco4B3Ri6ngL1Uc3G55SbzQc4rZlmIUr5Slg=";
 
   subPackages = [ "." ];
 
@@ -31,17 +31,10 @@ buildGoModule (finalAttrs: {
 
   ldflags = [
     "-s"
-    "-w"
     "-X=main._version=${finalAttrs.version}"
   ];
 
   __darwinAllowLocalNetworking = true;
-
-  preCheck = lib.optionalString (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isx86_64) ''
-    # timeout
-    rm testdata/script/branch_submit_remote_prompt.txt
-    rm testdata/script/branch_submit_multiple_pr_templates.txt
-  '';
 
   postInstall = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd gs \

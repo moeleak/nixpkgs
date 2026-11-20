@@ -15,13 +15,13 @@
 
 buildPythonPackage rec {
   pname = "glean-parser";
-  version = "19.0.0";
+  version = "20.2.0";
   pyproject = true;
 
   src = fetchPypi {
     pname = "glean_parser";
     inherit version;
-    hash = "sha256-uy4KSra+fg2qcE5NTp40ogIPhFpx38bEU2apF8vL9LM=";
+    hash = "sha256-CP7Dh8XSpoOkMVLWmUIAlG5vBpc8yQW3yHYX+y1XsMU=";
   };
 
   build-system = [
@@ -44,12 +44,13 @@ buildPythonPackage rec {
     export HOME=$TMPDIR
   '';
 
-  disabledTests = [
-    # Network access
-    "test_validate_ping"
-    "test_logging"
-    # Fails since yamllint 1.27.x
-    "test_yaml_lint"
+  disabledTestPaths = [
+    # https://github.com/mozilla/glean_parser/pull/863
+    "tests/test_metrics.py::test_expires"
+    # https://github.com/mozilla/glean_parser/pull/872
+    "tests/test_parser.py::test_expire_epoch_can_be_overriden"
+    # https://github.com/mozilla/glean_parser/pull/873
+    "tests/test_python_server.py::test_logging"
   ];
 
   pythonImportsCheck = [ "glean_parser" ];

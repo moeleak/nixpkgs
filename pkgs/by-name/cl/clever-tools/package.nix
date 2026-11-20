@@ -2,7 +2,7 @@
   lib,
   buildNpmPackage,
   fetchFromGitHub,
-  nodejs_22,
+  nodejs_24,
   installShellFiles,
   makeWrapper,
   stdenv,
@@ -11,18 +11,18 @@
 buildNpmPackage rec {
   pname = "clever-tools";
 
-  version = "4.10.0";
+  version = "5.4.0";
 
-  nodejs = nodejs_22;
+  nodejs = nodejs_24;
 
   src = fetchFromGitHub {
     owner = "CleverCloud";
     repo = "clever-tools";
     rev = version;
-    hash = "sha256-EgGjlZ6Awg7SEC3ljPqii3wpq2SlXN/gARUJBSFcX0k=";
+    hash = "sha256-93BScrdRxatkWTRmpGA/QHjmTKnlmE2UCnavusNZZtE=";
   };
 
-  npmDepsHash = "sha256-1v9c1525J7aS89PDdl6hWbYdn/DIM3G1BxFbpxu/F7E=";
+  npmDepsHash = "sha256-Q5TnewYIJ2ncRJuyjsuJ/FI64ls+/c+PkeIok3P2mCE=";
 
   nativeBuildInputs = [
     installShellFiles

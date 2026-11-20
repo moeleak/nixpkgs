@@ -15,10 +15,10 @@
   glib,
   gobject-introspection,
   glycin-loaders,
+  glycin-thumbnailer,
   libglycin-gtk4,
   fontconfig,
   libseccomp,
-  lcms2,
   gnome,
   replaceVars,
   bubblewrap,
@@ -31,7 +31,7 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "libglycin";
-  version = "2.0.8";
+  version = "2.2.3";
 
   outputs = [
     "out"
@@ -43,12 +43,12 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = fetchurl {
     url = "mirror://gnome/sources/glycin/${lib.versions.majorMinor finalAttrs.version}/glycin-${finalAttrs.version}.tar.xz";
-    hash = "sha256-a5rvT2Jr+Wnf0EtWO4PVIScaMMPW32pqhGP9VUkIkd8=";
+    hash = "sha256-p2d3ZEL84f6nvaAXi0xEPSQcM6xy4O+DxuBsrqqn2fo=";
   };
 
   cargoDeps = rustPlatform.fetchCargoVendor {
     inherit (finalAttrs) pname version src;
-    hash = "sha256-k3eHWdEUPjKuWqNaEAYjAQKvYFgCnZ+5laYujqgGrpQ=";
+    hash = "sha256-S0jj5wtrtwmlZcGXQd6FZMBOTb1Lto5Tj4+lsavZUTg=";
   };
 
   nativeBuildInputs = [
@@ -70,7 +70,6 @@ stdenv.mkDerivation (finalAttrs: {
   buildInputs = [
     fontconfig
     libseccomp
-    lcms2
   ];
 
   propagatedBuildInputs = [
@@ -78,7 +77,6 @@ stdenv.mkDerivation (finalAttrs: {
     # TODO: these should not be required by .pc file
     fontconfig
     libseccomp
-    lcms2
   ];
 
   mesonFlags = [
@@ -94,12 +92,18 @@ stdenv.mkDerivation (finalAttrs: {
   postPatch = ''
     patchShebangs \
       build-aux/crates-version.py
+
+    substituteInPlace meson.build --replace-fail \
+      "meson.get_external_property('rust_target')" \
+      "'${stdenv.hostPlatform.rust.cargoShortTarget}'"
   '';
 
   postFixup = ''
     # Cannot be in postInstall, otherwise _multioutDocs hook in preFixup will move right back.
     moveToOutput "share/doc" "$devdoc"
   '';
+
+  strictDeps = true;
 
   passthru = {
     updateScript =
@@ -146,6 +150,7 @@ stdenv.mkDerivation (finalAttrs: {
     tests = {
       inherit
         glycin-loaders
+        glycin-thumbnailer
         libglycin-gtk4
         ;
     };
@@ -155,15 +160,17 @@ stdenv.mkDerivation (finalAttrs: {
     description = "Sandboxed and extendable image loading library";
     homepage = "https://gitlab.gnome.org/GNOME/glycin";
     changelog = "https://gitlab.gnome.org/GNOME/glycin/-/tags/${finalAttrs.version}";
-    license = with lib.licenses; [
-      mpl20 # or
-      lgpl21Plus
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        mpl20
+        lgpl21Plus
+      ];
     maintainers = [ ];
     teams = [ lib.teams.gnome ];
     platforms = lib.platforms.linux;
     pkgConfigModules = [
-      "glycin-1"
+      "glycin-2"
     ];
   };
 })

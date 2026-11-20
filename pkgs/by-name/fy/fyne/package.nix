@@ -15,18 +15,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "fyne";
-  # This is the current latest version
-  # version "1.26.1" was a typo of "1.7.1" - maybe, don't "upgrade" to it
-  version = "1.7.1";
+  version = "1.7.4";
 
   src = fetchFromGitHub {
     owner = "fyne-io";
     repo = "tools";
-    rev = "v${finalAttrs.version}";
-    hash = "sha256-NmO0AtD2lJMBOnlgFm6dXRp6NWMuyAIlckYLHugeJ1Q=";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-NY0YfqvM1JMtlYnO/yzQK4CsNPnmPigTMdNJ7bA4QWI=";
   };
 
-  vendorHash = "sha256-pTVl9NMqoLqRYrNFWSoagpELwbsW7t5kHYo+fEFQie0=";
+  vendorHash = "sha256-brLtfcKdsUg/X39ARPwbk/5QJQyOBUL2a7W2mvD9dtw=";
 
   nativeBuildInputs = [ pkg-config ];
 
@@ -46,7 +44,10 @@ buildGoModule (finalAttrs: {
     homepage = "https://fyne.io";
     description = "Cross platform GUI toolkit in Go";
     license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [ greg ];
+    maintainers = with lib.maintainers; [
+      greg
+      graysontinker
+    ];
     mainProgram = "fyne";
   };
 })

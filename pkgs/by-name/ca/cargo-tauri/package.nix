@@ -14,16 +14,18 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "tauri";
-  version = "2.11.0";
+  version = "2.12.6";
 
   src = fetchFromGitHub {
     owner = "tauri-apps";
     repo = "tauri";
     tag = "tauri-cli-v${finalAttrs.version}";
-    hash = "sha256-hbTpLeWMc5nSJeq1vWKbVpfhp1KZjiBgmaiQMUs/MIQ=";
+    hash = "sha256-GPmPwKloggoRL38BS1GVgkzsSG95zgmGPcJFnstR63s=";
   };
 
-  cargoHash = "sha256-PrvlPfK/9qyBWOs6hG3C3w9TMK7p1TCoKpjSWkhN2rY=";
+  cargoHash = "sha256-gJyKD3SZUwv/sk3VFr9wkjzcaSkm0xV3mwzIBhrS8hY=";
+
+  __darwinAllowLocalNetworking = true;
 
   nativeBuildInputs = lib.optionals (stdenv.hostPlatform.isDarwin || stdenv.hostPlatform.isLinux) [
     pkg-config
@@ -81,12 +83,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
     description = "Build smaller, faster, and more secure desktop applications with a web frontend";
     homepage = "https://tauri.app/";
     changelog = "https://github.com/tauri-apps/tauri/releases/tag/tauri-cli-v${finalAttrs.version}";
-    license = with lib.licenses; [
-      asl20 # or
-      mit
-    ];
+    license =
+      with lib.licenses;
+      OR [
+        asl20
+        mit
+      ];
     maintainers = with lib.maintainers; [
-      dit7ya
       getchoo
       happysalada
     ];

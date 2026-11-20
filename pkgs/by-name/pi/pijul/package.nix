@@ -5,33 +5,37 @@
   rustPlatform,
   installShellFiles,
   pkg-config,
+  aws-lc,
   dbus,
   libsodium,
   openssl,
   xxhash,
+  nix-update-script,
   gitImportSupport ? true,
   libgit2 ? null,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
+  __structuredAttrs = true;
+
   pname = "pijul";
-  version = "1.0.0-beta.11";
+  version = "1.0.0-beta.26";
 
   src = fetchCrate {
     inherit (finalAttrs) version pname;
-    hash = "sha256-+rMMqo2LBYlCFQJv8WFCSEJgDUbMi8DnVDKXIWm3tIk=";
+    hash = "sha256-VNmIja07dgfMgB7g8XxugEv8LrsnXNyMCJpfFoijhKY=";
   };
 
-  cargoHash = "sha256-IhArTiReUdj49bA+XseQpOiszK801xX5LdLj8vXD8rs=";
+  cargoHash = "sha256-LIvFveN3NhQUXWu809S7GviLKwcsS2E6Wt/vFku4fVE=";
 
-  patches = [ ./fix-rand-0.9-sanakirja-imports.patch ];
-
+  # Tests require a TTY, which the Nix sandbox does not provide.
   doCheck = false;
   nativeBuildInputs = [
     installShellFiles
     pkg-config
   ];
   buildInputs = [
+    aws-lc
     dbus
     openssl
     libsodium
@@ -48,10 +52,14 @@ rustPlatform.buildRustPackage (finalAttrs: {
       --zsh <($out/bin/pijul completion zsh)
   '';
 
+  passthru.updateScript = nix-update-script {
+    extraArgs = [ "--version=unstable" ];
+  };
+
   meta = {
     description = "Distributed version control system";
     homepage = "https://pijul.org";
-    license = with lib.licenses; [ gpl2Plus ];
+    license = lib.licenses.gpl2Plus;
     maintainers = with lib.maintainers; [
       gal_bolle
       dywedir
