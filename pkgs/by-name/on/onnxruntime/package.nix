@@ -25,7 +25,9 @@
   cudaSupport ? config.cudaSupport,
   ncclSupport ? cudaSupport && cudaPackages.nccl.meta.available,
   tensorrtSupport ? cudaSupport && cudaPackages.tensorrt.meta.available,
-  openvinoSupport ? stdenv.hostPlatform.isLinux,
+  # openvino needs a host Python for its bindings, which does not work when cross compiling
+  openvinoSupport ?
+    stdenv.hostPlatform.isLinux && stdenv.buildPlatform.canExecute stdenv.hostPlatform,
   rocmSupport ? config.rocmSupport,
   coremlSupport ? stdenv.hostPlatform.isDarwin,
   withFullProtobuf ? false,
