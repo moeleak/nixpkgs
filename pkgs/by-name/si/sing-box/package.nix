@@ -11,7 +11,9 @@
   stdenvNoCC,
 
   withStaticCronet ? true,
-  withNaiveOutbound ? true,
+  # cronet-go runs its build-naive helper, built for the host platform, during
+  # the build and targets that helper's own architecture, so it cannot cross compile.
+  withNaiveOutbound ? stdenv.buildPlatform.canExecute stdenv.hostPlatform,
 }:
 assert lib.assertMsg (
   withNaiveOutbound -> !withStaticCronet -> stdenvNoCC.hostPlatform.isLinux
