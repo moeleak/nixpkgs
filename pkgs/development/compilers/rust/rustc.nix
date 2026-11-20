@@ -84,6 +84,13 @@ let
         --subst-var-by real_llvm_config "$real_llvm_config"
       chmod +x $out/bin/llvm-config
     '';
+  # A fully native rustc keeps upstream's llvm-config, so it stays in the binary cache.
+  llvmConfigFor =
+    llvm:
+    if stdenv.buildPlatform == stdenv.hostPlatform && stdenv.hostPlatform == stdenv.targetPlatform then
+      "${llvm.dev}/bin/llvm-config"
+    else
+      "${llvmForRustBootstrap llvm}/bin/llvm-config";
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "${targetPackages.stdenv.cc.targetPrefix}rustc";
@@ -259,9 +266,9 @@ stdenv.mkDerivation (finalAttrs: {
     ]
     ++ optionals (!withBundledLLVM) [
       "--enable-llvm-link-shared"
-      "${setBuild}.llvm-config=${llvmForRustBootstrap llvmSharedForBuild}/bin/llvm-config"
-      "${setHost}.llvm-config=${llvmForRustBootstrap llvmSharedForHost}/bin/llvm-config"
-      "${setTarget}.llvm-config=${llvmForRustBootstrap llvmSharedForTarget}/bin/llvm-config"
+      "${setBuild}.llvm-config=${llvmConfigFor llvmSharedForBuild}"
+      "${setHost}.llvm-config=${llvmConfigFor llvmSharedForHost}"
+      "${setTarget}.llvm-config=${llvmConfigFor llvmSharedForTarget}"
     ]
     ++ optionals fastCross [
       # Since fastCross only builds std, it doesn't make sense (and

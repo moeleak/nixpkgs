@@ -52,15 +52,16 @@ import ./default.nix
   {
     rustcVersion = "1.99.1";
     rustcSha256 = "sha256-21a7xk20kc7aa3iigRptEhxjkziQb9lE9yAonL0CJFw=";
-    rustcPatches = [
-      ./stage0-sysroot-symlink-dir-collision.patch
-    ]
-    ++ lib.optionals (stdenv.buildPlatform != stdenv.hostPlatform) [
-      ./copy-symlinked-stage0-dirs-writable.patch
-      ./clean-stage0-sysroot-before-copying-bootstrap.patch
-      ./replace-stage0-rustc-private-artifacts.patch
-      ./run-error-index-generator-on-build-host.patch
-    ];
+    rustcPatches =
+      lib.optionals (
+        stdenv.buildPlatform != stdenv.hostPlatform || stdenv.hostPlatform != stdenv.targetPlatform
+      ) [ ./stage0-sysroot-symlink-dir-collision.patch ]
+      ++ lib.optionals (stdenv.buildPlatform != stdenv.hostPlatform) [
+        ./copy-symlinked-stage0-dirs-writable.patch
+        ./clean-stage0-sysroot-before-copying-bootstrap.patch
+        ./replace-stage0-rustc-private-artifacts.patch
+        ./run-error-index-generator-on-build-host.patch
+      ];
 
     llvmSharedForBuild = llvmSharedFor pkgsBuildBuild;
     llvmSharedForHost = llvmSharedFor pkgsBuildHost;
