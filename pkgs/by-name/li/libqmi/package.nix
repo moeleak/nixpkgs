@@ -33,8 +33,8 @@ stdenv.mkDerivation (finalAttrs: {
   outputs = [
     "out"
     "dev"
-    "doc"
-  ];
+  ]
+  ++ lib.optional withGtkDoc "doc";
 
   src = fetchFromGitLab {
     domain = "gitlab.freedesktop.org";
@@ -57,14 +57,14 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals withMan [
     help2man
   ]
-  ++ lib.optionals withIntrospection [
-    gobject-introspection
-  ]
-  ++ lib.optionals withGtkDoc [
-    gi-docgen
-    docbook-xsl-nons
-    docbook_xml_dtd_43
-  ]
+  ++ lib.optionals withIntrospection (
+    lib.optional withGtkDoc gi-docgen
+    ++ [ gobject-introspection ]
+    ++ lib.optionals withGtkDoc [
+      docbook-xsl-nons
+      docbook_xml_dtd_43
+    ]
+  )
   ++ lib.optionals (withIntrospection && !stdenv.buildPlatform.canExecute stdenv.hostPlatform) [
     mesonEmulatorHook
   ];
