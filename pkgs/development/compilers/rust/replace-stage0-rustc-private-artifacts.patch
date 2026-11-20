@@ -1,6 +1,11 @@
+diff --git a/src/bootstrap/src/core/build_steps/compile.rs b/src/bootstrap/src/core/build_steps/compile.rs
+index ea5b2cc..58b7505 100644
 --- a/src/bootstrap/src/core/build_steps/compile.rs
 +++ b/src/bootstrap/src/core/build_steps/compile.rs
-@@ -1586,0 +1587,14 @@ impl Step for RustcLink {
+@@ -1560,15 +1560,92 @@ impl Step for RustcLink {
+         let build_compiler = self.build_compiler;
+         let sysroot_compiler = self.sysroot_compiler;
+         let target = self.target;
 +        let sysroot_dst = builder.sysroot_target_libdir(sysroot_compiler, target);
 +        let sysroot_host_dst =
 +            builder.sysroot_target_libdir(sysroot_compiler, sysroot_compiler.host);
@@ -15,14 +20,18 @@
 +            );
 +        }
 +
-@@ -1589,3 +1603,3 @@ impl Step for RustcLink {
+         add_to_sysroot(
+             builder,
 -            &builder.sysroot_target_libdir(sysroot_compiler, target),
 -            &builder.sysroot_target_libdir(sysroot_compiler, sysroot_compiler.host),
 -            &build_stamp::librustc_stamp(builder, build_compiler, target),
 +            &sysroot_dst,
 +            &sysroot_host_dst,
 +            &stamp,
-@@ -1595,0 +1610,63 @@ impl Step for RustcLink {
+         );
+     }
+ }
+ 
 +fn remove_old_stage0_rustc_private_artifacts(
 +    builder: &Builder<'_>,
 +    sysroot_dst: &Path,
@@ -86,3 +95,6 @@
 +    }
 +}
 +
+ /// Set of `libgccjit` dylibs that can be used by `cg_gcc` to compile code for a set of targets.
+ /// `libgccjit` requires a separate build for each `(host, target)` pair.
+ /// So if you are on linux-x64 and build for linux-aarch64, you will need at least:

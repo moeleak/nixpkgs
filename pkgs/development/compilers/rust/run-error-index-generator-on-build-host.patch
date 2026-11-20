@@ -1,6 +1,11 @@
+diff --git a/src/bootstrap/src/core/build_steps/tool.rs b/src/bootstrap/src/core/build_steps/tool.rs
+index 3605fcf..0ce3207 100644
 --- a/src/bootstrap/src/core/build_steps/tool.rs
 +++ b/src/bootstrap/src/core/build_steps/tool.rs
-@@ -567,0 +568,19 @@ impl ErrorIndex {
+@@ -579,6 +579,25 @@ pub struct ErrorIndex {
+ 
+ impl ErrorIndex {
+     pub fn command(builder: &Builder<'_>, compilers: RustcPrivateCompilers) -> BootstrapCommand {
 +        let compilers = if compilers.target() == builder.config.host_target {
 +            compilers
 +        } else {
@@ -20,3 +25,6 @@
 +            host_compilers
 +        };
 +
+         // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
+         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
+         let mut cmd = command(builder.ensure(ErrorIndex { compilers }).tool_path);
