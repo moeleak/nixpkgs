@@ -44,7 +44,11 @@ stdenv.mkDerivation (finalAttrs: {
     pkg-config
     removeReferencesTo
   ]
-  ++ lib.optionals withDnstap [ protobuf ];
+  ++ lib.optionals withDnstap [
+    protobuf
+    # for protoc-gen-c
+    protobufc
+  ];
 
   buildInputs = [
     libevent
