@@ -345,6 +345,25 @@ buildStdenv.mkDerivation {
     rm -rf obj-x86_64-pc-linux-gnu
     patchShebangs mach build
   ''
+  # Keep vector code away from RISC-V targets without the V extension.
+  + lib.optionalString stdenv.hostPlatform.isRiscV ''
+    # The vendored llama.cpp gates its RVV code on __riscv_v_intrinsic, which
+    # clang defines even when the V extension is not enabled.
+    if [ -d third_party/llama.cpp ]; then
+      grep -rlZ __riscv_v_intrinsic third_party/llama.cpp \
+        | xargs -0 -r sed -i 's/__riscv_v_intrinsic/__riscv_v/g'
+    fi
+
+    # wasm2c forces SIMD reads through a "vr" register, which needs the V
+    # extension. Without it a v128 fits no register class, so let such reads
+    # be elided, as WASM_RT_NONCONFORMING_ALLOW_OOB_READ_ELIMINATION would.
+    # (WABT fa3338c6d7c0 gates "vr" on __riscv_vector, but its "f" fallback
+    # does not compile either.)
+    f=third_party/wasm2c/src/prebuilt/wasm2c_simd_source_declarations.cc
+    if [ -e "$f" ]; then
+      sed -i "$f" -e 's|^R"w2c_template(#elif defined(__riscv)$|R"w2c_template(#elif defined(__riscv) \&\& !defined(__riscv_vector)\n)w2c_template"\nR"w2c_template(#define SIMD_FORCE_READ(var)\n)w2c_template"\n&|'
+    fi
+  ''
   + extraPostPatch;
 
   # Ignore trivial whitespace changes in patches, this fixes compatibility of
