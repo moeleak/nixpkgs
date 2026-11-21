@@ -75,6 +75,9 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   enableParallelBuilding = true;
+  # When cross compiling, libtool relinks the plugins against libcanberra.so
+  # during installation, racing with installing it ("cannot find -lcanberra").
+  enableParallelInstalling = stdenv.buildPlatform == stdenv.hostPlatform;
 
   passthru = lib.optionalAttrs (gtkSupport != null) {
     gtkModule = if gtkSupport == "gtk2" then "/lib/gtk-2.0" else "/lib/gtk-3.0/";
