@@ -315,9 +315,13 @@
         # https://gitlab.haskell.org/ghc/ghc/-/issues/26518 krank:ignore-line
         ./ghc-define-undefined-elf-st-visibility.patch
       ]
-      ++ lib.optionals (lib.versions.majorMinor version == "9.10") [
-        ./ghc-stage0-ghci-host-libffi.patch
-      ]
+      # Only takes effect through GHC_STAGE0_FFI_*, which is set for cross compilers.
+      ++
+        lib.optionals
+          (lib.versions.majorMinor version == "9.10" && stdenv.hostPlatform != stdenv.targetPlatform)
+          [
+            ./ghc-stage0-ghci-host-libffi.patch
+          ]
 
       # Fix docs build with Sphinx >= 9 https://gitlab.haskell.org/ghc/ghc/-/issues/26810
       ++
