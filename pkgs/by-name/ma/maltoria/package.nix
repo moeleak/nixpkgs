@@ -51,14 +51,14 @@ let
     src = fetchFromGitHub {
       owner = "moeleak";
       repo = "Maltoria";
-      rev = "4d2acfac4c7993a3399b6c8ff561a0281a43643c";
-      hash = "sha256-h+agynPoHKVltOZt8kJjqpmsy8jf1fvS8qiJmH8cgHo=";
+      rev = "bd07f6d4388389db8daaf727bba84e503813c6cb";
+      hash = "sha256-EVz6RZNrP1LUY3Bwlnj00I8BtUPBKhoqOKNt0GMigHo=";
     };
 
     # A standalone package beside the core it depends on by path.
     cargoRoot = "apps/maltoria";
     buildAndTestSubdir = "apps/maltoria";
-    cargoHash = "sha256-aiszyvuVV9g6z8bpvR8AMCWOYq+fBdn4zgNkjTtGKr4=";
+    cargoHash = "sha256-3XiRYr+SyApaSnuM5e5SquAjiLZyqMLChN9lnPIgdeI=";
 
     # On macOS, the Wine runtime built for macOS 15, which the interface
     # installs where the helper runs it.
