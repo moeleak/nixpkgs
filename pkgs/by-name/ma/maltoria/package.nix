@@ -9,6 +9,7 @@
   runCommand,
   unzip,
   rcodesign,
+  maltoria-libraries,
   libGL,
   libx11,
   libxcursor,
@@ -50,14 +51,20 @@ let
     src = fetchFromGitHub {
       owner = "moeleak";
       repo = "Maltoria";
-      rev = "48aabdc97bc96700caf6f0ab979c5a5ae210b600";
-      hash = "sha256-eIGmCJ6djc5mV4LxrMRiKljs+Xr0kNiLxDbes3Fexjk=";
+      rev = "9d8ff795b4c8a3841d5c32814ab8546382d1819b";
+      hash = "sha256-TFttlOO/1/VJD+IQYUnJHCer2CU1hjeKrnua9BJqkgk=";
     };
 
     # A standalone package beside the core it depends on by path.
     cargoRoot = "apps/maltoria";
     buildAndTestSubdir = "apps/maltoria";
     cargoHash = "sha256-aiszyvuVV9g6z8bpvR8AMCWOYq+fBdn4zgNkjTtGKr4=";
+
+    # On macOS, the Wine runtime built for macOS 15, which the interface
+    # installs where the helper runs it.
+    env = lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+      MALTORIA_WINE_RUNTIME = "${maltoria-libraries}/Libraries";
+    };
 
     # winit and wgpu load the windowing and graphics libraries at runtime.
     postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
