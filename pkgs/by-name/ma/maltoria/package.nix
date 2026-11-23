@@ -1,9 +1,22 @@
 {
   lib,
+  stdenv,
   stdenvNoCC,
   fetchurl,
+  fetchFromGitHub,
+  rustPlatform,
   appimageTools,
+  runCommand,
   unzip,
+  rcodesign,
+  libGL,
+  libx11,
+  libxcursor,
+  libxi,
+  libxrandr,
+  libxkbcommon,
+  vulkan-loader,
+  wayland,
   nix-update-script,
 }:
 
@@ -11,6 +24,8 @@ let
   pname = "maltoria";
   version = "0.6.2";
 
+  # The release ships the Swift helper, LunaHook and the other resources the
+  # interface runs with.
   sources = {
     aarch64-darwin = fetchurl {
       url = "https://github.com/daydalek/Maltoria/releases/download/v${version}/Maltoria-${version}-arm64.zip";
@@ -26,12 +41,49 @@ let
     sources.${stdenvNoCC.hostPlatform.system}
       or (throw "maltoria: unsupported system ${stdenvNoCC.hostPlatform.system}");
 
+  # The Material 3 interface of the moeleak fork, which replaces the release's
+  # GPUI one: built from source, and run in the release's bundle in its place.
+  interface = rustPlatform.buildRustPackage {
+    pname = "maltoria-interface";
+    version = "0-unstable-2026-11-23";
+
+    src = fetchFromGitHub {
+      owner = "moeleak";
+      repo = "Maltoria";
+      rev = "48aabdc97bc96700caf6f0ab979c5a5ae210b600";
+      hash = "sha256-eIGmCJ6djc5mV4LxrMRiKljs+Xr0kNiLxDbes3Fexjk=";
+    };
+
+    # A standalone package beside the core it depends on by path.
+    cargoRoot = "apps/maltoria";
+    buildAndTestSubdir = "apps/maltoria";
+    cargoHash = "sha256-aiszyvuVV9g6z8bpvR8AMCWOYq+fBdn4zgNkjTtGKr4=";
+
+    # winit and wgpu load the windowing and graphics libraries at runtime.
+    postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
+      patchelf --add-rpath ${
+        lib.makeLibraryPath [
+          libGL
+          libx11
+          libxcursor
+          libxi
+          libxrandr
+          libxkbcommon
+          vulkan-loader
+          wayland
+        ]
+      } $out/bin/maltoria
+    '';
+
+    meta.mainProgram = "maltoria";
+  };
+
   passthru = {
-    inherit sources;
+    inherit sources interface;
     # Each system has its own release asset, whose hash nix-update updates
     # wherever it runs, as these are fetched alike on any system; they are
     # fetchurl's, so nix-update is told which file to update them in. Older
-    # tags are vn-v*.
+    # tags are vn-v*. The interface's revision is updated by hand.
     updateScript = nix-update-script {
       extraArgs = [
         "--version-regex=^v(\\d+\\.\\d+\\.\\d+)$"
@@ -43,11 +95,14 @@ let
   };
 
   meta = {
-    description = "Whisky fork for playing visual novels on macOS and Linux";
-    homepage = "https://github.com/daydalek/Maltoria";
+    description = "Whisky fork for playing visual novels on macOS and Linux, with a Material 3 interface";
+    homepage = "https://github.com/moeleak/Maltoria";
     changelog = "https://github.com/daydalek/Maltoria/releases/tag/v${version}";
     license = lib.licenses.gpl3Plus;
-    sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
+    sourceProvenance = with lib.sourceTypes; [
+      fromSource
+      binaryNativeCode
+    ];
     maintainers = with lib.maintainers; [ moeleak ];
     platforms = lib.attrNames sources;
     mainProgram = "maltoria";
@@ -63,7 +118,10 @@ if stdenvNoCC.hostPlatform.isDarwin then
       meta
       ;
 
-    nativeBuildInputs = [ unzip ];
+    nativeBuildInputs = [
+      unzip
+      rcodesign
+    ];
 
     sourceRoot = ".";
 
@@ -72,26 +130,46 @@ if stdenvNoCC.hostPlatform.isDarwin then
 
       mkdir -p $out/Applications
       cp -a Maltoria.app $out/Applications
+      chmod -R u+w $out/Applications/Maltoria.app
+
+      # The bundle launches whisky-gpui, and its helper is in Resources.
+      install -m755 ${lib.getExe interface} \
+        $out/Applications/Maltoria.app/Contents/MacOS/whisky-gpui
+
+      # The release's icon fills its square, which macOS no longer rounds.
+      install -m644 ${interface.src}/apps/maltoria/resources/AppIcon.icns \
+        $out/Applications/Maltoria.app/Contents/Resources/AppIcon.icns
+
+      # Sealed again, ad hoc as the release is.
+      rcodesign sign $out/Applications/Maltoria.app
 
       runHook postInstall
     '';
 
-    # The app is signed ad hoc, and patching its scripts' shebangs would break
-    # the signature.
+    # Patching the scripts' shebangs would break the signature.
     dontFixup = true;
   }
 else
   let
-    contents = appimageTools.extract { inherit pname version src; };
+    extracted = appimageTools.extract { inherit pname version src; };
+
+    # AppRun runs whisky-gpui, beside its helper.
+    contents = runCommand "${pname}-${version}-contents" { } ''
+      cp -a ${extracted} $out
+      chmod -R u+w $out
+      install -m755 ${lib.getExe interface} $out/usr/lib/whisky/bin/whisky-gpui
+      install -m644 ${interface.src}/apps/maltoria/resources/com.daydalek.Maltoria.png \
+        $out/com.daydalek.Maltoria.png
+    '';
   in
-  appimageTools.wrapType2 {
+  appimageTools.wrapAppImage {
     inherit
       pname
       version
-      src
       passthru
       meta
       ;
+    src = contents;
 
     extraInstallCommands = ''
       install -Dm444 ${contents}/com.daydalek.Maltoria.desktop -t $out/share/applications
