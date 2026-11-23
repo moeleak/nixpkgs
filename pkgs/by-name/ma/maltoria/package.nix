@@ -51,8 +51,8 @@ let
     src = fetchFromGitHub {
       owner = "moeleak";
       repo = "Maltoria";
-      rev = "a92a1a3f96c5d4a7d7cb527a50812ee65b04690c";
-      hash = "sha256-V7h+sPTB9AJwrcUIKTxhOQ8IsHPyQg/NJSiHct8/xso=";
+      rev = "af498c10b28b8d2bd368feec535952870d79f09b";
+      hash = "sha256-szo8SbAsj2G4HEKxdOnBAvgtCJs/pDju/7FE1SVUSv4=";
     };
 
     # A standalone package beside the core it depends on by path.
