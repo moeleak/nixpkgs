@@ -46,19 +46,19 @@ let
   # GPUI one: built from source, and run in the release's bundle in its place.
   interface = rustPlatform.buildRustPackage {
     pname = "maltoria-interface";
-    version = "0-unstable-2026-11-23";
+    version = "0-unstable-2026-11-24";
 
     src = fetchFromGitHub {
       owner = "moeleak";
       repo = "Maltoria";
-      rev = "91f0084b5853eaa0dc7996b6662da2ed3f461513";
-      hash = "sha256-Z9ZSHxud8A9UKAT0RWsnx0hU2efoXmH3X8r4dbs/9DU=";
+      rev = "220b6878f4a065aaa1965e53cf2c6316f896eba1";
+      hash = "sha256-DPPNxO69RxROTe/2W0egJGxVSX8hEbre+CvApaWyKbI=";
     };
 
     # A standalone package beside the core it depends on by path.
     cargoRoot = "apps/maltoria";
     buildAndTestSubdir = "apps/maltoria";
-    cargoHash = "sha256-3XiRYr+SyApaSnuM5e5SquAjiLZyqMLChN9lnPIgdeI=";
+    cargoHash = "sha256-uPibB/2YMylczTR4KxkMwpudo9D+vVKm+8io/gUNthA=";
 
     # On macOS, the Wine runtime built for macOS 15, which the interface
     # installs where the helper runs it.
