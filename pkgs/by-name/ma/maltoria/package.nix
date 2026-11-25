@@ -46,13 +46,13 @@ let
   # GPUI one: built from source, and run in the release's bundle in its place.
   interface = rustPlatform.buildRustPackage {
     pname = "maltoria-interface";
-    version = "0-unstable-2026-11-24";
+    version = "0-unstable-2026-11-25";
 
     src = fetchFromGitHub {
       owner = "moeleak";
       repo = "Maltoria";
-      rev = "220b6878f4a065aaa1965e53cf2c6316f896eba1";
-      hash = "sha256-DPPNxO69RxROTe/2W0egJGxVSX8hEbre+CvApaWyKbI=";
+      rev = "da2cb623bd58343a5b47df016ec8e8625e296b6f";
+      hash = "sha256-7fMqT+DFrMvNjsg9hCOB3Y3psS5LZAjqFCVNiNyhMfs=";
     };
 
     # A standalone package beside the core it depends on by path.
