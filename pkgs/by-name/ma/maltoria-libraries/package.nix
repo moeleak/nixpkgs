@@ -12,11 +12,11 @@
 stdenvNoCC.mkDerivation {
   pname = "maltoria-libraries";
   # Newer than upstream's 11.0.N, so that Maltoria keeps it.
-  version = "11.15.15";
+  version = "11.15.18";
 
   src = fetchurl {
-    url = "https://github.com/moeleak/ge-proton-macos-wine-poc/releases/download/v0.1.12-macos15.3/Libraries.tar.gz";
-    hash = "sha256-Zwz/yXjuX8pTxCvLvoGR9xMYDFW2Lp9A1EzE26zl0W8=";
+    url = "https://github.com/moeleak/ge-proton-macos-wine-poc/releases/download/v0.1.12-macos15.4/Libraries.tar.gz";
+    hash = "sha256-fjJOcvzDDS8n5dtunKZgBhBKgm08xug2BJJWHiMyNRE=";
   };
 
   sourceRoot = ".";
